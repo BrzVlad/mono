@@ -24,6 +24,7 @@ mono_gc_base_init (void)
 	memset (&cb, 0, sizeof (cb));
 	cb.mono_method_is_critical = mono_runtime_is_critical_method;
 	cb.mono_gc_pthread_create = (gpointer)mono_gc_pthread_create;
+	cb.mono_thread_is_in_critical_region = NULL;
 
 	mono_threads_init (&cb, sizeof (MonoThreadInfo));
 }

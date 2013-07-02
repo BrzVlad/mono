@@ -481,6 +481,11 @@ is_thread_in_critical_region (MonoThreadInfo *info)
 	if (info->inside_critical_region)
 		return TRUE;
 
+	if (threads_callbacks.mono_thread_is_in_critical_region) {
+		if (threads_callbacks.mono_thread_is_in_critical_region (info))
+			return TRUE;
+	}
+
 	ji = mono_jit_info_table_find (
 		info->suspend_state.unwind_data [MONO_UNWIND_DATA_DOMAIN],
 		MONO_CONTEXT_GET_IP (&info->suspend_state.ctx));

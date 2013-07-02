@@ -181,6 +181,7 @@ mono_gc_base_init (void)
 	memset (&cb, 0, sizeof (cb));
 	cb.thread_register = boehm_thread_register;
 	cb.mono_method_is_critical = (gpointer)mono_runtime_is_critical_method;
+	cb.mono_thread_is_in_critical_region = NULL;
 #ifndef HOST_WIN32
 	cb.mono_gc_pthread_create = (gpointer)mono_gc_pthread_create;
 #endif
