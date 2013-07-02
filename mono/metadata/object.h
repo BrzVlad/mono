@@ -351,6 +351,9 @@ MONO_API void mono_gc_wbarrier_generic_nostore (void* ptr);
 MONO_API void mono_gc_wbarrier_value_copy    (void* dest, void* src, int count, MonoClass *klass);
 MONO_API void mono_gc_wbarrier_object_copy   (MonoObject* obj, MonoObject *src);
 
+MonoObject* mono_gc_wbarrier_exchange (void* ptr, MonoObject* exch);
+MonoObject* mono_gc_wbarrier_compare_exchange (void* ptr, MonoObject* exch, MonoObject* comp);
+
 MONO_END_DECLS
 
 #endif

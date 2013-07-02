@@ -222,6 +222,7 @@
 #include "utils/mono-memory-model.h"
 #include "utils/mono-logger-internal.h"
 #include "utils/dtrace.h"
+#include "utils/atomic.h"
 
 #include <mono/utils/mono-logger-internal.h>
 #include <mono/utils/memcheck.h>
@@ -4122,10 +4123,71 @@ void
 mono_gc_wbarrier_generic_store (gpointer ptr, MonoObject* value)
 {
 	SGEN_LOG (8, "Wbarrier store at %p to %p (%s)", ptr, value, value ? safe_name (value) : "null");
+#ifdef DISABLE_CRITICAL_REGION
+	LOCK_GC;
+#else
+	TLAB_ACCESS_INIT;
+	ENTER_CRITICAL_REGION;
+#endif
 	*(void**)ptr = value;
 	if (ptr_in_nursery (value))
 		mono_gc_wbarrier_generic_nostore (ptr);
-	sgen_dummy_use (value);
+
+#ifdef DISABLE_CRITICAL_REGION
+	UNLOCK_GC;
+#else
+	EXIT_CRITICAL_REGION;
+#endif
+
+}
+
+MonoObject*
+mono_gc_wbarrier_exchange (gpointer ptr, MonoObject* exch)
+{
+	MonoObject* ret;
+
+#ifdef DISABLE_CRITICAL_REGION
+	LOCK_GC;
+#else
+	TLAB_ACCESS_INIT;
+	ENTER_CRITICAL_REGION;
+#endif
+
+	ret = (MonoObject*) InterlockedExchangePointer (ptr, exch);
+	mono_gc_wbarrier_generic_nostore (ptr);
+
+#ifdef DISABLE_CRITICAL_REGION
+	UNLOCK_GC;
+#else
+	EXIT_CRITICAL_REGION;
+#endif
+
+	return ret;
+}
+
+
+MonoObject*
+mono_gc_wbarrier_compare_exchange (gpointer ptr, MonoObject* exch, MonoObject* comp)
+{
+	MonoObject* ret;
+
+#ifdef DISABLE_CRITICAL_REGION
+	LOCK_GC;
+#else
+	TLAB_ACCESS_INIT;
+	ENTER_CRITICAL_REGION;
+#endif
+
+	ret = (MonoObject*) InterlockedCompareExchangePointer (ptr, exch, comp);
+	mono_gc_wbarrier_generic_nostore (ptr);
+
+#ifdef DISABLE_CRITICAL_REGION
+	UNLOCK_GC;
+#else
+	EXIT_CRITICAL_REGION;
+#endif
+
+	return ret;
 }
 
 /* Same as mono_gc_wbarrier_generic_store () but performs the store

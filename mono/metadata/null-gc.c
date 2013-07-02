@@ -13,6 +13,7 @@
 #include <mono/metadata/runtime.h>
 #include <mono/utils/atomic.h>
 #include <mono/utils/mono-threads.h>
+#include <mono/utils/atomic.h>
 
 #ifdef HAVE_NULL_GC
 
@@ -209,6 +210,18 @@ mono_gc_wbarrier_generic_store_atomic (gpointer ptr, MonoObject *value)
 void
 mono_gc_wbarrier_generic_nostore (gpointer ptr)
 {
+}
+
+MonoObject*
+mono_gc_wbarrier_exchange (gpointer ptr, MonoObject* exch)
+{
+	return (MonoObject*) InterlockedExchangePointer (ptr, exch);
+}
+
+MonoObject*
+mono_gc_wbarrier_compare_exchange (gpointer ptr, MonoObject* exch, MonoObject* comp)
+{
+	return (MonoObject*) InterlockedCompareExchangePointer (ptr, exch, comp);
 }
 
 void

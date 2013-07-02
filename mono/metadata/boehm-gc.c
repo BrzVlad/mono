@@ -30,6 +30,7 @@
 #include <mono/utils/dtrace.h>
 #include <mono/utils/gc_wrapper.h>
 #include <mono/utils/mono-mutex.h>
+#include <mono/utils/atomic.h>
 
 #if HAVE_BOEHM_GC
 
@@ -653,6 +654,18 @@ void
 mono_gc_wbarrier_generic_store (gpointer ptr, MonoObject* value)
 {
 	*(void**)ptr = value;
+}
+
+MonoObject*
+mono_gc_wbarrier_exchange (gpointer ptr, MonoObject* exch)
+{
+	return (MonoObject*) InterlockedExchangePointer (ptr, exch);
+}
+
+MonoObject*
+mono_gc_wbarrier_compare_exchange (gpointer ptr, MonoObject* exch, MonoObject* comp)
+{
+	return (MonoObject*) InterlockedCompareExchangePointer (ptr, exch, comp);
 }
 
 void

@@ -84,19 +84,47 @@ cards_in_range (mword address, mword size)
 static void
 sgen_card_table_wbarrier_set_field (MonoObject *obj, gpointer field_ptr, MonoObject* value)
 {
+
+#ifdef DISABLE_CRITICAL_REGION
+	LOCK_GC;
+#else
+	TLAB_ACCESS_INIT;
+	ENTER_CRITICAL_REGION;
+#endif
+
 	*(void**)field_ptr = value;
 	if (need_mod_union || sgen_ptr_in_nursery (value))
 		sgen_card_table_mark_address ((mword)field_ptr);
-	sgen_dummy_use (value);
+
+#ifdef DISABLE_CRITICAL_REGION
+	UNLOCK_GC;
+#else
+	EXIT_CRITICAL_REGION;
+#endif
+
 }
 
 static void
 sgen_card_table_wbarrier_set_arrayref (MonoArray *arr, gpointer slot_ptr, MonoObject* value)
 {
+
+#ifdef DISABLE_CRITICAL_REGION
+	LOCK_GC;
+#else
+	TLAB_ACCESS_INIT;
+	ENTER_CRITICAL_REGION;
+#endif
+
 	*(void**)slot_ptr = value;
 	if (need_mod_union || sgen_ptr_in_nursery (value))
 		sgen_card_table_mark_address ((mword)slot_ptr);
-	sgen_dummy_use (value);	
+
+#ifdef DISABLE_CRITICAL_REGION
+	UNLOCK_GC;
+#else
+	EXIT_CRITICAL_REGION;
+#endif
+	
 }
 
 static void
@@ -104,6 +132,13 @@ sgen_card_table_wbarrier_arrayref_copy (gpointer dest_ptr, gpointer src_ptr, int
 {
 	gpointer *dest = dest_ptr;
 	gpointer *src = src_ptr;
+
+#ifdef DISABLE_CRITICAL_REGION
+	LOCK_GC;
+#else
+	TLAB_ACCESS_INIT;
+	ENTER_CRITICAL_REGION;
+#endif
 
 	/*overlapping that required backward copying*/
 	if (src < dest && (src + count) > dest) {
@@ -116,7 +151,6 @@ sgen_card_table_wbarrier_arrayref_copy (gpointer dest_ptr, gpointer src_ptr, int
 			*dest = value;
 			if (need_mod_union || sgen_ptr_in_nursery (value))
 				sgen_card_table_mark_address ((mword)dest);
-			sgen_dummy_use (value);
 		}
 	} else {
 		gpointer *end = dest + count;
@@ -125,9 +159,15 @@ sgen_card_table_wbarrier_arrayref_copy (gpointer dest_ptr, gpointer src_ptr, int
 			*dest = value;
 			if (need_mod_union || sgen_ptr_in_nursery (value))
 				sgen_card_table_mark_address ((mword)dest);
-			sgen_dummy_use (value);
 		}
 	}	
+
+#ifdef DISABLE_CRITICAL_REGION
+	UNLOCK_GC;
+#else
+	EXIT_CRITICAL_REGION;
+#endif
+
 }
 
 static void
