@@ -1865,8 +1865,7 @@ gint32 ves_icall_System_Threading_Interlocked_Exchange_Int (gint32 *location, gi
 MonoObject * ves_icall_System_Threading_Interlocked_Exchange_Object (MonoObject **location, MonoObject *value)
 {
 	MonoObject *res;
-	res = (MonoObject *) InterlockedExchangePointer((gpointer *) location, value);
-	mono_gc_wbarrier_generic_nostore (location);
+	res = mono_gc_wbarrier_exchange (location, value);
 	return res;
 }
 
@@ -1944,8 +1943,7 @@ gint32 ves_icall_System_Threading_Interlocked_CompareExchange_Int(gint32 *locati
 MonoObject * ves_icall_System_Threading_Interlocked_CompareExchange_Object (MonoObject **location, MonoObject *value, MonoObject *comparand)
 {
 	MonoObject *res;
-	res = (MonoObject *) InterlockedCompareExchangePointer((gpointer *) location, value, comparand);
-	mono_gc_wbarrier_generic_nostore (location);
+	res = mono_gc_wbarrier_compare_exchange (location, value, comparand);
 	return res;
 }
 
@@ -2012,8 +2010,7 @@ MonoObject*
 ves_icall_System_Threading_Interlocked_CompareExchange_T (MonoObject **location, MonoObject *value, MonoObject *comparand)
 {
 	MonoObject *res;
-	res = InterlockedCompareExchangePointer ((gpointer *)location, value, comparand);
-	mono_gc_wbarrier_generic_nostore (location);
+	res = mono_gc_wbarrier_compare_exchange (location, value, comparand);
 	return res;
 }
 
@@ -2021,8 +2018,7 @@ MonoObject*
 ves_icall_System_Threading_Interlocked_Exchange_T (MonoObject **location, MonoObject *value)
 {
 	MonoObject *res;
-	res = InterlockedExchangePointer ((gpointer *)location, value);
-	mono_gc_wbarrier_generic_nostore (location);
+	res = mono_gc_wbarrier_exchange (location, value);
 	return res;
 }
 
@@ -2612,8 +2608,7 @@ ves_icall_System_Threading_Thread_VolatileWriteFloat (void *ptr, float value)
 void
 ves_icall_System_Threading_Volatile_Write_T (void *ptr, MonoObject *value)
 {
-	*((volatile MonoObject **) ptr) = value;
-	mono_gc_wbarrier_generic_nostore (ptr);
+	mono_gc_wbarrier_generic_store (ptr, value);
 }
 
 void
