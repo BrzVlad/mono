@@ -929,6 +929,7 @@ void sgen_ensure_free_space (size_t size) MONO_INTERNAL;
 void sgen_perform_collection (size_t requested_size, int generation_to_collect, const char *reason, gboolean wait_to_finish) MONO_INTERNAL;
 gboolean sgen_has_critical_method (void) MONO_INTERNAL;
 gboolean sgen_is_critical_method (MonoMethod *method) MONO_INTERNAL;
+gboolean sgen_thread_is_in_critical_region (SgenThreadInfo* info) MONO_INTERNAL;
 
 /* STW */
 

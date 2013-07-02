@@ -176,6 +176,7 @@ typedef struct {
 	void (*thread_attach)(THREAD_INFO_TYPE *info);
 	gboolean (*mono_method_is_critical) (void *method);
 	void (*thread_exit)(void *retval);
+	gboolean (*mono_thread_is_in_critical_region) (THREAD_INFO_TYPE *info);
 #ifndef HOST_WIN32
 	int (*mono_gc_pthread_create) (pthread_t *new_thread, const pthread_attr_t *attr, void *(*start_routine)(void *), void *arg);
 #endif

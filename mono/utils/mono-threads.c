@@ -564,6 +564,11 @@ is_thread_in_critical_region (MonoThreadInfo *info)
 
 	if (info->inside_critical_region)
 		return TRUE;
+	
+	if (threads_callbacks.mono_thread_is_in_critical_region) {
+		if (threads_callbacks.mono_thread_is_in_critical_region (info))
+			return TRUE;
+	}
 
 	/* The target thread might be shutting down and the domain might be null, which means no managed code left to run. */
 	if (!info->suspend_state.unwind_data [MONO_UNWIND_DATA_DOMAIN])

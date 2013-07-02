@@ -30,6 +30,7 @@ mono_gc_base_init (void)
 	cb.mono_method_is_critical = (gpointer)mono_runtime_is_critical_method;
 	cb.mono_gc_pthread_create = (gpointer)mono_gc_pthread_create;
 	cb.thread_exit = mono_gc_pthread_exit;
+	cb.mono_thread_is_in_critical_region = NULL;
 
 	mono_threads_init (&cb, sizeof (MonoThreadInfo));
 

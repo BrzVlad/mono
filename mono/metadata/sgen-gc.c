@@ -4647,6 +4647,7 @@ mono_gc_base_init (void)
 	cb.thread_unregister = sgen_thread_unregister;
 	cb.thread_attach = sgen_thread_attach;
 	cb.mono_method_is_critical = (gpointer)is_critical_method;
+	cb.mono_thread_is_in_critical_region = (gpointer)sgen_thread_is_in_critical_region;
 #ifndef HOST_WIN32
 	cb.thread_exit = mono_gc_pthread_exit;
 	cb.mono_gc_pthread_create = (gpointer)mono_gc_pthread_create;
@@ -5153,6 +5154,12 @@ gboolean
 sgen_has_critical_method (void)
 {
 	return write_barrier_method || sgen_has_managed_allocator ();
+}
+
+gboolean
+sgen_thread_is_in_critical_region (SgenThreadInfo* info)
+{
+	return (gboolean)info->in_critical_region;
 }
 
 #ifndef DISABLE_JIT
