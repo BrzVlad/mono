@@ -282,7 +282,9 @@ mono_marshal_init (void)
 		register_icall (mono_context_get, "mono_context_get", "object", FALSE);
 		register_icall (mono_context_set, "mono_context_set", "void object", FALSE);
 		register_icall (type_from_handle, "type_from_handle", "object ptr", FALSE);
-		register_icall (mono_gc_wbarrier_generic_nostore, "wb_generic", "void ptr", FALSE);
+		register_icall (mono_gc_wbarrier_generic_store, "wb_generic", "void ptr object", FALSE);
+		register_icall (mono_gc_wbarrier_exchange, "wb_exchange", "object ptr object", FALSE);
+		register_icall (mono_gc_wbarrier_compare_exchange, "wb_compare_exchange", "object ptr object object", FALSE);
 		register_icall (mono_gchandle_get_target, "mono_gchandle_get_target", "object int32", TRUE);
 
 #ifndef DISABLE_REMOTING
