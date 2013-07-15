@@ -208,11 +208,6 @@ mono_gc_wbarrier_generic_store_atomic (gpointer ptr, MonoObject *value)
 	InterlockedWritePointer (ptr, value);
 }
 
-void
-mono_gc_wbarrier_generic_nostore (gpointer ptr)
-{
-}
-
 MonoObject*
 mono_gc_wbarrier_exchange (gpointer ptr, MonoObject* exch)
 {

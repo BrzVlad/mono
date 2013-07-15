@@ -4073,7 +4073,7 @@ find_object_for_ptr (char *ptr)
 	return found_obj;
 }
 
-void
+static void
 mono_gc_wbarrier_generic_nostore (gpointer ptr)
 {
 	gpointer obj;

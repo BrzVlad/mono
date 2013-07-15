@@ -657,6 +657,12 @@ mono_gc_wbarrier_generic_store (gpointer ptr, MonoObject* value)
 	*(void**)ptr = value;
 }
 
+void
+mono_gc_wbarrier_generic_store_atomic (gpointer ptr, MonoObject *value)
+{
+	InterlockedWritePointer (ptr, value);
+}
+
 MonoObject*
 mono_gc_wbarrier_exchange (gpointer ptr, MonoObject* exch)
 {
@@ -667,17 +673,6 @@ MonoObject*
 mono_gc_wbarrier_compare_exchange (gpointer ptr, MonoObject* exch, MonoObject* comp)
 {
 	return (MonoObject*) InterlockedCompareExchangePointer (ptr, exch, comp);
-}
-
-void
-mono_gc_wbarrier_generic_store_atomic (gpointer ptr, MonoObject *value)
-{
-	InterlockedWritePointer (ptr, value);
-}
-
-void
-mono_gc_wbarrier_generic_nostore (gpointer ptr)
-{
 }
 
 void
