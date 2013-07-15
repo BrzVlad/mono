@@ -638,11 +638,6 @@ mono_gc_wbarrier_compare_exchange (gpointer ptr, MonoObject* exch, MonoObject* c
 }
 
 void
-mono_gc_wbarrier_generic_nostore (gpointer ptr)
-{
-}
-
-void
 mono_gc_wbarrier_value_copy (gpointer dest, gpointer src, int count, MonoClass *klass)
 {
 	mono_gc_memmove (dest, src, count * mono_class_value_size (klass, NULL));

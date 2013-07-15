@@ -194,11 +194,6 @@ mono_gc_wbarrier_generic_store (gpointer ptr, MonoObject* value)
 	*(void**)ptr = value;
 }
 
-void
-mono_gc_wbarrier_generic_nostore (gpointer ptr)
-{
-}
-
 MonoObject*
 mono_gc_wbarrier_exchange (gpointer ptr, MonoObject* exch)
 {
