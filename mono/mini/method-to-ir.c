@@ -140,6 +140,7 @@ static MonoMethodSignature *helper_sig_generic_class_init_trampoline_llvm = NULL
 static MonoMethodSignature *helper_sig_rgctx_lazy_fetch_trampoline = NULL;
 static MonoMethodSignature *helper_sig_monitor_enter_exit_trampoline = NULL;
 static MonoMethodSignature *helper_sig_monitor_enter_exit_trampoline_llvm = NULL;
+static MonoMethodSignature *helper_sig_write_barrier_trampoline = NULL;
 
 /*
  * Instruction metadata
@@ -352,6 +353,7 @@ mono_create_helper_signatures (void)
 	helper_sig_rgctx_lazy_fetch_trampoline = mono_create_icall_signature ("ptr ptr");
 	helper_sig_monitor_enter_exit_trampoline = mono_create_icall_signature ("void");
 	helper_sig_monitor_enter_exit_trampoline_llvm = mono_create_icall_signature ("void object");
+	helper_sig_write_barrier_trampoline = mono_create_icall_signature ("void");
 }
 
 /*
