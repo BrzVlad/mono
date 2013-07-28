@@ -1686,6 +1686,23 @@ mono_create_monitor_exit_trampoline (void)
 #endif
 	return code;
 }
+
+gpointer 
+mono_create_write_barrier_trampoline (void)
+{
+	static gpointer code;
+
+	mono_trampolines_lock ();
+
+	if (!code) {
+		MonoTrampInfo *info;
+
+		code = mono_arch_create_write_barrier_trampoline (&info);
+	}
+
+	mono_trampolines_unlock ();
+	return code;
+}
  
 #ifdef MONO_ARCH_LLVM_SUPPORTED
 /*

@@ -4479,49 +4479,21 @@ mono_arch_output_basic_block (MonoCompile *cfg, MonoBasicBlock *bb)
 		case OP_CARD_TABLE_WBARRIER: {
 			int ptr = ins->sreg1;
 			int value = ins->sreg2;
-			guchar *br = NULL;
-			int nursery_shift, card_table_shift;
-			gpointer card_table_mask;
-			size_t nursery_size;
-			gulong card_table = (gulong)mono_gc_get_card_table (&card_table_shift, &card_table_mask);
-			gulong nursery_start = (gulong)mono_gc_get_nursery (&nursery_shift, &nursery_size);
-			gboolean card_table_nursery_check = mono_gc_card_table_nursery_check ();
-
+			guint8 *write_barrier_trampoline = mono_create_write_barrier_trampoline ();
 			/*
 			 * We need one register we can clobber, we choose EDX and make sreg1
 			 * fixed EAX to work around limitations in the local register allocator.
 			 * sreg2 might get allocated to EDX, but that is not a problem since
 			 * we use it before clobbering EDX.
 			 */
-			g_assert (ins->sreg1 == X86_EAX);
+			g_assert (ptr == X86_EAX);
 
-			/*
-			 * This is the code we produce:
-			 *
-			 *   edx = value
-			 *   edx >>= nursery_shift
-			 *   cmp edx, (nursery_start >> nursery_shift)
-			 *   jne done
-			 *   edx = ptr
-			 *   edx >>= card_table_shift
-			 *   card_table[edx] = 1
-			 * done:
-			 */
-
-			if (card_table_nursery_check) {
-				if (value != X86_EDX)
-					x86_mov_reg_reg (code, X86_EDX, value, 4);
-				x86_shift_reg_imm (code, X86_SHR, X86_EDX, nursery_shift);
-				x86_alu_reg_imm (code, X86_CMP, X86_EDX, nursery_start >> nursery_shift);
-				br = code; x86_branch8 (code, X86_CC_NE, -1, FALSE);
+			if (value != X86_EDX){
+				x86_mov_reg_reg (code, X86_EDX, value, 4);
 			}
-			x86_mov_reg_reg (code, X86_EDX, ptr, 4);
-			x86_shift_reg_imm (code, X86_SHR, X86_EDX, card_table_shift);
-			if (card_table_mask)
-				x86_alu_reg_imm (code, X86_AND, X86_EDX, (int)card_table_mask);
-			x86_mov_membase_imm (code, X86_EDX, card_table, 1, 1);
-			if (card_table_nursery_check)
-				x86_patch (br, code);
+
+			mono_add_patch_info (cfg, code - cfg->native_code, MONO_PATCH_INFO_WRITE_BARRIER, write_barrier_trampoline);
+			x86_call_code (code, 0);
 			break;
 		}
 #ifdef MONO_ARCH_SIMD_INTRINSICS
@@ -5213,6 +5185,7 @@ mono_arch_patch_code (MonoMethod *method, MonoDomain *domain, guint8 *code, Mono
 		case MONO_PATCH_INFO_GENERIC_CLASS_INIT:
 		case MONO_PATCH_INFO_MONITOR_ENTER:
 		case MONO_PATCH_INFO_MONITOR_EXIT:
+		case MONO_PATCH_INFO_WRITE_BARRIER:
 		case MONO_PATCH_INFO_JIT_ICALL_ADDR:
 #if defined(__native_client_codegen__) && defined(__native_client__)
 			if (nacl_is_code_address (code)) {

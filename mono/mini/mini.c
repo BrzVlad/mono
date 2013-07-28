@@ -3239,6 +3239,7 @@ mono_patch_info_hash (gconstpointer data)
 	case MONO_PATCH_INFO_JIT_TLS_ID:
 	case MONO_PATCH_INFO_MONITOR_ENTER:
 	case MONO_PATCH_INFO_MONITOR_EXIT:
+	case MONO_PATCH_INFO_WRITE_BARRIER:
 	case MONO_PATCH_INFO_CASTCLASS_CACHE:
 	case MONO_PATCH_INFO_GOT_OFFSET:
 		return (ji->type << 8);
@@ -3653,6 +3654,9 @@ mono_resolve_patch_target (MonoMethod *method, MonoDomain *domain, guint8 *code,
 		break;
 	case MONO_PATCH_INFO_MONITOR_EXIT:
 		target = mono_create_monitor_exit_trampoline ();
+		break;
+	case MONO_PATCH_INFO_WRITE_BARRIER:
+		target = mono_create_write_barrier_trampoline ();
 		break;
 #ifdef MONO_ARCH_SOFT_DEBUG_SUPPORTED
 	case MONO_PATCH_INFO_SEQ_POINT_INFO:
