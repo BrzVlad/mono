@@ -1045,7 +1045,7 @@ mono_arch_create_monitor_exit_trampoline (MonoTrampInfo **info, gboolean aot)
 #endif
 
 gpointer
-mono_arch_create_write_barrier_trampoline (MonoTrampInfo **info)
+mono_arch_create_write_barrier_trampoline (MonoTrampInfo **info, gpointer *trampoline_end)
 {
 	guint8 *code, *buf;
 	int tramp_size;
@@ -1101,6 +1101,7 @@ mono_arch_create_write_barrier_trampoline (MonoTrampInfo **info)
 	if (info)
 		*info = mono_tramp_info_create ("write_barrier_trampoline", buf, code - buf, ji, unwind_ops);
 
+	*trampoline_end = code;
 	return buf;
 }
 

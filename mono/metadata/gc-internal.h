@@ -277,6 +277,8 @@ typedef struct {
 	 *   using precise marking by calling mono_gc_scan_object ().
 	 */
 	void (*thread_mark_func) (gpointer user_data, guint8 *stack_start, guint8 *stack_end, gboolean precise, void *gc_data);
+
+	gboolean (*is_ip_in_write_barrier_trampoline_func) (gpointer ip);
 } MonoGCCallbacks;
 
 /* Set the callback functions callable by the GC */

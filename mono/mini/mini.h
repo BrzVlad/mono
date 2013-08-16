@@ -2235,6 +2235,7 @@ gpointer          mono_create_rgctx_lazy_fetch_trampoline (guint32 offset) MONO_
 gpointer          mono_create_monitor_enter_trampoline (void) MONO_INTERNAL;
 gpointer          mono_create_monitor_exit_trampoline (void) MONO_INTERNAL;
 gpointer          mono_create_write_barrier_trampoline (void) MONO_INTERNAL;
+gboolean          mono_is_ip_in_write_barrier_trampoline (gpointer ip) MONO_INTERNAL;
 gpointer          mono_create_static_rgctx_trampoline (MonoMethod *m, gpointer addr) MONO_INTERNAL;
 gpointer          mono_create_llvm_imt_trampoline (MonoDomain *domain, MonoMethod *m, int vt_offset) MONO_LLVM_INTERNAL;
 MonoVTable*       mono_find_class_init_trampoline_by_addr (gconstpointer addr) MONO_INTERNAL;
@@ -2331,7 +2332,7 @@ gpointer  mono_arch_create_generic_class_init_trampoline (MonoTrampInfo **info, 
 gpointer  mono_arch_get_nullified_class_init_trampoline (MonoTrampInfo **info) MONO_INTERNAL;
 gpointer  mono_arch_create_monitor_enter_trampoline (MonoTrampInfo **info, gboolean aot) MONO_INTERNAL;
 gpointer  mono_arch_create_monitor_exit_trampoline (MonoTrampInfo **info, gboolean aot) MONO_INTERNAL;
-gpointer  mono_arch_create_write_barrier_trampoline (MonoTrampInfo **info) MONO_INTERNAL;
+gpointer  mono_arch_create_write_barrier_trampoline (MonoTrampInfo **info, gpointer *wbarrier_trampoline_end) MONO_INTERNAL;
 guint8   *mono_arch_create_llvm_native_thunk     (MonoDomain *domain, guint8* addr) MONO_LLVM_INTERNAL;
 GList    *mono_arch_get_allocatable_int_vars    (MonoCompile *cfg) MONO_INTERNAL;
 GList    *mono_arch_get_global_int_regs         (MonoCompile *cfg) MONO_INTERNAL;

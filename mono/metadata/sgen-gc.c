@@ -5159,6 +5159,9 @@ sgen_has_critical_method (void)
 gboolean
 sgen_thread_is_in_critical_region (SgenThreadInfo* info)
 {
+	if (gc_callbacks.is_ip_in_write_barrier_trampoline_func (info->stopped_ip))
+		return TRUE;
+
 	return (gboolean)info->in_critical_region;
 }
 

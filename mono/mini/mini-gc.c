@@ -2485,6 +2485,7 @@ mini_gc_init (void)
 	cb.thread_suspend_func = thread_suspend_func;
 	/* Comment this out to disable precise stack marking */
 	cb.thread_mark_func = thread_mark_func;
+	cb.is_ip_in_write_barrier_trampoline_func = mono_is_ip_in_write_barrier_trampoline;
 	mono_gc_set_gc_callbacks (&cb);
 
 	logfile = mono_gc_get_logfile ();

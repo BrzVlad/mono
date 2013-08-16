@@ -32,6 +32,13 @@ static guint32 trampoline_calls, jit_trampolines, unbox_trampolines, static_rgct
 #define mono_trampolines_unlock() mono_mutex_unlock (&trampolines_mutex)
 static mono_mutex_t trampolines_mutex;
 
+#ifdef MONO_ARCH_HAVE_CARD_TABLE_WBARRIER
+
+static gpointer wbarrier_trampoline_start;
+static gpointer wbarrier_trampoline_end;
+
+#endif
+
 #ifdef MONO_ARCH_GSHARED_SUPPORTED
 
 typedef struct {
@@ -1690,18 +1697,36 @@ mono_create_monitor_exit_trampoline (void)
 gpointer 
 mono_create_write_barrier_trampoline (void)
 {
-	static gpointer code;
-
+#ifdef MONO_ARCH_HAVE_CARD_TABLE_WBARRIER
 	mono_trampolines_lock ();
 
-	if (!code) {
+	if (!wbarrier_trampoline_start) {
 		MonoTrampInfo *info;
 
-		code = mono_arch_create_write_barrier_trampoline (&info);
+		wbarrier_trampoline_start = mono_arch_create_write_barrier_trampoline (&info, &wbarrier_trampoline_end);
 	}
 
 	mono_trampolines_unlock ();
-	return code;
+	return wbarrier_trampoline_start;
+#else
+	g_assert_not_reached ();
+	return NULL;
+#endif
+}
+
+gboolean
+mono_is_ip_in_write_barrier_trampoline (gpointer ip)
+{
+
+#ifdef MONO_ARCH_HAVE_CARD_TABLE_WBARRIER
+	if (ip == NULL)
+		return FALSE;
+	if (ip >= wbarrier_trampoline_start &&
+		ip <= wbarrier_trampoline_end) {
+		return TRUE;
+	}
+#endif
+	return FALSE;
 }
  
 #ifdef MONO_ARCH_LLVM_SUPPORTED
