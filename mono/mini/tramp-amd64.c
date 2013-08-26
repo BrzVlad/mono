@@ -1190,6 +1190,86 @@ mono_arch_create_monitor_exit_trampoline (MonoTrampInfo **info, gboolean aot)
 	return buf;
 }
 
+gpointer
+mono_arch_create_write_barrier_trampoline (MonoTrampInfo **info, gpointer *trampoline_end)
+{
+	guint8 *code, *buf;
+	int tramp_size;
+	GSList *unwind_ops = NULL;
+	MonoJumpInfo *ji = NULL;
+	const int ptr = AMD64_RAX; /* value of eax should remain unchanged */
+	const int value = AMD64_RDX; /* only register that can be overwritten (along with R11) */
+
+	guchar *br = NULL;
+	int nursery_shift, card_table_shift;
+	gpointer card_table_mask;
+	size_t nursery_size;
+	gpointer card_table = mono_gc_get_card_table (&card_table_shift, &card_table_mask);
+	guint64 nursery_start = (guint64)mono_gc_get_nursery (&nursery_shift, &nursery_size);
+	guint64 shifted_nursery_start = nursery_start >> nursery_shift;
+
+	tramp_size = 64;
+	code = buf = mono_global_codeman_reserve (tramp_size);
+
+	/*
+	 * This is the code we produce:
+	 *
+	 *   *ptr = value
+	 *   edx = value
+	 *   edx >>= nursery_shift
+	 *   cmp edx, (nursery_start >> nursery_shift)
+	 *   jne done
+	 *   edx = ptr
+	 *   edx >>= card_table_shift
+	 *   edx += cardtable
+	 *   [edx] = 1
+	 * done:
+	 */
+	amd64_mov_membase_reg (code, ptr, 0, value, 8);
+	if (mono_gc_card_table_nursery_check ()) {
+		amd64_shift_reg_imm (code, X86_SHR, AMD64_RDX, nursery_shift);
+		if (shifted_nursery_start >> 31) {
+			/*
+			 * The value we need to compare against is 64 bits, so we need
+			 * another register.
+			 */
+			amd64_mov_reg_imm (code, AMD64_R11, shifted_nursery_start);
+			amd64_alu_reg_reg (code, X86_CMP, AMD64_RDX, AMD64_R11);
+		} else {
+			amd64_alu_reg_imm (code, X86_CMP, AMD64_RDX, shifted_nursery_start);
+		}
+		br = code; x86_branch8 (code, X86_CC_NE, -1, FALSE);
+	} 
+
+	amd64_mov_reg_reg (code, AMD64_RDX, ptr, 8);
+	amd64_shift_reg_imm (code, X86_SHR, AMD64_RDX, card_table_shift);
+	if (card_table_mask)
+		amd64_alu_reg_imm (code, X86_AND, AMD64_RDX, (guint32)(guint64)card_table_mask);
+
+	amd64_mov_reg_imm (code, AMD64_R11, card_table);
+	amd64_alu_reg_reg (code, X86_ADD, AMD64_RDX, AMD64_R11);
+
+	amd64_mov_membase_imm (code, AMD64_RDX, 0, 1, 1);
+
+	if (mono_gc_card_table_nursery_check ())
+		x86_patch (br, code); 
+
+	amd64_ret (code);
+
+	nacl_global_codeman_validate (&buf, tramp_size, &code);
+
+	mono_arch_flush_icache (buf, code - buf);
+	g_assert (code - buf <= tramp_size);
+
+	if (info)
+		*info = mono_tramp_info_create ("write_barrier_trampoline", buf, code - buf, ji, unwind_ops);
+
+	*trampoline_end = code;
+	return buf;
+}
+
+
+
 void
 mono_arch_invalidate_method (MonoJitInfo *ji, void *func, gpointer func_arg)
 {

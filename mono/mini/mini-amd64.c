@@ -5565,74 +5565,32 @@ mono_arch_output_basic_block (MonoCompile *cfg, MonoBasicBlock *bb)
 		case OP_CARD_TABLE_WBARRIER: {
 			int ptr = ins->sreg1;
 			int value = ins->sreg2;
-			guchar *br = 0;
-			int nursery_shift, card_table_shift;
-			gpointer card_table_mask;
-			size_t nursery_size;
+			guint8 *write_barrier_trampoline = mono_create_write_barrier_trampoline ();
 
-			gpointer card_table = mono_gc_get_card_table (&card_table_shift, &card_table_mask);
-			guint64 nursery_start = (guint64)mono_gc_get_nursery (&nursery_shift, &nursery_size);
-			guint64 shifted_nursery_start = nursery_start >> nursery_shift;
-
-			/*If either point to the stack we can simply avoid the WB. This happens due to
-			 * optimizations revealing a stack store that was not visible when op_cardtable was emited.
-			 */
-			if (ins->sreg1 == AMD64_RSP || ins->sreg2 == AMD64_RSP)
-				continue;
-
-			/*
-			 * We need one register we can clobber, we choose EDX and make sreg1
-			 * fixed EAX to work around limitations in the local register allocator.
-			 * sreg2 might get allocated to EDX, but that is not a problem since
-			 * we use it before clobbering EDX.
-			 */
-			g_assert (ins->sreg1 == AMD64_RAX);
-
-			/*
-			 * This is the code we produce:
-			 *
-			 *   edx = value
-			 *   edx >>= nursery_shift
-			 *   cmp edx, (nursery_start >> nursery_shift)
-			 *   jne done
-			 *   edx = ptr
-			 *   edx >>= card_table_shift
-			 *   edx += cardtable
-			 *   [edx] = 1
-			 * done:
+			/*If either points to the stack we can simply avoid the WB. This happens due to
+			 * optimizations revealing a stack store that was not visible when op_cardtable was emitted.
 			 */
 
-			if (mono_gc_card_table_nursery_check ()) {
-				if (value != AMD64_RDX)
-					amd64_mov_reg_reg (code, AMD64_RDX, value, 8);
-				amd64_shift_reg_imm (code, X86_SHR, AMD64_RDX, nursery_shift);
-				if (shifted_nursery_start >> 31) {
-					/*
-					 * The value we need to compare against is 64 bits, so we need
-					 * another spare register.  We use RBX, which we save and
-					 * restore.
-					 */
-					amd64_mov_membase_reg (code, AMD64_RSP, -8, AMD64_RBX, 8);
-					amd64_mov_reg_imm (code, AMD64_RBX, shifted_nursery_start);
-					amd64_alu_reg_reg (code, X86_CMP, AMD64_RDX, AMD64_RBX);
-					amd64_mov_reg_membase (code, AMD64_RBX, AMD64_RSP, -8, 8);
-				} else {
-					amd64_alu_reg_imm (code, X86_CMP, AMD64_RDX, shifted_nursery_start);
-				}
-				br = code; x86_branch8 (code, X86_CC_NE, -1, FALSE);
+			if (ptr == AMD64_RSP || value == AMD64_RSP) {
+				amd64_mov_membase_reg (code, ptr, 0, value, 8);
+				break;
 			}
-			amd64_mov_reg_reg (code, AMD64_RDX, ptr, 8);
-			amd64_shift_reg_imm (code, X86_SHR, AMD64_RDX, card_table_shift);
-			if (card_table_mask)
-				amd64_alu_reg_imm (code, X86_AND, AMD64_RDX, (guint32)(guint64)card_table_mask);
 
-			mono_add_patch_info (cfg, code - cfg->native_code, MONO_PATCH_INFO_GC_CARD_TABLE_ADDR, card_table);
-			amd64_alu_reg_membase (code, X86_ADD, AMD64_RDX, AMD64_RIP, 0);
+			g_assert (ptr == AMD64_RAX);
 
-			amd64_mov_membase_imm (code, AMD64_RDX, 0, 1, 1);
+			if (value != AMD64_RDX) {
+				amd64_mov_reg_reg (code, AMD64_RDX, value, 8);
+			}
 
-			if (mono_gc_card_table_nursery_check ())
-				x86_patch (br, code);
+			/* The ptr is now in RAX and the value is in RDX.
+			 * The trampoline leaves the RAX register unmodified, but modifies RDX and R11.
+			 */
+
+			amd64_push_reg (code, AMD64_R11);
+			amd64_mov_reg_imm (code, AMD64_R11, write_barrier_trampoline);
+			amd64_call_reg (code, AMD64_R11);
+			amd64_pop_reg (code, AMD64_R11);
+
 			break;
 		}
 #ifdef MONO_ARCH_SIMD_INTRINSICS
