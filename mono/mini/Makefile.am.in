@@ -321,7 +321,8 @@ arm_sources = \
 	mini-arm.c		\
 	mini-arm.h		\
 	exceptions-arm.c	\
-	tramp-arm.c
+	tramp-arm.c		\
+	../arch/arm/arm-codegen.c
 
 arm64_sources = \
 	mini-arm64.c		\

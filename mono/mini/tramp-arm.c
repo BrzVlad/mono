@@ -16,6 +16,7 @@
 #include <mono/metadata/appdomain.h>
 #include <mono/metadata/marshal.h>
 #include <mono/metadata/tabledefs.h>
+#include <mono/metadata/gc-internal.h>
 #include <mono/arch/arm/arm-codegen.h>
 #include <mono/arch/arm/arm-vfp-codegen.h>
 
@@ -1071,6 +1072,85 @@ mono_arch_get_gsharedvt_arg_trampoline (MonoDomain *domain, gpointer arg, gpoint
 }
 
 #endif
+
+gpointer
+mono_arch_create_write_barrier_trampoline (MonoTrampInfo **info, gpointer *trampoline_end)
+{
+	guint8 *code, *buf;
+	int tramp_size;
+	GSList *unwind_ops = NULL;
+	MonoJumpInfo *ji = NULL;
+	const int ptr = ARMREG_R0;
+	const int value = ARMREG_R1;
+	int nursery_shift, card_table_shift;
+	gpointer card_table_mask;
+	size_t nursery_size;
+	guchar *br;
+ 
+	gulong card_table = (gulong)mono_gc_get_card_table (&card_table_shift, &card_table_mask);
+	gulong nursery_start = (gulong)mono_gc_get_nursery (&nursery_shift, &nursery_size);
+	gboolean card_table_nursery_check = mono_gc_card_table_nursery_check ();	
+
+	tramp_size = 72;
+	code = buf = mono_global_codeman_reserve (tramp_size);
+
+	/*
+	* This is the code we produce:
+	*
+	*   *ptr = value
+	*  ; R1 = value
+	*   R1 >>= nursery_shift
+	*   R2 = nursery_start >> nursery_shift
+	*   cmp R1, R2 
+	*   jne done
+	*   ; R0 = ptr
+	*   R0 >>= card_table_shift
+	*   R2 = card_table
+	*   R0 += R2
+	*   R2 = 1 
+	*   [R0] = R2
+	* done:
+	*/
+
+	ARM_POP1 (code, value);
+	ARM_POP1 (code, ptr);
+
+	ARM_STR_IMM (code, value, ptr, 0);
+	
+	if (card_table_nursery_check) {
+		ARM_SHR_IMM (code, ARMREG_R1, ARMREG_R1, nursery_shift);
+		code = (guint8*) arm_mov_reg_imm32 ((arminstr_t*)code, ARMREG_R2, nursery_start >> nursery_shift);
+		ARM_CMP_REG_REG (code, ARMREG_R1, ARMREG_R2);
+		br = code; ARM_B_COND (code, ARMCOND_NE, 0);
+	}
+
+	ARM_SHR_IMM (code, ARMREG_R0, ARMREG_R0, card_table_shift);
+	
+	if (card_table_mask) {
+		code = (guint8*) arm_mov_reg_imm32 ((arminstr_t*)code, ARMREG_R2, (armword_t)card_table_mask);
+		ARM_AND_REG_REG (code, ARMREG_R0, ARMREG_R0, ARMREG_R2);
+	}	
+
+	code = (guint8*) arm_mov_reg_imm32 ((arminstr_t*)code, ARMREG_R2, (armword_t)card_table);
+
+	ARM_ADD_REG_REG (code, ARMREG_R0, ARMREG_R0, ARMREG_R2);
+	ARM_MOV_REG_IMM (code, ARMREG_R2, 1, 0);
+	ARM_STRB_IMM (code, ARMREG_R2, ARMREG_R0, 0);
+
+	if (card_table_nursery_check)
+		arm_patch (br, code);
+
+	ARM_BX (code, ARMREG_LR);
+
+	mono_arch_flush_icache (buf, code - buf);
+	g_assert (code - buf <= tramp_size);
+	
+	if (info)
+		*info = mono_tramp_info_create ("write_barrier_trampoline", buf, code - buf, ji, unwind_ops);
+
+	*trampoline_end = code;
+	return buf;
+}
 
 #if defined(ENABLE_GSHAREDVT)
 

@@ -274,6 +274,9 @@ typedef struct MonoCompileArch {
 #define MONO_ARCH_DYN_CALL_PARAM_AREA 24
 
 #ifndef MONO_CROSS_COMPILE
+
+#define MONO_ARCH_HAVE_CARD_TABLE_WBARRIER 1
+
 #define MONO_ARCH_SOFT_DEBUG_SUPPORTED 1
 #endif
 

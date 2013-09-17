@@ -350,3 +350,5 @@ gc_param_slot_liveness_def: len:0
 atomic_add_i4: dest:i src1:i src2:i len:64
 atomic_exchange_i4: dest:i src1:i src2:i len:64
 atomic_cas_i4: dest:i src1:i src2:i src3:i len:64
+
+card_table_wbarrier: src1:b src2:i len:32

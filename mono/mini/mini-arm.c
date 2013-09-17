@@ -5569,7 +5569,28 @@ mono_arch_output_basic_block (MonoCompile *cfg, MonoBasicBlock *bb)
 			}
 			break;
 		}
+		case OP_CARD_TABLE_WBARRIER: {
+			int ptr = ins->sreg1;
+			int value = ins->sreg2;
+			gpointer *write_barrier_trampoline = mono_create_write_barrier_trampoline ();
 
+			if (ptr == ARMREG_R13 || value == ARMREG_R13) {
+				ARM_STR_IMM (code, value, ptr, 0);
+				break;
+			}
+
+			ARM_PUSH4 (code, ARMREG_R0, ARMREG_R1, ARMREG_R2, ARMREG_LR);
+
+			ARM_PUSH1 (code, ptr);
+			ARM_PUSH1 (code, value);
+	
+			code = (guint8*) arm_mov_reg_imm32 ((arminstr_t*)code, ARMREG_R2, (armword_t)write_barrier_trampoline);
+			ARM_BLX_REG (code, ARMREG_R2); 
+
+			ARM_POP4 (code, ARMREG_R0, ARMREG_R1, ARMREG_R2, ARMREG_LR);
+
+			break;
+		}
 		case OP_GC_LIVENESS_DEF:
 		case OP_GC_LIVENESS_USE:
 		case OP_GC_PARAM_SLOT_LIVENESS_DEF:
