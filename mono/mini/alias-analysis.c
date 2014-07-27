@@ -156,6 +156,7 @@ lower_memory_access (MonoCompile *cfg)
 		g_hash_table_remove_all (addr_loads);
 
 		for (ins = bb->code; ins; ins = ins->next) {
+handle_instruction:
 			switch (ins->opcode) {
 			case OP_LDADDR:
 				g_hash_table_insert (addr_loads, GINT_TO_POINTER (ins->dreg), ins);
@@ -197,7 +198,11 @@ lower_memory_access (MonoCompile *cfg)
 				tmp = g_hash_table_lookup (addr_loads, GINT_TO_POINTER (ins->sreg1));
 				if (tmp) {
 					if (cfg->verbose_level > 2) { printf ("Found candidate load:"); mono_print_ins (ins); }
-					needs_dce |= lower_load (cfg, ins, tmp);
+					if (lower_load (cfg, ins, tmp)) {
+						needs_dce = TRUE;
+						/* Try to propagate known aliases if an OP_MOVE was inserted */
+						goto handle_instruction;
+					}
 				}
 				break;
 
@@ -214,7 +219,11 @@ lower_memory_access (MonoCompile *cfg)
 				tmp = g_hash_table_lookup (addr_loads, GINT_TO_POINTER (ins->dreg));
 				if (tmp) {
 					if (cfg->verbose_level > 2) { printf ("Found candidate store:"); mono_print_ins (ins); }
-					needs_dce |= lower_store (cfg, ins, tmp);
+					if (lower_store (cfg, ins, tmp)) {
+						needs_dce = TRUE;
+						/* Try to propagate known aliases if an OP_MOVE was inserted */
+						goto handle_instruction;
+					}
 				}
 				break;
 
