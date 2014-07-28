@@ -433,6 +433,7 @@ common_sources = \
 	mini-llvm.h			\
 	mini-llvm-cpp.h	\
 	alias-analysis.c	\
+	store-forwarding.c	\
 	mini-cross-helpers.c
 
 test_sources = 			\

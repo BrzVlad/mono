@@ -5361,6 +5361,8 @@ mini_method_compile (MonoMethod *method, guint32 opts, MonoDomain *domain, JitFl
 		mono_local_deadce (cfg);
 	if (cfg->opt & MONO_OPT_ALIAS_ANALYSIS)
 		mono_local_alias_analysis (cfg);
+	if (cfg->opt & MONO_OPT_STORE_FORWARDING)
+		mono_local_store_forwarding (cfg);
 	/* Disable this for LLVM to make the IR easier to handle */
 	if (!COMPILE_LLVM (cfg))
 		mono_if_conversion (cfg);
