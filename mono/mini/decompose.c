@@ -940,6 +940,24 @@ mono_decompose_long_opts (MonoCompile *cfg)
 				MONO_EMIT_NEW_BIALU_IMM (cfg, OP_XOR_IMM, tree->dreg + 1, tree->sreg1 + 1, tree->inst_ls_word);
 				MONO_EMIT_NEW_BIALU_IMM (cfg, OP_XOR_IMM, tree->dreg + 2, tree->sreg1 + 2, tree->inst_ms_word);
 				break;
+			case OP_LSHR_IMM:
+				if (tree->inst_c1 == 32) {
+					MONO_EMIT_NEW_UNALU (cfg, OP_MOVE, tree->dreg + 1, tree->sreg1 + 2);
+					MONO_EMIT_NEW_BIALU_IMM (cfg, OP_ISHR_IMM, tree->dreg + 2, tree->sreg1 + 2, 31);
+				} else if (tree->inst_c1 > 32) {
+					MONO_EMIT_NEW_BIALU_IMM (cfg, OP_ISHR_IMM, tree->dreg + 1, tree->sreg1 + 2, tree->inst_c1 - 32);
+					MONO_EMIT_NEW_BIALU_IMM (cfg, OP_ISHR_IMM, tree->dreg + 2, tree->sreg1 + 2, 31);
+				} else if (tree->inst_c1 == 0) {
+					MONO_EMIT_NEW_UNALU (cfg, OP_MOVE, tree->dreg + 1, tree->sreg1 + 1);
+					MONO_EMIT_NEW_UNALU (cfg, OP_MOVE, tree->dreg + 2, tree->sreg1 + 2);
+				} else {
+					guint32 tmpreg = alloc_ireg (cfg);
+					MONO_EMIT_NEW_BIALU_IMM (cfg, OP_ISHL_IMM, tmpreg, tree->sreg1 + 2, 32 - tree->inst_c1);
+					MONO_EMIT_NEW_BIALU_IMM (cfg, OP_ISHR_IMM, tree->dreg + 2, tree->sreg1 + 2, tree->inst_c1);
+					MONO_EMIT_NEW_BIALU_IMM (cfg, OP_ISHR_UN_IMM, tree->dreg + 1, tree->sreg1 + 1, tree->inst_c1);
+					MONO_EMIT_NEW_BIALU (cfg, OP_IOR, tree->dreg + 1, tree->dreg + 1, tmpreg); 
+				}
+				break;
 			case OP_LSHR_UN_IMM:
 				if (tree->inst_c1 == 32) {
 
@@ -952,6 +970,18 @@ mono_decompose_long_opts (MonoCompile *cfg)
 					/* just move the upper half to the lower and zero the high word */
 					MONO_EMIT_NEW_UNALU (cfg, OP_MOVE, tree->dreg + 1, tree->sreg1 + 2);
 					MONO_EMIT_NEW_ICONST (cfg, tree->dreg + 2, 0);
+				} else if (tree->inst_c1 > 32) {
+					MONO_EMIT_NEW_BIALU_IMM (cfg, OP_ISHR_UN_IMM, tree->dreg + 1, tree->sreg1 + 2, tree->inst_c1 - 32);
+					MONO_EMIT_NEW_ICONST (cfg, tree->dreg + 2, 0);
+				} else if (tree->inst_c1 == 0) {
+					MONO_EMIT_NEW_UNALU (cfg, OP_MOVE, tree->dreg + 1, tree->sreg1 + 1);
+					MONO_EMIT_NEW_UNALU (cfg, OP_MOVE, tree->dreg + 2, tree->sreg1 + 2);
+				} else {
+					guint32 tmpreg = alloc_ireg (cfg);
+					MONO_EMIT_NEW_BIALU_IMM (cfg, OP_ISHL_IMM, tmpreg, tree->sreg1 + 2, 32 - tree->inst_c1);
+					MONO_EMIT_NEW_BIALU_IMM (cfg, OP_ISHR_UN_IMM, tree->dreg + 2, tree->sreg1 + 2, tree->inst_c1);
+					MONO_EMIT_NEW_BIALU_IMM (cfg, OP_ISHR_UN_IMM, tree->dreg + 1, tree->sreg1 + 1, tree->inst_c1);
+					MONO_EMIT_NEW_BIALU (cfg, OP_IOR, tree->dreg + 1, tree->dreg + 1, tmpreg); 
 				}
 				break;
 			case OP_LSHL_IMM:
@@ -959,6 +989,18 @@ mono_decompose_long_opts (MonoCompile *cfg)
 					/* just move the lower half to the upper and zero the lower word */
 					MONO_EMIT_NEW_UNALU (cfg, OP_MOVE, tree->dreg + 2, tree->sreg1 + 1);
 					MONO_EMIT_NEW_ICONST (cfg, tree->dreg + 1, 0);
+				} else if (tree->inst_c1 > 32) {
+					MONO_EMIT_NEW_BIALU_IMM (cfg, OP_ISHL_IMM, tree->dreg + 2, tree->sreg1 + 1, tree->inst_c1 - 32);
+					MONO_EMIT_NEW_ICONST (cfg, tree->dreg + 1, 0);
+				} else if (tree->inst_c1 == 0) {
+					MONO_EMIT_NEW_UNALU (cfg, OP_MOVE, tree->dreg + 1, tree->sreg1 + 1);
+					MONO_EMIT_NEW_UNALU (cfg, OP_MOVE, tree->dreg + 2, tree->sreg1 + 2);
+				} else {
+					guint32 tmpreg = alloc_ireg (cfg);
+					MONO_EMIT_NEW_BIALU_IMM (cfg, OP_ISHR_UN_IMM, tmpreg, tree->sreg1 + 1, 32 - tree->inst_c1);
+					MONO_EMIT_NEW_BIALU_IMM (cfg, OP_ISHL_IMM, tree->dreg + 2, tree->sreg1 + 2, tree->inst_c1);
+					MONO_EMIT_NEW_BIALU_IMM (cfg, OP_ISHL_IMM, tree->dreg + 1, tree->sreg1 + 1, tree->inst_c1);
+					MONO_EMIT_NEW_BIALU (cfg, OP_IOR, tree->dreg + 2, tree->dreg + 2, tmpreg);
 				}
 				break;
 
