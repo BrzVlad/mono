@@ -1003,6 +1003,107 @@ mono_decompose_long_opts (MonoCompile *cfg)
 					MONO_EMIT_NEW_BIALU (cfg, OP_IOR, tree->dreg + 2, tree->dreg + 2, tmpreg);
 				}
 				break;
+			case OP_LSHR: {
+				MonoBasicBlock *ge_32, *end_label;
+				gint32 tmpreg = alloc_ireg (cfg);
+				gint32 tmpreg2 = alloc_ireg (cfg);
+				gint32 shift_amount = alloc_ireg (cfg);
+
+				NEW_BBLOCK (cfg, ge_32);
+				NEW_BBLOCK (cfg, end_label);
+
+				/* Shift lower than 32 */
+				MONO_EMIT_NEW_BIALU_IMM (cfg, OP_IAND_IMM, shift_amount, tree->sreg2, 31);
+				MONO_EMIT_NEW_ICONST (cfg, tmpreg, 31);
+				MONO_EMIT_NEW_BIALU (cfg, OP_ISUB, tmpreg, tmpreg, shift_amount);
+
+				/* 2 shifts needed to handle a shift by 0 without additional branches */
+				MONO_EMIT_NEW_BIALU (cfg, OP_ISHL, tmpreg2, tree->sreg1 + 2, tmpreg);
+				MONO_EMIT_NEW_BIALU_IMM (cfg, OP_ISHL_IMM, tmpreg2, tmpreg2, 1);
+
+				MONO_EMIT_NEW_BIALU (cfg, OP_ISHR, tree->dreg + 2, tree->sreg1 + 2, shift_amount);
+				MONO_EMIT_NEW_BIALU (cfg, OP_ISHR_UN, tree->dreg + 1, tree->sreg1 + 1, shift_amount);
+				MONO_EMIT_NEW_BIALU (cfg, OP_IOR, tree->dreg + 1, tree->dreg + 1, tmpreg2);
+
+				/* If over 32, shift with another 32 places */
+				MONO_EMIT_NEW_BIALU_IMM (cfg, OP_COMPARE_IMM, -1, tree->sreg2, 32);
+				MONO_EMIT_NEW_BRANCH_BLOCK2 (cfg, OP_IBGE, ge_32, end_label);
+				MONO_START_BB (cfg, ge_32);
+				MONO_EMIT_NEW_UNALU (cfg, OP_MOVE, tree->dreg + 1, tree->dreg + 2);
+				MONO_EMIT_NEW_BIALU_IMM (cfg, OP_ISHR_IMM, tree->dreg + 2, tree->dreg + 2, 31);
+				MONO_EMIT_NEW_BRANCH_BLOCK (cfg, OP_BR, end_label);
+
+				MONO_START_BB (cfg, end_label);
+
+				break;
+			}
+			case OP_LSHR_UN: {
+				MonoBasicBlock *ge_32, *end_label;
+				gint32 tmpreg = alloc_ireg (cfg);
+				gint32 tmpreg2 = alloc_ireg (cfg);
+				gint32 shift_amount = alloc_ireg (cfg);
+
+				NEW_BBLOCK (cfg, ge_32);
+				NEW_BBLOCK (cfg, end_label);
+
+				/* Shift lower than 32 */
+				MONO_EMIT_NEW_BIALU_IMM (cfg, OP_IAND_IMM, shift_amount, tree->sreg2, 31);
+				MONO_EMIT_NEW_ICONST (cfg, tmpreg, 31);
+				MONO_EMIT_NEW_BIALU (cfg, OP_ISUB, tmpreg, tmpreg, shift_amount);
+
+				/* 2 shifts needed to handle a shift by 0 without additional branches */
+				MONO_EMIT_NEW_BIALU (cfg, OP_ISHL, tmpreg2, tree->sreg1 + 2, tmpreg);
+				MONO_EMIT_NEW_BIALU_IMM (cfg, OP_ISHL_IMM, tmpreg2, tmpreg2, 1);
+
+				MONO_EMIT_NEW_BIALU (cfg, OP_ISHR_UN, tree->dreg + 2, tree->sreg1 + 2, shift_amount);
+				MONO_EMIT_NEW_BIALU (cfg, OP_ISHR_UN, tree->dreg + 1, tree->sreg1 + 1, shift_amount);
+				MONO_EMIT_NEW_BIALU (cfg, OP_IOR, tree->dreg + 1, tree->dreg + 1, tmpreg2); 
+
+				/* If over 32, shift with another 32 places */
+				MONO_EMIT_NEW_BIALU_IMM (cfg, OP_COMPARE_IMM, -1, tree->sreg2, 32);
+				MONO_EMIT_NEW_BRANCH_BLOCK2 (cfg, OP_IBGE, ge_32, end_label);
+				MONO_START_BB (cfg, ge_32);
+				MONO_EMIT_NEW_UNALU (cfg, OP_MOVE, tree->dreg + 1, tree->dreg + 2);
+				MONO_EMIT_NEW_ICONST (cfg, tree->dreg + 2, 0);
+				MONO_EMIT_NEW_BRANCH_BLOCK (cfg, OP_BR, end_label);
+
+				MONO_START_BB (cfg, end_label);
+
+				break;
+			}
+			case OP_LSHL: {
+				MonoBasicBlock *ge_32, *end_label;
+				gint32 tmpreg = alloc_ireg (cfg);
+				gint32 tmpreg2 = alloc_ireg (cfg);
+				gint32 shift_amount = alloc_ireg (cfg);
+
+				NEW_BBLOCK (cfg, ge_32);
+				NEW_BBLOCK (cfg, end_label);
+
+				/* Shift lower than 32 */
+				MONO_EMIT_NEW_BIALU_IMM (cfg, OP_IAND_IMM, shift_amount, tree->sreg2, 31);
+				MONO_EMIT_NEW_ICONST (cfg, tmpreg, 31);
+				MONO_EMIT_NEW_BIALU (cfg, OP_ISUB, tmpreg, tmpreg, shift_amount);
+
+				/* 2 shifts needed to handle a shift by 0 without additional branches */
+				MONO_EMIT_NEW_BIALU (cfg, OP_ISHR_UN, tmpreg2, tree->sreg1 + 1, tmpreg);
+				MONO_EMIT_NEW_BIALU_IMM (cfg, OP_ISHR_UN_IMM, tmpreg2, tmpreg2, 1);
+
+				MONO_EMIT_NEW_BIALU (cfg, OP_ISHL, tree->dreg + 2, tree->sreg1 + 2, shift_amount);
+				MONO_EMIT_NEW_BIALU (cfg, OP_ISHL, tree->dreg + 1, tree->sreg1 + 1, shift_amount);
+				MONO_EMIT_NEW_BIALU (cfg, OP_IOR, tree->dreg + 2, tree->dreg + 2, tmpreg2);
+
+				/* If over 32, shift with another 32 places */
+				MONO_EMIT_NEW_BIALU_IMM (cfg, OP_COMPARE_IMM, -1, tree->sreg2, 32);
+				MONO_EMIT_NEW_BRANCH_BLOCK2 (cfg, OP_IBGE, ge_32, end_label);
+				MONO_START_BB (cfg, ge_32);
+				MONO_EMIT_NEW_UNALU (cfg, OP_MOVE, tree->dreg + 2, tree->dreg + 1);
+				MONO_EMIT_NEW_ICONST (cfg, tree->dreg + 1, 0);
+				MONO_EMIT_NEW_BRANCH_BLOCK (cfg, OP_BR, end_label);
+
+				MONO_START_BB (cfg, end_label);
+				break;
+			}
 
 			case OP_LCOMPARE: {
 				MonoInst *next = tree->next;
