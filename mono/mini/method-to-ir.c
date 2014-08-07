@@ -12913,6 +12913,39 @@ mono_handle_global_vregs (MonoCompile *cfg)
 		}
 	}
 
+#if SIZEOF_REGISTER == 4
+	/* Flag long vars that have been used in more than one bb and haven't been marked already */
+	for (i = 0; i < cfg->num_varinfo; i++) {
+		MonoInst *var = cfg->varinfo [i];
+		gint32 vreg = var->dreg;
+
+		if (var->type != STACK_I8 || var->opcode == OP_ARG || var == cfg->ret)
+			continue;
+
+		if (vreg_to_bb [vreg] != -1) {
+			if (vreg_to_bb [vreg + 1] == -1 || vreg_to_bb [vreg + 2] == -1) {
+				vreg_to_bb [vreg] = -1;
+			} else {
+				int bb = vreg_to_bb [vreg];
+				if (vreg_to_bb [vreg + 1] > 0) {
+					if (bb == 0)
+						bb = vreg_to_bb [vreg + 1];
+					else if (bb != vreg_to_bb [vreg + 1])
+						bb = -1;
+				}
+				if (vreg_to_bb [vreg + 2] > 0) {
+					if (bb != vreg_to_bb [vreg + 2])
+						bb = -1;
+				}
+
+				if (bb == -1) {
+					vreg_to_bb [vreg] = -1;
+				}
+			}
+		}
+	}
+#endif
+
 	/* If a variable is used in only one bblock, convert it into a local vreg */
 	for (i = 0; i < cfg->num_varinfo; i++) {
 		MonoInst *var = cfg->varinfo [i];
@@ -12924,9 +12957,7 @@ mono_handle_global_vregs (MonoCompile *cfg)
 		case STACK_PTR:
 		case STACK_MP:
 		case STACK_VTYPE:
-#if SIZEOF_REGISTER == 8
 		case STACK_I8:
-#endif
 #if !defined(TARGET_X86)
 		/* Enabling this screws up the fp stack on x86 */
 		case STACK_R8:
@@ -12982,6 +13013,12 @@ mono_handle_global_vregs (MonoCompile *cfg)
 					printf ("CONVERTED R%d(%d) TO VREG.\n", var->dreg, vmv->idx);
 				var->flags |= MONO_INST_IS_DEAD;
 				cfg->vreg_to_inst [var->dreg] = NULL;
+#if SIZEOF_REGISTER == 4
+				if (var->type == STACK_I8) {
+					cfg->vreg_to_inst [var->dreg + 1] = NULL;
+					cfg->vreg_to_inst [var->dreg + 2] = NULL;
+				}
+#endif
 			}
 			break;
 		}

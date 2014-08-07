@@ -577,8 +577,15 @@ mono_local_deadce (MonoCompile *cfg)
 			if (spec [MONO_INST_DEST] != ' ')
 				mono_bitset_set_fast (defined, ins->dreg);
 			num_sregs = mono_inst_get_src_registers (ins, sregs);
-			for (i = 0; i < num_sregs; ++i)
+			for (i = 0; i < num_sregs; ++i) {
 				mono_bitset_set_fast (used, sregs [i]);
+#if SIZEOF_REGISTER == 4
+				if (spec [MONO_INST_SRC1 + i] == 'l') {
+					mono_bitset_set_fast (used, sregs [i] + 1);
+					mono_bitset_set_fast (used, sregs [i] + 2);
+				}
+#endif
+			}
 			if (MONO_IS_STORE_MEMBASE (ins))
 				mono_bitset_set_fast (used, ins->dreg);
 
