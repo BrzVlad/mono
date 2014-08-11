@@ -41,6 +41,11 @@ mono_bitset_mp_new_noinit (MonoMemPool *mp,  guint32 max_size)
 	return mono_bitset_mem_new (mem, max_size, MONO_BITSET_DONT_FREE);
 }
 
+void throw_overflow ()
+{
+	mono_raise_exception (mono_get_exception_overflow ());
+}
+
 /*
  * mono_local_cprop:
  *
@@ -64,12 +69,14 @@ restart:
 		MonoInst *ins;
 		int ins_index;
 		int last_call_index;
+		CpuFlags flags;
+		flags.carry = -1;
+		flags.overflow = -1;
 
 		/* Manually init the defs entries used by the bblock */
 		MONO_BB_FOR_EACH_INS (bb, ins) {
 			int sregs [MONO_MAX_SRC_REGS];
 			int num_sregs, i;
-
 			if ((ins->dreg != -1) && (ins->dreg < max)) {
 				defs [ins->dreg] = NULL;
 #if SIZEOF_REGISTER == 4
@@ -190,15 +197,14 @@ restart:
 					 (((srcindex == 0) && (ins->sreg2 == -1)) || mono_arch_is_inst_imm (def->inst_c0))) || 
 					(!MONO_ARCH_USE_FPSTACK && (def->opcode == OP_R8CONST))) {
 					guint32 opcode2;
-
 					/* srcindex == 1 -> binop, ins->sreg2 == -1 -> unop */
 					if ((srcindex == 1) && (ins->sreg1 != -1) && defs [ins->sreg1] && (defs [ins->sreg1]->opcode == OP_ICONST) && defs [ins->sreg2]) {
 						/* Both arguments are constants, perform cfold */
-						mono_constant_fold_ins (cfg, ins, defs [ins->sreg1], defs [ins->sreg2], TRUE);
+						mono_constant_fold_ins (cfg, ins, defs [ins->sreg1], defs [ins->sreg2], TRUE, &flags);
 					} else if ((srcindex == 0) && (ins->sreg2 != -1) && defs [ins->sreg2]) {
 						/* Arg 1 is constant, swap arguments if possible */
 						int opcode = ins->opcode;
-						mono_constant_fold_ins (cfg, ins, defs [ins->sreg1], defs [ins->sreg2], TRUE);
+						mono_constant_fold_ins (cfg, ins, defs [ins->sreg1], defs [ins->sreg2], TRUE, &flags);
 						if (ins->opcode != opcode) {
 							/* Allow further iterations */
 							srcindex = -1;
@@ -206,7 +212,7 @@ restart:
 						}
 					} else if ((srcindex == 0) && (ins->sreg2 == -1)) {
 						/* Constant unop, perform cfold */
-						mono_constant_fold_ins (cfg, ins, defs [ins->sreg1], NULL, TRUE);
+						mono_constant_fold_ins (cfg, ins, defs [ins->sreg1], NULL, TRUE, &flags);
 					}
 
 					opcode2 = mono_op_to_op_imm (ins->opcode);
@@ -384,8 +390,52 @@ restart:
 				}
 				break;
 			}
+			case OP_COND_EXC_IOV:
+			case OP_COND_EXC_OV:
+				if (flags.overflow != -1) {
+					if (flags.overflow) {
+						MonoInst *call = mono_emit_jit_icall (cfg, throw_overflow, NULL);
+						call->next = ins->next;
+						call->prev = ins;
+						ins->next = call;
+						if (call->next)
+							call->next->prev = call;
+						else
+							bb->last_ins = call;
+					}
+					ins->opcode = OP_NOP;
+				}
+				break;
+			case OP_COND_EXC_IC:
+			case OP_COND_EXC_C:
+				if (flags.carry != -1) {
+					if (flags.carry) {
+						MonoInst *call = mono_emit_jit_icall (cfg, throw_overflow, NULL);
+						call->next = ins->next;
+						call->prev = ins;
+						ins->next = call;
+						if (call->next)
+							call->next->prev = call;
+						else
+							bb->last_ins = call;
+					}
+					ins->opcode = OP_NOP;
+				}
+				break;
+			case OP_COND_EXC_INC:
+				if (flags.carry != -1) {
+					/* TODO if used */
+					g_assert_not_reached ();
+				}
+				break;
+			case OP_COND_EXC_INO:
+				if (flags.overflow != -1) {
+					/* TODO if used */
+					g_assert_not_reached ();
+				}
+				break;
 			}
-			
+
 			if (spec [MONO_INST_DEST] != ' ') {
 				MonoInst *def = defs [ins->dreg];
 

@@ -7450,6 +7450,7 @@ mini_init (const char *filename, const char *runtime_version)
 
 	return domain;
 }
+void throw_overflow (void);
 
 static void
 register_icalls (void)
@@ -7666,6 +7667,7 @@ register_icalls (void)
 	register_icall (mono_gsharedvt_constrained_call, "mono_gsharedvt_constrained_call", "object ptr ptr ptr ptr ptr", FALSE);
 	register_icall (mono_gsharedvt_value_copy, "mono_gsharedvt_value_copy", "void ptr ptr ptr", TRUE);
 
+	register_icall (throw_overflow, "throw_overflow", "void", FALSE);
 	register_icall (mono_gc_wbarrier_value_copy_bitmap, "mono_gc_wbarrier_value_copy_bitmap", "void ptr ptr int int", FALSE);
 
 	register_icall (mono_object_castclass_with_cache, "mono_object_castclass_with_cache", "object object ptr ptr", FALSE);

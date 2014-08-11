@@ -1877,6 +1877,11 @@ typedef struct {
 	gboolean check_pinvoke_callconv;
 } MonoDebugOptions;
 
+typedef struct {
+	int carry;
+	int overflow;
+} CpuFlags;
+
 enum {
 	BRANCH_NOT_TAKEN,
 	BRANCH_TAKEN,
@@ -1980,7 +1985,7 @@ void      mono_bblock_insert_before_ins     (MonoBasicBlock *bb, MonoInst *ins, 
 void      mono_verify_bblock                (MonoBasicBlock *bb) MONO_INTERNAL;
 void      mono_verify_cfg                   (MonoCompile *cfg) MONO_INTERNAL;
 void      mono_constant_fold                (MonoCompile *cfg) MONO_INTERNAL;
-MonoInst* mono_constant_fold_ins            (MonoCompile *cfg, MonoInst *ins, MonoInst *arg1, MonoInst *arg2, gboolean overwrite) MONO_INTERNAL;
+MonoInst* mono_constant_fold_ins            (MonoCompile *cfg, MonoInst *ins, MonoInst *arg1, MonoInst *arg2, gboolean overwrite, CpuFlags *flags) MONO_INTERNAL;
 int       mono_eval_cond_branch             (MonoInst *branch) MONO_INTERNAL;
 int       mono_is_power_of_two              (guint32 val) MONO_LLVM_INTERNAL;
 void      mono_cprop_local                  (MonoCompile *cfg, MonoBasicBlock *bb, MonoInst **acp, int acp_size) MONO_INTERNAL;

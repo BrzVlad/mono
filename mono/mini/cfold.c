@@ -71,6 +71,50 @@ mono_is_power_of_two (guint32 val)
 
 #ifndef DISABLE_JIT
 
+/* For signed numbers */
+static int get_overflow_iadc (gint32 arg1, gint32 arg2, int carry)
+{
+	return (arg1 >= 0 && arg2 >= 0 && (arg1 + arg2 + carry) < 0) ||
+		(arg1 < 0 && arg2 < 0 && (arg1 + arg2 + carry) >= 0);
+}
+
+static int get_overflow_isbb (gint32 arg1, gint32 arg2, int borrow)
+{
+	return (arg1 < 0 && arg2 >= 0 && (arg1 - arg2 - borrow) >= 0) ||
+		(arg1 >= 0 && arg2 < 0 && (arg1 - arg2 - borrow) < 0);
+}
+
+static int get_overflow_iadd (gint32 arg1, gint32 arg2)
+{
+	return get_overflow_iadc (arg1, arg2, 0);
+}
+
+static int get_overflow_isub (gint32 arg1, gint32 arg2)
+{
+	return get_overflow_isbb (arg1, arg2, 0);
+}
+
+/* For unsigned numbers */
+static int get_carry_iadd (gint32 arg1, gint32 arg2)
+{
+	return ((guint32)(-1) - (guint32)arg1) < (guint32) arg2;
+}
+
+static int get_borrow_isub (gint32 arg1, gint32 arg2)
+{
+	return (guint32)arg1 < (guint32)arg2;
+}
+
+static int get_carry_iadc (gint32 arg1, gint32 arg2, int carry)
+{
+	return get_carry_iadd (arg1, arg2) || get_carry_iadd (arg1 + arg2, carry);
+}
+
+static int get_borrow_isbb (gint32 arg1, gint32 arg2, int borrow)
+{
+	return get_borrow_isub (arg1, arg2) || get_borrow_isub (arg1 - arg2, borrow);
+}
+
 /**
  * mono_constant_fold_ins:
  *
@@ -80,7 +124,7 @@ mono_is_power_of_two (guint32 val)
  * NULL.
  */
 MonoInst*
-mono_constant_fold_ins (MonoCompile *cfg, MonoInst *ins, MonoInst *arg1, MonoInst *arg2, gboolean overwrite)
+mono_constant_fold_ins (MonoCompile *cfg, MonoInst *ins, MonoInst *arg1, MonoInst *arg2, gboolean overwrite, CpuFlags *flags)
 {
 	MonoInst *dest = NULL;
 
@@ -164,6 +208,131 @@ mono_constant_fold_ins (MonoCompile *cfg, MonoInst *ins, MonoInst *arg1, MonoIns
 			MONO_INST_NULLIFY_SREGS (dest);
 		}
 		break;
+	case OP_ADC:
+	case OP_IADC:
+		if (!flags)
+			break;
+		if ((arg1->opcode == OP_ICONST) && (arg2->opcode == OP_ICONST) && flags->carry != -1) {
+			ALLOC_DEST (cfg, dest, ins);
+			dest->inst_c0 = arg1->inst_c0 + arg2->inst_c0 + flags->carry;
+			flags->overflow = get_overflow_iadc (arg1->inst_c0, arg2->inst_c0, flags->carry);
+			flags->carry = get_carry_iadc (arg1->inst_c0, arg2->inst_c0, flags->carry);
+			dest->opcode = OP_ICONST;
+			MONO_INST_NULLIFY_SREGS (dest);
+		} else {
+			flags->carry = -1;
+			flags->overflow = -1;
+		}
+		break;
+	case OP_SBB:
+	case OP_ISBB:
+		if (!flags)
+			break;
+		if ((arg1->opcode == OP_ICONST) && (arg2->opcode == OP_ICONST) && flags->carry != -1) {
+			ALLOC_DEST (cfg, dest, ins);
+			dest->inst_c0 = arg1->inst_c0 - arg2->inst_c0 - flags->carry;
+			flags->overflow = get_overflow_isbb (arg1->inst_c0, arg2->inst_c0, flags->carry);
+			flags->carry = get_borrow_isbb (arg1->inst_c0, arg2->inst_c0, flags->carry);
+			dest->opcode = OP_ICONST;
+			MONO_INST_NULLIFY_SREGS (dest);
+		} else {
+			flags->carry = -1;
+		}
+		break;
+	case OP_ADC_IMM:
+	case OP_IADC_IMM:
+		if (!flags)
+			break;
+		if ((arg1->opcode == OP_ICONST) && flags->carry != -1) {
+			ALLOC_DEST (cfg, dest, ins);
+			dest->inst_c0 = arg1->inst_c0 + ins->inst_imm + flags->carry;
+			flags->overflow = get_overflow_iadc (arg1->inst_c0, ins->inst_imm, flags->carry);
+			flags->carry = get_carry_iadc (arg1->inst_c0, ins->inst_imm, flags->carry);
+			dest->opcode = OP_ICONST;
+			MONO_INST_NULLIFY_SREGS (dest);
+		} else {
+			flags->carry = -1;
+			flags->overflow = -1;
+		}
+		break;
+	case OP_SBB_IMM:
+	case OP_ISBB_IMM:
+		if (!flags)
+			break;
+		if ((arg1->opcode == OP_ICONST) && flags->carry != -1) {
+			ALLOC_DEST (cfg, dest, ins);
+			dest->inst_c0 = arg1->inst_c0 - ins->inst_imm - flags->carry;
+			flags->overflow = get_overflow_isbb (arg1->inst_c0, ins->inst_imm, flags->carry);
+			flags->carry = get_borrow_isbb (arg1->inst_c0, ins->inst_imm, flags->carry);
+			dest->opcode = OP_ICONST;
+			MONO_INST_NULLIFY_SREGS (dest);
+		} else {
+			flags->carry = -1;
+			flags->overflow = -1;
+		}
+		break;
+	case OP_ADDCC:
+	case OP_IADDCC:
+		if (!flags)
+			break;
+		if ((arg1->opcode == OP_ICONST) && (arg2->opcode == OP_ICONST)) {
+			ALLOC_DEST (cfg, dest, ins);
+			dest->inst_c0 = arg1->inst_c0 + arg2->inst_c0;
+			flags->overflow = get_overflow_iadd (arg1->inst_c0, arg2->inst_c0);
+			flags->carry = get_carry_iadd (arg1->inst_c0, arg2->inst_c0);
+			dest->opcode = OP_ICONST;
+			MONO_INST_NULLIFY_SREGS (dest);
+		} else {
+			flags->carry = -1;
+			flags->overflow = -1;
+		}
+		break;
+	case OP_SUBCC:
+	case OP_ISUBCC:
+		if (!flags)
+			break;
+		if ((arg1->opcode == OP_ICONST) && (arg2->opcode == OP_ICONST)) {
+			ALLOC_DEST (cfg, dest, ins);
+			dest->inst_c0 = arg1->inst_c0 - arg2->inst_c0;
+			flags->overflow = get_overflow_isub (arg1->inst_c0, arg2->inst_c0);
+			flags->carry = get_borrow_isub (arg1->inst_c0, arg2->inst_c0);
+			dest->opcode = OP_ICONST;
+			MONO_INST_NULLIFY_SREGS (dest);
+		} else {
+			flags->carry = -1;
+			flags->overflow = -1;
+		}
+		break;
+	case OP_ADDCC_IMM:
+		if (!flags)
+			break;
+		if (arg1->opcode == OP_ICONST) {
+			ALLOC_DEST (cfg, dest, ins);
+			dest->inst_c0 = arg1->inst_c0 + ins->inst_imm;
+			flags->overflow = get_overflow_iadd (arg1->inst_c0, ins->inst_imm);
+			flags->carry = get_carry_iadd (arg1->inst_c0, ins->inst_imm);
+			dest->opcode = OP_ICONST;
+			MONO_INST_NULLIFY_SREGS (dest);
+		} else {
+			flags->carry = -1;
+			flags->overflow = -1;
+		}
+		break;
+	case OP_SUBCC_IMM:
+		if (!flags)
+			break;
+		if (arg1->opcode == OP_ICONST) {
+			ALLOC_DEST (cfg, dest, ins);
+			dest->inst_c0 = arg1->inst_c0 - ins->inst_imm;
+			flags->overflow = get_overflow_isub (arg1->inst_c0, ins->inst_imm);
+			flags->carry = get_borrow_isub (arg1->inst_c0, ins->inst_imm);
+			dest->opcode = OP_ICONST;
+			MONO_INST_NULLIFY_SREGS (dest);
+		} else {
+			flags->carry = -1;
+			flags->overflow = -1;
+		}
+		break;
 	case OP_IDIV:
 	case OP_IDIV_UN:
 	case OP_IREM:
@@ -205,12 +374,19 @@ mono_constant_fold_ins (MonoCompile *cfg, MonoInst *ins, MonoInst *arg1, MonoIns
 		/* case OP_INEG: */
 	case OP_INOT:
 	case OP_INEG:
+#if SIZEOF_REGISTER == 4
+		if (!flags && ins->opcode == OP_INEG)
+			break;
+#endif
 		if (arg1->opcode == OP_ICONST) {
 			/* INEG sets cflags on x86, and the LNEG decomposition depends on that */
-#if SIZEOF_REGISTER == 4
-			if (ins->opcode == OP_INEG)
-				return NULL;
-#endif
+			if (ins->opcode == OP_INEG) {
+				if (arg1->inst_c0)
+					flags->carry = 1;
+				else
+					flags->carry = 0;
+			}
+
 			ALLOC_DEST (cfg, dest, ins);
 			switch (ins->opcode) {
 				FOLD_UNOP (OP_INEG,-);
@@ -218,6 +394,9 @@ mono_constant_fold_ins (MonoCompile *cfg, MonoInst *ins, MonoInst *arg1, MonoIns
 			}
 			dest->opcode = OP_ICONST;
 			MONO_INST_NULLIFY_SREGS (dest);
+		} else if (ins->opcode == OP_INEG) {
+			flags->carry = -1; /*gresit in fine */
+			flags->overflow = -1;
 		}
 		break;
 	case OP_MOVE:

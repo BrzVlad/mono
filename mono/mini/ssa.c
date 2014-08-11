@@ -779,7 +779,7 @@ evaluate_ins (MonoCompile *cfg, MonoInst *ins, MonoInst **res, MonoInst **carray
 			*res = carray [ins->dreg];
 			return 1;
 		}
-		c0 = mono_constant_fold_ins (cfg, ins, args [0], args [1], FALSE);
+		c0 = mono_constant_fold_ins (cfg, ins, args [0], args [1], FALSE, NULL);
 		if (c0) {
 			if (G_UNLIKELY (cfg->verbose_level > 1)) {
 				printf ("\t cfold -> ");
