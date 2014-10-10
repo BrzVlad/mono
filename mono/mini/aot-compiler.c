@@ -2971,6 +2971,7 @@ is_plt_patch (MonoJumpInfo *patch_info)
 	case MONO_PATCH_INFO_RGCTX_FETCH:
 	case MONO_PATCH_INFO_GENERIC_CLASS_INIT:
 	case MONO_PATCH_INFO_MONITOR_ENTER:
+	case MONO_PATCH_INFO_MONITOR_ENTER_V4:
 	case MONO_PATCH_INFO_MONITOR_EXIT:
 	case MONO_PATCH_INFO_LLVM_IMT_TRAMPOLINE:
 		return TRUE;
@@ -5092,6 +5093,7 @@ encode_patch (MonoAotCompile *acfg, MonoJumpInfo *patch_info, guint8 *buf, guint
 	}
 	case MONO_PATCH_INFO_GENERIC_CLASS_INIT:
 	case MONO_PATCH_INFO_MONITOR_ENTER:
+	case MONO_PATCH_INFO_MONITOR_ENTER_V4:
 	case MONO_PATCH_INFO_MONITOR_EXIT:
 	case MONO_PATCH_INFO_SEQ_POINT_INFO:
 		break;
@@ -5982,8 +5984,12 @@ emit_trampolines (MonoAotCompile *acfg)
 		mono_arch_get_nullified_class_init_trampoline (&info);
 		emit_trampoline (acfg, acfg->got_offset, info);
 #if defined(MONO_ARCH_MONITOR_OBJECT_REG)
-		mono_arch_create_monitor_enter_trampoline (&info, TRUE);
+		mono_arch_create_monitor_enter_trampoline (&info, FALSE, TRUE);
 		emit_trampoline (acfg, acfg->got_offset, info);
+#if defined(MONO_ARCH_MONITOR_LOCK_TAKEN_REG)
+		mono_arch_create_monitor_enter_trampoline (&info, TRUE, TRUE);
+		emit_trampoline (acfg, acfg->got_offset, info);
+#endif
 		mono_arch_create_monitor_exit_trampoline (&info, TRUE);
 		emit_trampoline (acfg, acfg->got_offset, info);
 #endif
