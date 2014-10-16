@@ -2268,7 +2268,6 @@ gpointer          mini_get_nullified_class_init_trampoline (void) MONO_INTERNAL;
 gpointer          mini_add_method_trampoline (MonoMethod *orig_method, MonoMethod *m, gpointer compiled_method, gboolean add_static_rgctx_tramp, gboolean add_unbox_tramp) MONO_INTERNAL;
 gboolean          mini_jit_info_is_gsharedvt (MonoJitInfo *ji) MONO_INTERNAL;
 
-gboolean          mono_running_on_valgrind (void) MONO_INTERNAL;
 void*             mono_global_codeman_reserve (int size) MONO_INTERNAL;
 void*             nacl_global_codeman_get_dest(void *data) MONO_INTERNAL;
 void              mono_global_codeman_commit(void *data, int size, int newsize) MONO_INTERNAL;

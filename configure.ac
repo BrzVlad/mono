@@ -2874,6 +2874,41 @@ SPARC64)
 	;;
 esac
 
+dnl *************
+dnl *** VTUNE ***
+dnl *************
+
+AC_ARG_WITH(vtune, [  --with-vtune=<vtune prefix>    Enable jit vtune profiling], ,)
+
+if test "x$with_vtune" != "x"; then
+	VTUNE_INCLUDE=$with_vtune/include
+	case "$TARGET" in
+	X86)
+		VTUNE_LIB=$with_vtune/lib32
+		;;
+	AMD64)
+		VTUNE_LIB=$with_vtune/lib64
+		;;
+	*)
+		AC_MSG_ERROR([Unsupported target $TARGET for VTUNE.])
+		;;
+	esac
+	if test ! -f $VTUNE_INCLUDE/jitprofiling.h; then
+		AC_MSG_ERROR([VTUNE $VTUNE_INCLUDE/jitprofiling.h not found.])
+	fi
+	if test ! -f $VTUNE_LIB/libjitprofiling.a; then
+		AC_MSG_ERROR([VTUNE $VTUNE_LIB/libjitprofiling.a not found.])
+	fi
+
+	VTUNE_CFLAGS=-I$VTUNE_INCLUDE
+	VTUNE_LIBS="$VTUNE_LIB/libjitprofiling.a"
+
+	AC_SUBST(VTUNE_LIBS)
+	AC_SUBST(VTUNE_CFLAGS)
+	AC_DEFINE(HAVE_VTUNE, 1, [Have vtune support for profiling jit emitted methods])
+fi
+
+
 dnl Use GCC atomic ops if they work on the target.
 if test x$GCC = "xyes"; then
 	case $TARGET in

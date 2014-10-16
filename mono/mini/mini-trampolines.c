@@ -14,6 +14,7 @@
 #include <mono/utils/mono-error-internals.h>
 #include <mono/utils/mono-membar.h>
 #include <mono/utils/mono-compiler.h>
+#include <mono/utils/mono-jit-debug.h>
 
 #include "mini.h"
 
@@ -1208,6 +1209,8 @@ mono_create_handler_block_trampoline (void)
 		gpointer tmp;
 
 		tmp = mono_arch_create_handler_block_trampoline (&info, FALSE);
+		mono_jit_debug_register_code (info->name, info->code, info->code_size);
+
 		mono_tramp_info_register (info);
 		mono_memory_barrier ();
 		code = tmp;
@@ -1642,6 +1645,8 @@ mono_create_monitor_enter_trampoline (void)
 		MonoTrampInfo *info;
 
 		code = mono_arch_create_monitor_enter_trampoline (&info, FALSE);
+		mono_jit_debug_register_code (info->name, info->code, info->code_size);
+
 		mono_tramp_info_register (info);
 	}
 
@@ -1672,6 +1677,8 @@ mono_create_monitor_exit_trampoline (void)
 		MonoTrampInfo *info;
 
 		code = mono_arch_create_monitor_exit_trampoline (&info, FALSE);
+		mono_jit_debug_register_code (info->name, info->code, info->code_size);
+
 		mono_tramp_info_register (info);
 	}
 

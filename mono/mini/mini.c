@@ -61,6 +61,7 @@
 #include <mono/utils/dtrace.h>
 #include <mono/utils/mono-signal-handler.h>
 #include <mono/utils/mono-threads.h>
+#include <mono/utils/mono-jit-debug.h>
 
 #include "mini.h"
 #include "mini-llvm.h"
@@ -120,10 +121,6 @@ static MonoCodeManager *global_codeman;
 static GHashTable *jit_icall_name_hash;
 
 static MonoDebugOptions debug_options;
-
-#ifdef VALGRIND_JIT_REGISTER_MAP
-static int valgrind_register = 0;
-#endif
 
 /*
  * Table written to by the debugger with a 1-based index into the
@@ -253,18 +250,6 @@ void mono_nacl_fix_patches(const guint8 *code, MonoJumpInfo *ji)
 #endif
 }
 #endif  /* __native_client_codegen__ */
-
-gboolean
-mono_running_on_valgrind (void)
-{
-	if (RUNNING_ON_VALGRIND){
-#ifdef VALGRIND_JIT_REGISTER_MAP
-		valgrind_register = TRUE;
-#endif
-		return TRUE;
-	} else
-		return FALSE;
-}
 
 typedef struct {
 	MonoExceptionClause *clause;
@@ -4196,14 +4181,8 @@ mono_codegen (MonoCompile *cfg)
 	/* g_assert (((int)cfg->native_code & (MONO_ARCH_CODE_ALIGNMENT - 1)) == 0); */
 	mono_postprocess_patches (cfg);
 
-#ifdef VALGRIND_JIT_REGISTER_MAP
-if (valgrind_register){
-		char* nm = mono_method_full_name (cfg->method, TRUE);
-		VALGRIND_JIT_REGISTER_MAP (nm, cfg->native_code, cfg->native_code + cfg->code_len);
-		g_free (nm);
-	}
-#endif
- 
+	mono_jit_debug_register_method (cfg);
+
 	if (cfg->verbose_level > 0) {
 		char* nm = mono_method_full_name (cfg->method, TRUE);
 		g_print ("Method %s emitted at %p to %p (code length %d) [%s]\n", 
@@ -7364,6 +7343,8 @@ mini_init (const char *filename, const char *runtime_version)
 
 	if (g_getenv ("MONO_DEBUG") != NULL)
 		mini_parse_debug_options ();
+
+	mono_jit_debug_init ();
 
 	mono_code_manager_init ();
 

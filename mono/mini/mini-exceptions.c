@@ -48,6 +48,7 @@
 #include <mono/metadata/environment.h>
 #include <mono/utils/mono-mmap.h>
 #include <mono/utils/mono-logger-internal.h>
+#include <mono/utils/mono-jit-debug.h>
 
 #include "mini.h"
 #include "trace.h"

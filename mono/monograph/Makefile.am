@@ -45,6 +45,7 @@ monograph_LDADD = \
 	$(GLIB_LIBS)			\
 	$(LLVM_LIBS)			\
 	$(LIBICONV)			\
+	$(VTUNE_LIBS)			\
 	-lm
 
 if PLATFORM_DARWIN

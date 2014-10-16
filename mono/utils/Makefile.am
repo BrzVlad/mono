@@ -1,6 +1,6 @@
 noinst_LTLIBRARIES = libmonoutils.la
 
-AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/mono $(LIBGC_CPPFLAGS) $(GLIB_CFLAGS)
+AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/mono $(LIBGC_CPPFLAGS) $(GLIB_CFLAGS) $(VTUNE_CFLAGS)
 
 if ENABLE_DTRACE
 
@@ -118,7 +118,9 @@ monoutils_sources = \
 	mono-conc-hashtable.h	\
 	mono-conc-hashtable.c	\
 	sha1.h		\
-	sha1.c
+	sha1.c		\
+	mono-jit-debug.h	\
+	mono-jit-debug.c
 
 arch_sources = 
 
