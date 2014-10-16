@@ -2467,7 +2467,7 @@ if test "x$enable_llvm" = "xyes"; then
    if echo $llvm_version | grep -q 'mono'; then
 	  if test "x$enable_llvm_version_check" == "xyes"; then
 	  	 if test "$llvm_version" != "$expected_llvm_version"; then
-	  	 	AC_MSG_ERROR([Expected llvm version $expected_llvm_version, but llvm-config --version returned $llvm_version"])
+	  	 	AC_MSG_ERROR([Expected llvm version $expected_llvm_version, but llvm-config --version returned $llvm_version])
 	  	 fi
 	  fi
 	  if test "x$llvm_api_version" = "x"; then
