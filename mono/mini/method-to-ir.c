@@ -3903,8 +3903,10 @@ handle_alloc (MonoCompile *cfg, MonoClass *klass, gboolean for_box, int context_
 			alloc_ftn = mono_object_new_specific;
 		}
 
-		if (managed_alloc && !(cfg->opt & MONO_OPT_SHARED))
+		if (managed_alloc && !(cfg->opt & MONO_OPT_SHARED)) {
+			EMIT_NEW_ICONST (cfg, iargs [1], klass->instance_size);
 			return mono_emit_method_call (cfg, managed_alloc, iargs, NULL);
+		}
 
 		return mono_emit_jit_icall (cfg, alloc_ftn, iargs);
 	}
@@ -3936,6 +3938,7 @@ handle_alloc (MonoCompile *cfg, MonoClass *klass, gboolean for_box, int context_
 
 		if (managed_alloc) {
 			EMIT_NEW_VTABLECONST (cfg, iargs [0], vtable);
+			EMIT_NEW_ICONST (cfg, iargs [1], klass->instance_size);
 			return mono_emit_method_call (cfg, managed_alloc, iargs, NULL);
 		}
 		alloc_ftn = mono_class_get_allocation_ftn (vtable, for_box, &pass_lw);

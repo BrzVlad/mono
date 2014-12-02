@@ -778,10 +778,10 @@ create_allocator (int atype)
 	}
 
 	if (atype == ATYPE_SMALL) {
-		num_params = 1;
+		num_params = 2;
 		name = "AllocSmall";
 	} else if (atype == ATYPE_NORMAL) {
-		num_params = 1;
+		num_params = 2;
 		name = "Alloc";
 	} else if (atype == ATYPE_VECTOR) {
 		num_params = 2;
@@ -809,16 +809,8 @@ create_allocator (int atype)
 #ifndef DISABLE_JIT
 	size_var = mono_mb_add_local (mb, &mono_defaults.int_class->byval_arg);
 	if (atype == ATYPE_NORMAL || atype == ATYPE_SMALL) {
-		/* size = vtable->klass->instance_size; */
-		mono_mb_emit_ldarg (mb, 0);
-		mono_mb_emit_icon (mb, MONO_STRUCT_OFFSET (MonoVTable, klass));
-		mono_mb_emit_byte (mb, CEE_ADD);
-		mono_mb_emit_byte (mb, CEE_LDIND_I);
-		mono_mb_emit_icon (mb, MONO_STRUCT_OFFSET (MonoClass, instance_size));
-		mono_mb_emit_byte (mb, CEE_ADD);
-		/* FIXME: assert instance_size stays a 4 byte integer */
-		mono_mb_emit_byte (mb, CEE_LDIND_U4);
-		mono_mb_emit_byte (mb, CEE_CONV_I);
+		/* size_var = size_arg */
+		mono_mb_emit_ldarg (mb, 1);
 		mono_mb_emit_stloc (mb, size_var);
 	} else if (atype == ATYPE_VECTOR) {
 		MonoExceptionClause *clause;
