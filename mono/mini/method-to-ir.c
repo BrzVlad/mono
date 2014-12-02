@@ -154,6 +154,7 @@ static MonoMethodSignature *helper_sig_rgctx_lazy_fetch_trampoline;
 static MonoMethodSignature *helper_sig_monitor_enter_exit_trampoline;
 static MonoMethodSignature *helper_sig_monitor_enter_exit_trampoline_llvm;
 static MonoMethodSignature *helper_sig_monitor_enter_v4_trampoline_llvm;
+static MonoMethodSignature *helper_sig_small_obj_alloc_trampoline;
 
 /*
  * Instruction metadata
@@ -366,6 +367,7 @@ mono_create_helper_signatures (void)
 	helper_sig_monitor_enter_exit_trampoline = mono_create_icall_signature ("void");
 	helper_sig_monitor_enter_exit_trampoline_llvm = mono_create_icall_signature ("void object");
 	helper_sig_monitor_enter_v4_trampoline_llvm = mono_create_icall_signature ("void object ptr");
+	helper_sig_small_obj_alloc_trampoline = mono_create_icall_signature ("object");
 }
 
 static MONO_NEVER_INLINE void
@@ -3889,7 +3891,6 @@ handle_alloc (MonoCompile *cfg, MonoClass *klass, gboolean for_box, int context_
 		MonoInst *iargs [2];
 
 		MonoMethod *managed_alloc = mono_gc_get_managed_allocator (klass, for_box);
-
 		if (cfg->opt & MONO_OPT_SHARED)
 			rgctx_info = MONO_RGCTX_INFO_KLASS;
 		else
@@ -3931,6 +3932,16 @@ handle_alloc (MonoCompile *cfg, MonoClass *klass, gboolean for_box, int context_
 			cfg->exception_ptr = klass;
 			return NULL;
 		}
+/* --------------- */
+		if (1) {
+			MonoCallInst *call;
+			EMIT_NEW_VTABLECONST (cfg, iargs [0], vtable);
+			call = (MonoCallInst*)mono_emit_abs_call (cfg, MONO_PATCH_INFO_SMALL_OBJ_ALLOC,
+				    NULL, helper_sig_small_obj_alloc_trampoline, NULL);
+			mono_call_inst_add_outarg_reg (cfg, call, iargs [0]->dreg, MONO_ARCH_MONITOR_OBJECT_REG, FALSE);
+			return (MonoInst*)call;
+		}
+/* --------------- */
 
 #ifndef MONO_CROSS_COMPILE
 		managed_alloc = mono_gc_get_managed_allocator (klass, for_box);

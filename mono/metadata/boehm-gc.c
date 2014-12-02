@@ -1387,4 +1387,11 @@ mono_gc_register_finalizer_callbacks (MonoGCFinalizerCallbacks *callbacks)
 	GC_set_finalizer_notify_proc ((void (*) (GC_PTR))fin_notifier);
 }
 
+void*
+mono_gc_alloc_obj (MonoVTable *vtable, size_t size)
+{
+	printf ("Fututi mortii matii boehm\n");
+	return NULL;
+}
+
 #endif /* no Boehm GC */

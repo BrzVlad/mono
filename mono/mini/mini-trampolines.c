@@ -14,6 +14,7 @@
 #include <mono/utils/mono-error-internals.h>
 #include <mono/utils/mono-membar.h>
 #include <mono/utils/mono-compiler.h>
+#include <mono/metadata/gc-internal.h>
 
 #include "mini.h"
 
@@ -979,6 +980,12 @@ mono_monitor_exit_trampoline (mgreg_t *regs, guint8 *code, MonoObject *obj, guin
 	mono_monitor_exit (obj);
 }
 
+gpointer
+mono_small_obj_alloc_trampoline (mgreg_t *regs, guint8 *code, MonoObject *obj, guint8 *tramp)
+{
+	return mono_gc_alloc_obj (regs [MONO_AMD64_ARG_REG1], regs [MONO_AMD64_ARG_REG2]);
+}
+
 #ifdef MONO_ARCH_HAVE_CREATE_DELEGATE_TRAMPOLINE
 
 /*
@@ -1278,6 +1285,8 @@ mono_get_trampoline_func (MonoTrampolineType tramp_type)
 		return mono_monitor_enter_v4_trampoline;
 	case MONO_TRAMPOLINE_MONITOR_EXIT:
 		return mono_monitor_exit_trampoline;
+	case MONO_TRAMPOLINE_SMALL_OBJ_ALLOC:
+		return mono_small_obj_alloc_trampoline;
 	case MONO_TRAMPOLINE_VCALL:
 		return mono_vcall_trampoline;
 #ifdef MONO_ARCH_HAVE_HANDLER_BLOCK_GUARD
@@ -1329,6 +1338,7 @@ mono_trampolines_init (void)
 	mono_trampoline_code [MONO_TRAMPOLINE_MONITOR_ENTER] = create_trampoline_code (MONO_TRAMPOLINE_MONITOR_ENTER);
 	mono_trampoline_code [MONO_TRAMPOLINE_MONITOR_ENTER_V4] = create_trampoline_code (MONO_TRAMPOLINE_MONITOR_ENTER_V4);
 	mono_trampoline_code [MONO_TRAMPOLINE_MONITOR_EXIT] = create_trampoline_code (MONO_TRAMPOLINE_MONITOR_EXIT);
+	mono_trampoline_code [MONO_TRAMPOLINE_SMALL_OBJ_ALLOC] = create_trampoline_code (MONO_TRAMPOLINE_SMALL_OBJ_ALLOC);
 	mono_trampoline_code [MONO_TRAMPOLINE_VCALL] = create_trampoline_code (MONO_TRAMPOLINE_VCALL);
 #ifdef MONO_ARCH_HAVE_HANDLER_BLOCK_GUARD
 	mono_trampoline_code [MONO_TRAMPOLINE_HANDLER_BLOCK_GUARD] = create_trampoline_code (MONO_TRAMPOLINE_HANDLER_BLOCK_GUARD);
@@ -1703,6 +1713,35 @@ mono_create_monitor_enter_v4_trampoline (void)
 	g_assert_not_reached ();
 #endif
 
+	return code;
+}
+
+gpointer
+mono_create_small_obj_alloc_trampoline (void)
+{
+	static gpointer code;
+
+	if (mono_aot_only) {
+		if (!code)
+			code = mono_aot_get_trampoline ("monitor_small_obj_alloc");
+		return code;
+	}
+
+#ifdef MONO_ARCH_MONITOR_OBJECT_REG
+	mono_trampolines_lock ();
+
+	if (!code) {
+		MonoTrampInfo *info;
+
+		code = mono_arch_create_small_obj_alloc_trampoline (&info, FALSE);
+		mono_tramp_info_register (info);
+	}
+
+	mono_trampolines_unlock ();
+#else
+	code = NULL;
+	g_assert_not_reached ();
+#endif
 	return code;
 }
 

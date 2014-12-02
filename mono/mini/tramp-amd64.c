@@ -539,6 +539,7 @@ mono_arch_create_generic_trampoline (MonoTrampolineType tramp_type, MonoTrampInf
 		tramp_type != MONO_TRAMPOLINE_MONITOR_ENTER &&
 		tramp_type != MONO_TRAMPOLINE_MONITOR_ENTER_V4 &&
 		tramp_type != MONO_TRAMPOLINE_MONITOR_EXIT &&
+		tramp_type != MONO_TRAMPOLINE_SMALL_OBJ_ALLOC &&
 		tramp_type != MONO_TRAMPOLINE_HANDLER_BLOCK_GUARD) {
 		/* Obtain the trampoline argument which is encoded in the instruction stream */
 		if (aot) {
@@ -1274,6 +1275,87 @@ mono_arch_create_monitor_exit_trampoline (MonoTrampInfo **info, gboolean aot)
 }
 
 #endif
+#define ALLOC_ALIGN	8
+
+
+gpointer
+mono_arch_create_small_obj_alloc_trampoline (MonoTrampInfo **info, gboolean aot)
+{
+	guint8 *tramp;
+	guint8 *code, *buf;
+	guint8 *jump_tlab_full;
+	int tramp_size;
+	MonoJumpInfo *ji = NULL;
+	GSList *unwind_ops = NULL;
+	int vtable_reg = MONO_AMD64_ARG_REG1;
+	int size_reg = MONO_AMD64_ARG_REG2;
+	int next_addr_reg = MONO_AMD64_ARG_REG3;
+	int end_addr_reg = MONO_AMD64_ARG_REG4;
+	int p_reg = AMD64_RAX;
+
+	g_assert (vtable_reg == MONO_ARCH_MONITOR_OBJECT_REG);
+
+	tramp_size = 112;
+
+	code = buf = mono_global_codeman_reserve (tramp_size);
+
+	unwind_ops = mono_arch_get_cie_program ();
+
+	if (!aot) {
+		/* size = vtable->klass->instance_size; */
+		amd64_mov_reg_membase (code, size_reg, vtable_reg, MONO_STRUCT_OFFSET (MonoVTable, klass), 8);
+		amd64_mov_reg_membase (code, size_reg, size_reg, MONO_STRUCT_OFFSET (MonoClass, instance_size), 4);
+
+		/* size += ALLOC_ALIGN - 1; */
+		amd64_alu_reg_imm_size (code, X86_ADD, size_reg, ALLOC_ALIGN - 1, 4);
+
+		/* size &= ~(ALLOC_ALIGN - 1); */
+		amd64_alu_reg_imm_size (code, X86_AND, size_reg, ~(ALLOC_ALIGN - 1), 4);
+
+		/* tlab_next_addr (local) = tlab_next_addr (TLS var) */
+		/* tlab_end_addr (local) = tlab_end_addr (TLS var) */
+		code = mono_amd64_emit_tls_get (code, p_reg, mono_tls_key_get_offset (TLS_KEY_SGEN_THREAD_INFO));
+		amd64_mov_reg_membase (code, next_addr_reg, p_reg, 376, 8);
+		amd64_mov_reg_membase (code, end_addr_reg, p_reg, 584, 8);
+
+		/* p = (void**)tlab_next; */
+		amd64_mov_reg_membase (code, p_reg, next_addr_reg, 0, 8);
+
+		/* new_next = (char*)p + size; */
+		amd64_alu_reg_reg (code, X86_ADD, p_reg, size_reg); /* new_next in p_reg */
+
+		/* if (G_LIKELY (new_next >= tlab_temp_end)) goto slowpath; */
+		amd64_alu_reg_reg (code, X86_CMP, p_reg, end_addr_reg);
+		jump_tlab_full = code;
+		amd64_branch8 (code, X86_CC_GE, -1, 1);
+
+		/* tlab_next = new_next; */
+		amd64_mov_membase_reg (code, next_addr_reg, 0, p_reg, 8);
+
+		/* *p = vtable; */
+		amd64_alu_reg_reg (code, X86_SUB, p_reg, size_reg);
+		amd64_mov_membase_reg (code, p_reg, 0, vtable_reg, 8);
+
+		/* return p; */
+		amd64_ret (code);
+
+		x86_patch (jump_tlab_full, code);
+	}
+
+	/* jump to mono_gc_alloc_obj */
+	tramp = mono_arch_create_specific_trampoline (NULL, MONO_TRAMPOLINE_SMALL_OBJ_ALLOC, mono_get_root_domain (), NULL);
+	amd64_jump_code (code, tramp);
+
+	nacl_global_codeman_validate (&buf, tramp_size, &code);
+
+	mono_arch_flush_icache (code, code - buf);
+	g_assert (code - buf <= tramp_size);
+
+	if (info)
+		*info = mono_tramp_info_create ("small_obj_alloc_trampoline", buf, code - buf, ji, unwind_ops);
+
+	return buf;
+}
 
 void
 mono_arch_invalidate_method (MonoJitInfo *ji, void *func, gpointer func_arg)
