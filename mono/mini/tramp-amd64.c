@@ -537,6 +537,7 @@ mono_arch_create_generic_trampoline (MonoTrampolineType tramp_type, MonoTrampInf
 
 	if (tramp_type != MONO_TRAMPOLINE_GENERIC_CLASS_INIT &&
 		tramp_type != MONO_TRAMPOLINE_MONITOR_ENTER &&
+		tramp_type != MONO_TRAMPOLINE_MONITOR_ENTER_V4 &&
 		tramp_type != MONO_TRAMPOLINE_MONITOR_EXIT &&
 		tramp_type != MONO_TRAMPOLINE_HANDLER_BLOCK_GUARD) {
 		/* Obtain the trampoline argument which is encoded in the instruction stream */
@@ -969,12 +970,15 @@ mono_arch_create_monitor_enter_trampoline (MonoTrampInfo **info, gboolean is_v4,
 	MonoJumpInfo *ji = NULL;
 	GSList *unwind_ops = NULL;
 	int obj_reg = MONO_AMD64_ARG_REG1;
-	int sync_reg = MONO_AMD64_ARG_REG2;
-	int tid_reg = MONO_AMD64_ARG_REG3;
+	int lock_taken_reg = MONO_AMD64_ARG_REG2;
+	int sync_reg = MONO_AMD64_ARG_REG3;
+	int tid_reg = MONO_AMD64_ARG_REG4;
 	int status_reg = AMD64_RAX;
 
 	g_assert (MONO_ARCH_MONITOR_OBJECT_REG == obj_reg);
-#ifndef MONO_ARCH_MONITOR_LOCK_TAKEN_REG
+#ifdef MONO_ARCH_MONITOR_LOCK_TAKEN_REG
+	g_assert (MONO_ARCH_MONITOR_LOCK_TAKEN_REG == lock_taken_reg);
+#else
 	g_assert (!is_v4);
 #endif
 
@@ -1041,6 +1045,8 @@ mono_arch_create_monitor_enter_trampoline (MonoTrampInfo **info, gboolean is_v4,
 		jump_cmpxchg_failed = code;
 		amd64_branch8 (code, X86_CC_NZ, -1, 1);
 		/* if successful, return */
+		if (is_v4)
+			amd64_mov_membase_imm (code, lock_taken_reg, 0, 1, 1);
 		amd64_ret (code);
 
 		/* next case: synchronization->owner is not null */
@@ -1054,6 +1060,8 @@ mono_arch_create_monitor_enter_trampoline (MonoTrampInfo **info, gboolean is_v4,
 		/* if yes, increment nest */
 		amd64_inc_membase_size (code, sync_reg, nest_offset, 4);
 		/* return */
+		if (is_v4)
+			amd64_mov_membase_imm (code, lock_taken_reg, 0, 1, 1);
 		amd64_ret (code);
 
 		x86_patch (jump_obj_null, code);
@@ -1069,10 +1077,16 @@ mono_arch_create_monitor_enter_trampoline (MonoTrampInfo **info, gboolean is_v4,
 		amd64_mov_reg_reg (code, MONO_AMD64_ARG_REG1, obj_reg, sizeof (mgreg_t));
 
 	if (aot) {
-		code = mono_arch_emit_load_aotconst (buf, code, &ji, MONO_PATCH_INFO_JIT_ICALL_ADDR, "specific_trampoline_monitor_enter");
+		if (is_v4)
+			code = mono_arch_emit_load_aotconst (buf, code, &ji, MONO_PATCH_INFO_JIT_ICALL_ADDR, "specific_trampoline_monitor_enter_v4");
+		else
+			code = mono_arch_emit_load_aotconst (buf, code, &ji, MONO_PATCH_INFO_JIT_ICALL_ADDR, "specific_trampoline_monitor_enter");
 		amd64_jump_reg (code, AMD64_R11);
 	} else {
-		tramp = mono_arch_create_specific_trampoline (NULL, MONO_TRAMPOLINE_MONITOR_ENTER, mono_get_root_domain (), NULL);
+		if (is_v4)
+			tramp = mono_arch_create_specific_trampoline (NULL, MONO_TRAMPOLINE_MONITOR_ENTER_V4, mono_get_root_domain (), NULL);
+		else
+			tramp = mono_arch_create_specific_trampoline (NULL, MONO_TRAMPOLINE_MONITOR_ENTER, mono_get_root_domain (), NULL);
 
 		/* jump to the actual trampoline */
 		amd64_jump_code (code, tramp);
@@ -1084,8 +1098,12 @@ mono_arch_create_monitor_enter_trampoline (MonoTrampInfo **info, gboolean is_v4,
 	mono_profiler_code_buffer_new (buf, code - buf, MONO_PROFILER_CODE_BUFFER_MONITOR, NULL);
 	g_assert (code - buf <= tramp_size);
 
-	if (info)
-		*info = mono_tramp_info_create ("monitor_enter_trampoline", buf, code - buf, ji, unwind_ops);
+	if (info) {
+		if (is_v4)
+			*info = mono_tramp_info_create ("monitor_enter_v4_trampoline", buf, code - buf, ji, unwind_ops);
+		else
+			*info = mono_tramp_info_create ("monitor_enter_trampoline", buf, code - buf, ji, unwind_ops);
+	}
 
 	return buf;
 }
