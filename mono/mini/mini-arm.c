@@ -16,8 +16,10 @@
 #include <mono/metadata/appdomain.h>
 #include <mono/metadata/profiler-private.h>
 #include <mono/metadata/debug-helpers.h>
+#include <mono/metadata/gc-internal.h>
 #include <mono/utils/mono-mmap.h>
 #include <mono/utils/mono-hwcap-arm.h>
+#include <mono/arch/arm/arm-codegen.h>
 
 #include "mini-arm.h"
 #include "cpu-arm.h"
@@ -5569,6 +5571,58 @@ mono_arch_output_basic_block (MonoCompile *cfg, MonoBasicBlock *bb)
 				code = mono_arm_emit_vfp_scratch_restore (cfg, code, vfp_scratch1);
 				code = mono_arm_emit_vfp_scratch_restore (cfg, code, vfp_scratch2);
 			}
+			break;
+		}
+		case OP_CARD_TABLE_WBARRIER: {
+			int ptr = ins->sreg1;
+			int value = ins->sreg2;
+			int tmpregs [2], i, j;
+			guchar *br = NULL;
+			int nursery_shift, card_table_shift;
+			gpointer card_table_mask;
+			size_t nursery_size;
+
+			gpointer card_table = mono_gc_get_card_table (&card_table_shift, &card_table_mask);
+			guint32 nursery_start = (guint32)mono_gc_get_nursery (&nursery_shift, &nursery_size);
+			guint32 shifted_nursery_start = nursery_start >> nursery_shift;
+
+			/*
+			 * If either point to the stack we can simply avoid the WB. This happns due to
+			 * optimizations revealing a stack store that was not visible when op_cardtable was emitted
+			 */
+			if (ptr == ARMREG_R13 || value == ARMREG_R13)
+				continue;
+
+			/* Have two temporary caller save registers, different from the arguments */
+			for (i = ARMREG_R0, j = 0; j < 2; i++) {
+				g_assert (i <= ARMREG_R3);
+				if (i != ptr && i != value)
+					tmpregs [j++] = i;
+			}
+
+			if (mono_gc_card_table_nursery_check ()) {
+				ARM_SHR_IMM (code, tmpregs [0], value, nursery_shift);
+				code = mono_arm_emit_load_imm (code, tmpregs [1], shifted_nursery_start);
+				ARM_CMP_REG_REG (code, tmpregs [0], tmpregs [1]);
+				br = code; ARM_B_COND (code, ARMCOND_NE, 0);
+			}
+
+			ARM_SHR_IMM (code, tmpregs [0], ptr, card_table_shift);
+
+			if (card_table_mask) {
+				code = mono_arm_emit_load_imm (code, tmpregs [1], (guint32)card_table_mask);
+				ARM_AND_REG_REG (code, tmpregs [0], tmpregs [0], tmpregs [1]);
+			}
+
+			code = mono_arm_emit_load_imm (code, tmpregs [1], (guint32)card_table);
+
+			ARM_ADD_REG_REG (code, tmpregs [0], tmpregs [0], tmpregs [1]);
+			ARM_MOV_REG_IMM (code, tmpregs [1], 1, 0);
+			ARM_STRB_IMM (code, tmpregs [1], tmpregs [0], 0);
+
+			if (mono_gc_card_table_nursery_check ())
+				arm_patch (br, code);
+
 			break;
 		}
 

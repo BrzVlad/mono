@@ -341,6 +341,8 @@ float_bge_un: len:32
 float_ble: len:32
 float_ble_un: len:32
 
+card_table_wbarrier: src1:b src2:i len:64 clob:c
+
 liverange_start: len:0
 liverange_end: len:0
 gc_liveness_def: len:0
