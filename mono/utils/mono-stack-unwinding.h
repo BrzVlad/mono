@@ -19,7 +19,8 @@ typedef enum {
 	FRAME_TYPE_DEBUGGER_INVOKE = 1,
 	/* Frame for transitioning to native code */
 	FRAME_TYPE_MANAGED_TO_NATIVE = 2,
-	FRAME_TYPE_SENTINEL = 3
+	FRAME_TYPE_SENTINEL = 3,
+	FRAME_TYPE_TRAMPOLINE = 4
 } MonoStackFrameType;
 
 typedef enum {
@@ -41,7 +42,7 @@ typedef enum {
 typedef struct {
 	MonoStackFrameType type;
 	/* 
-	 * For FRAME_TYPE_MANAGED, otherwise NULL.
+	 * For FRAME_TYPE_MANAGED and FRAME_TYPE_TRAMPOLINE, otherwise NULL.
 	 */
 	MonoJitInfo *ji;
 	/*
