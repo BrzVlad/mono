@@ -299,10 +299,10 @@ mono_find_jit_info (MonoDomain *domain, MonoJitTlsData *jit_tls, MonoJitInfo *re
 	if (ji == (gpointer)-1)
 		return ji;
 
-	if (ji)
+	if (ji && !ji->is_trampoline)
 		method = jinfo_get_method (ji);
 
-	if (managed2 || (ji && method->wrapper_type)) {
+	if (managed2 || (method && method->wrapper_type)) {
 		const char *real_ip, *start;
 		gint32 offset;
 
@@ -395,7 +395,7 @@ mono_find_jit_info_ext (MonoDomain *domain, MonoJitTlsData *jit_tls,
 		*lmf = (gpointer)(((gsize)(*lmf)->previous_lmf) & ~(SIZEOF_VOID_P -1));
 	}
 
-	if (frame->ji && !frame->ji->async)
+	if (frame->ji && !frame->ji->is_trampoline && !frame->ji->async)
 		method = jinfo_get_method (frame->ji);
 
 	if (frame->type == FRAME_TYPE_MANAGED && method) {
@@ -600,7 +600,7 @@ mono_exception_walk_trace (MonoException *ex, MonoExceptionFrameWalk func, gpoin
 		gpointer generic_info = mono_array_get (ta, gpointer, i * 2 + 1);
 		MonoJitInfo *ji = mono_jit_info_table_find (domain, ip);
 
-		if (ji == NULL) {
+		if (ji == NULL || ji->is_trampoline) {
 			if (func (NULL, ip, 0, FALSE, user_data))
 				return TRUE;
 		} else {
@@ -634,7 +634,7 @@ ves_icall_System_Exception_get_trace (MonoException *ex)
 		gpointer generic_info = mono_array_get (ta, gpointer, i * 2 + 1);
 
 		ji = mono_jit_info_table_find (domain, ip);
-		if (ji == NULL) {
+		if (ji == NULL || ji->is_trampoline) {
 			/* Unmanaged frame */
 			g_string_append_printf (trace_str, "in (unmanaged) %p\n", ip);
 		} else {
@@ -683,7 +683,7 @@ ves_icall_get_trace (MonoException *exc, gint32 skip, MonoBoolean need_file_info
 		MonoMethod *method;
 
 		ji = mono_jit_info_table_find (domain, ip);
-		if (ji == NULL) {
+		if (ji == NULL || ji->is_trampoline) {
 			/* Unmanaged frame */
 			mono_array_setref (res, i, sf);
 			continue;
@@ -868,7 +868,7 @@ mono_walk_stack_full (MonoJitStackWalk func, MonoContext *start_ctx, MonoDomain 
 		if (!res)
 			return;
 
-		if ((unwind_options & MONO_UNWIND_LOOKUP_IL_OFFSET) && frame.ji) {
+		if ((unwind_options & MONO_UNWIND_LOOKUP_IL_OFFSET) && frame.ji && !frame.ji->is_trampoline) {
 			MonoDebugSourceLocation *source;
 
 			source = mono_debug_lookup_source_location (jinfo_get_method (frame.ji), frame.native_offset, domain);
@@ -887,7 +887,7 @@ mono_walk_stack_full (MonoJitStackWalk func, MonoContext *start_ctx, MonoDomain 
 
 		frame.il_offset = il_offset;
 
-		if ((unwind_options & MONO_UNWIND_LOOKUP_ACTUAL_METHOD) && frame.ji) {
+		if ((unwind_options & MONO_UNWIND_LOOKUP_ACTUAL_METHOD) && frame.ji && !frame.ji->is_trampoline) {
 			frame.actual_method = get_method_from_stack_frame (frame.ji, get_generic_info_from_stack_frame (frame.ji, &ctx));
 		} else {
 			frame.actual_method = frame.method;
@@ -995,7 +995,7 @@ callback_get_first_frame_security_info (StackFrameInfo *frame, MonoContext *ctx,
 	MonoJitInfo *ji = frame->ji;
 	MonoMethod *method;
 
-	if (!ji)
+	if (!ji || ji->is_trampoline)
 		return FALSE;
 
 	/* FIXME: skip all wrappers ?? probably not - case by case testing is required */
@@ -1071,7 +1071,7 @@ callback_get_stack_frames_security_info (StackFrameInfo *frame, MonoContext *ctx
 	MonoJitInfo *ji = frame->ji;
 	MonoMethod *method;
 
-	if (!ji)
+	if (!ji || ji->is_trampoline)
 		return FALSE;
 
 	/* FIXME: skip all wrappers ?? probably not - case by case testing is required */
@@ -2191,7 +2191,7 @@ print_overflow_stack_frame (StackFrameInfo *frame, MonoContext *ctx, gpointer da
 	PrintOverflowUserData *user_data = data;
 	gchar *location;
 
-	if (frame->ji)
+	if (frame->ji && frame->type != FRAME_TYPE_TRAMPOLINE)
 		method = jinfo_get_method (frame->ji);
 
 	if (method) {
@@ -2244,7 +2244,7 @@ mono_handle_hard_stack_ovf (MonoJitTlsData *jit_tls, MonoJitInfo *ji, void *ctx,
 
 	mono_walk_stack_with_ctx (print_overflow_stack_frame, &mctx, MONO_UNWIND_LOOKUP_ACTUAL_METHOD, &ud);
 #else
-	if (ji && jinfo_get_method (ji))
+	if (ji && !ji->is_trampoline && jinfo_get_method (ji))
 		mono_runtime_printf_err ("At %s", mono_method_full_name (jinfo_get_method (ji), TRUE));
 	else
 		mono_runtime_printf_err ("At <unmanaged>.");
@@ -2258,7 +2258,7 @@ print_stack_frame_to_stderr (StackFrameInfo *frame, MonoContext *ctx, gpointer d
 {
 	MonoMethod *method = NULL;
 
-	if (frame->ji)
+	if (frame->ji && frame->type != FRAME_TYPE_TRAMPOLINE)
 		method = jinfo_get_method (frame->ji);
 
 	if (method) {
@@ -2277,7 +2277,7 @@ print_stack_frame_to_string (StackFrameInfo *frame, MonoContext *ctx, gpointer d
 	GString *p = (GString*)data;
 	MonoMethod *method = NULL;
 
-	if (frame->ji)
+	if (frame->ji && frame->type != FRAME_TYPE_TRAMPOLINE)
 		method = jinfo_get_method (frame->ji);
 
 	if (method && frame->domain) {

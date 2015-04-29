@@ -6377,10 +6377,10 @@ mono_delegate_ctor (MonoObject *this, MonoObject *target, gpointer addr)
 
 	g_assert (addr);
 
-	ji = mono_jit_info_table_find (domain, mono_get_addr_from_ftnptr (addr));
+	ji = mono_jit_info_table_find_internal (domain, mono_get_addr_from_ftnptr (addr), TRUE, FALSE);
 	/* Shared code */
 	if (!ji && domain != mono_get_root_domain ())
-		ji = mono_jit_info_table_find (mono_get_root_domain (), mono_get_addr_from_ftnptr (addr));
+		ji = mono_jit_info_table_find_internal (mono_get_root_domain (), mono_get_addr_from_ftnptr (addr), TRUE, FALSE);
 	if (ji) {
 		method = mono_jit_info_get_method (ji);
 		g_assert (!method->klass->generic_container);

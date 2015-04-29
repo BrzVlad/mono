@@ -654,7 +654,7 @@ mono_debug_print_vars (gpointer ip, gboolean only_arguments)
 	MonoDebugMethodJitInfo *jit;
 	int i;
 
-	if (!ji)
+	if (!ji || ji->is_trampoline)
 		return;
 
 	jit = mono_debug_find_method (jinfo_get_method (ji), domain);

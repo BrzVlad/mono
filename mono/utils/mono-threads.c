@@ -19,7 +19,7 @@
 #include <mono/utils/mono-mmap.h>
 #include <mono/utils/atomic.h>
 #include <mono/utils/mono-time.h>
-
+#include <mono/metadata/domain-internals.h>
 
 #include <errno.h>
 
@@ -802,7 +802,7 @@ is_thread_in_critical_region (MonoThreadInfo *info)
 		(MonoDomain *) state->unwind_data [MONO_UNWIND_DATA_DOMAIN],
 		(char *) MONO_CONTEXT_GET_IP (&state->ctx));
 
-	if (!ji)
+	if (!ji || ji->is_trampoline)
 		return FALSE;
 
 	method = mono_jit_info_get_method (ji);

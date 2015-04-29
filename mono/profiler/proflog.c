@@ -1812,7 +1812,7 @@ dump_sample_hits (MonoProfiler *prof, StatBuffer *sbuf)
 			if (!method) {
 				MonoJitInfo *ji = mono_jit_info_table_find (domain, address);
 
-				if (ji)
+				if (ji && !ji->is_trampoline)
 					managed_sample_base [i * 4 + 0] = (uintptr_t)mono_jit_info_get_method (ji);
 			}
 		}

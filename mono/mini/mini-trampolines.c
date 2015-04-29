@@ -344,7 +344,7 @@ mini_add_method_trampoline (MonoMethod *orig_method, MonoMethod *m, gpointer com
 		}
 	}
 
-	if (ji)
+	if (ji && !ji->is_trampoline)
 		jmethod = jinfo_get_method (ji);
 	if (callee_gsharedvt && mini_is_gsharedvt_variable_signature (mono_method_signature (jmethod))) {
 		MonoGenericSharingContext *gsctx;
@@ -1094,7 +1094,7 @@ mono_delegate_trampoline (mgreg_t *regs, guint8 *code, gpointer *arg, guint8* tr
 		}
 	} else {
 		ji = mono_jit_info_table_find (domain, mono_get_addr_from_ftnptr (delegate->method_ptr));
-		if (ji)
+		if (ji && !ji->is_trampoline)
 			method = jinfo_get_method (ji);
 	}
 
