@@ -51,6 +51,7 @@ gpointer
 mono_arch_get_unbox_trampoline (MonoMethod *m, gpointer addr)
 {
 	guint8 *code, *start;
+	GSList *unwind_ops = NULL;
 	int this_reg, size = NACL_SIZE (20, 32);
 
 	MonoDomain *domain = mono_domain_get ();
@@ -58,6 +59,8 @@ mono_arch_get_unbox_trampoline (MonoMethod *m, gpointer addr)
 	this_reg = mono_arch_get_this_arg_reg (NULL);
 
 	start = code = mono_domain_code_reserve (domain, size);
+
+	unwind_ops = mono_arch_get_cie_program ();
 
 	amd64_alu_reg_imm (code, X86_ADD, this_reg, sizeof (MonoObject));
 	/* FIXME: Optimize this */
@@ -70,7 +73,7 @@ mono_arch_get_unbox_trampoline (MonoMethod *m, gpointer addr)
 	mono_arch_flush_icache (start, code - start);
 	mono_profiler_code_buffer_new (start, code - start, MONO_PROFILER_CODE_BUFFER_UNBOX_TRAMPOLINE, m);
 
-	mono_tramp_info_register (mono_tramp_info_create (NULL, start, code - start, NULL, NULL), domain);
+	mono_tramp_info_register (mono_tramp_info_create (NULL, start, code - start, NULL, unwind_ops), domain);
 
 	return start;
 }
@@ -84,6 +87,7 @@ gpointer
 mono_arch_get_static_rgctx_trampoline (MonoMethod *m, MonoMethodRuntimeGenericContext *mrgctx, gpointer addr)
 {
 	guint8 *code, *start;
+	GSList *unwind_ops = NULL;
 	int buf_len;
 
 	MonoDomain *domain = mono_domain_get ();
@@ -100,6 +104,8 @@ mono_arch_get_static_rgctx_trampoline (MonoMethod *m, MonoMethodRuntimeGenericCo
 
 	start = code = mono_domain_code_reserve (domain, buf_len);
 
+	unwind_ops = mono_arch_get_cie_program ();
+
 	amd64_mov_reg_imm (code, MONO_ARCH_RGCTX_REG, mrgctx);
 	amd64_jump_code (code, addr);
 	g_assert ((code - start) < buf_len);
@@ -108,7 +114,7 @@ mono_arch_get_static_rgctx_trampoline (MonoMethod *m, MonoMethodRuntimeGenericCo
 	mono_arch_flush_icache (start, code - start);
 	mono_profiler_code_buffer_new (start, code - start, MONO_PROFILER_CODE_BUFFER_GENERICS_TRAMPOLINE, NULL);
 
-	mono_tramp_info_register (mono_tramp_info_create (NULL, start, code - start, NULL, NULL), domain);
+	mono_tramp_info_register (mono_tramp_info_create (NULL, start, code - start, NULL, unwind_ops), domain);
 
 	return start;
 }
@@ -449,17 +455,17 @@ mono_arch_create_generic_trampoline (MonoTrampolineType tramp_type, MonoTrampInf
 
 	framesize = ALIGN_TO (offset, MONO_ARCH_FRAME_ALIGNMENT);
 
-	orig_rsp_to_rbp_offset = 0;
-	r11_save_code = code;
-	/* Reserve space for the mov_membase_reg to save R11 */
-	code += 8;
-	after_r11_save_code = code;
-
 	// CFA = sp + 16 (the trampoline address is on the stack)
 	cfa_offset = 16;
 	mono_add_unwind_op_def_cfa (unwind_ops, code, buf, AMD64_RSP, 16);
 	// IP saved at CFA - 8
 	mono_add_unwind_op_offset (unwind_ops, code, buf, AMD64_RIP, -8);
+
+	orig_rsp_to_rbp_offset = 0;
+	r11_save_code = code;
+	/* Reserve space for the mov_membase_reg to save R11 */
+	code += 8;
+	after_r11_save_code = code;
 
 	/* Pop the return address off the stack */
 	amd64_pop_reg (code, AMD64_R11);
@@ -694,6 +700,9 @@ mono_arch_create_generic_trampoline (MonoTrampolineType tramp_type, MonoTrampInf
 
 	/* Restore stack */
 	amd64_leave (code);
+	cfa_offset -= sizeof (mgreg_t);
+	mono_add_unwind_op_def_cfa (unwind_ops, code, buf, AMD64_RSP, cfa_offset);
+
 
 	if (MONO_TRAMPOLINE_TYPE_MUST_RETURN (tramp_type)) {
 		/* Load result */
@@ -722,9 +731,13 @@ gpointer
 mono_arch_get_nullified_class_init_trampoline (MonoTrampInfo **info)
 {
 	guint8 *code, *buf;
+	GSList *unwind_ops = NULL;
 	int size = NACL_SIZE (16, 32);
 
 	code = buf = mono_global_codeman_reserve (size);
+
+	unwind_ops = mono_arch_get_cie_program ();
+
 	amd64_ret (code);
 
 	nacl_global_codeman_validate(&buf, size, &code);
@@ -732,7 +745,7 @@ mono_arch_get_nullified_class_init_trampoline (MonoTrampInfo **info)
 	mono_arch_flush_icache (buf, code - buf);
 	mono_profiler_code_buffer_new (buf, code - buf, MONO_PROFILER_CODE_BUFFER_HELPER, NULL);
 
-	*info = mono_tramp_info_create ("nullified_class_init_trampoline", buf, code - buf, NULL, NULL);
+	*info = mono_tramp_info_create ("nullified_class_init_trampoline", buf, code - buf, NULL, unwind_ops);
 
 	return buf;
 }
@@ -743,6 +756,7 @@ mono_arch_create_specific_trampoline (gpointer arg1, MonoTrampolineType tramp_ty
 	guint8 *code, *buf, *tramp;
 	int size;
 	gboolean far_addr = FALSE;
+	GSList *unwind_ops = NULL;
 
 	tramp = mono_get_trampoline_code (tramp_type);
 
@@ -753,6 +767,8 @@ mono_arch_create_specific_trampoline (gpointer arg1, MonoTrampolineType tramp_ty
 		size = 5 + 1 + 8;
 
 	code = buf = mono_domain_code_reserve_align (domain, size, 1);
+
+	unwind_ops = mono_arch_get_cie_program ();
 
 	if (((gint64)tramp - (gint64)code) >> 31 != 0 && ((gint64)tramp - (gint64)code) >> 31 != -1) {
 #ifndef MONO_ARCH_NOMAP32BIT
@@ -1254,6 +1270,8 @@ mono_arch_create_handler_block_trampoline (MonoTrampInfo **info, gboolean aot)
 
 	code = buf = mono_global_codeman_reserve (tramp_size);
 
+	unwind_ops = mono_arch_get_cie_program ();
+
 	/*
 	This trampoline restore the call chain of the handler block then jumps into the code that deals with it.
 	*/
@@ -1262,13 +1280,16 @@ mono_arch_create_handler_block_trampoline (MonoTrampInfo **info, gboolean aot)
 		amd64_mov_reg_membase (code, MONO_AMD64_ARG_REG1, MONO_AMD64_ARG_REG1, MONO_STRUCT_OFFSET (MonoJitTlsData, handler_block_return_address), 8);
 		/* Simulate a call */
 		amd64_push_reg (code, AMD64_RAX);
+		mono_add_unwind_op_def_cfa_offset (unwind_ops, code, buf, 16);
 		amd64_jump_code (code, tramp);
 	} else {
 		/*Slow path uses a c helper*/
 		amd64_mov_reg_reg (code, MONO_AMD64_ARG_REG1, AMD64_RSP, 8);
 		amd64_mov_reg_imm (code, AMD64_RAX, tramp);
 		amd64_push_reg (code, AMD64_RAX);
+		mono_add_unwind_op_def_cfa_offset (unwind_ops, code, buf, 16);
 		amd64_push_reg (code, AMD64_RAX);
+		mono_add_unwind_op_def_cfa_offset (unwind_ops, code, buf, 24);
 		amd64_jump_code (code, handler_block_trampoline_helper);
 	}
 
@@ -1394,6 +1415,8 @@ mono_arch_create_sdb_trampoline (gboolean single_step, MonoTrampInfo **info, gbo
 	amd64_mov_membase_reg (code, AMD64_RBP, sizeof (mgreg_t), AMD64_R11, sizeof (mgreg_t));
 
 	amd64_leave (code);
+	cfa_offset -= sizeof (mgreg_t);
+	mono_add_unwind_op_def_cfa (unwind_ops, code, buf, AMD64_RSP, cfa_offset);
 	amd64_ret (code);
 
 	mono_arch_flush_icache (code, code - buf);
