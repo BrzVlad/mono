@@ -524,7 +524,8 @@ mono_tramp_info_register (MonoTrampInfo *info)
 
 	mono_save_trampoline_xdebug_info (info);
 
-	if (mono_get_root_domain ())
+	/* Only register trampolines that have unwind infos */
+	if (mono_get_root_domain () && copy->uw_info)
 		register_trampoline_jit_info (mono_get_root_domain (), copy);
 
 	if (mono_jit_map_is_enabled ())

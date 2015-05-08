@@ -317,7 +317,7 @@ mono_jit_info_table_find_internal (MonoDomain *domain, char *addr, gboolean try_
 MonoJitInfo*
 mono_jit_info_table_find (MonoDomain *domain, char *addr)
 {
-	return mono_jit_info_table_find_internal (domain, addr, TRUE, FALSE);
+	return mono_jit_info_table_find_internal (domain, addr, TRUE, TRUE);
 }
 
 static G_GNUC_UNUSED void
