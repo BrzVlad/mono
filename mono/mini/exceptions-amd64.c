@@ -438,9 +438,10 @@ get_throw_trampoline (MonoTrampInfo **info, gboolean rethrow, gboolean corlib, g
 	regs_offset = dummy_stack_space + sizeof(mgreg_t) * 4;
 
 	/* Save registers */
-	for (i = 0; i < AMD64_NREG; ++i)
+	for (i = 0; i < AMD64_NREG; ++i) {
 		if (i != AMD64_RSP)
 			amd64_mov_membase_reg (code, AMD64_RSP, regs_offset + (i * sizeof(mgreg_t)), i, sizeof(mgreg_t));
+	}
 	/* Save RSP */
 	amd64_lea_membase (code, AMD64_RAX, AMD64_RSP, stack_size + sizeof(mgreg_t));
 	amd64_mov_membase_reg (code, AMD64_RSP, regs_offset + (AMD64_RSP * sizeof(mgreg_t)), X86_EAX, sizeof(mgreg_t));

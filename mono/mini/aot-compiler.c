@@ -7494,6 +7494,9 @@ emit_code (MonoAotCompile *acfg)
 
 			if (!saved_unbox_info) {
 				char user_symbol [128];
+				guint32 uw_offset, encoded_len;
+				guint8 *encoded;
+				GSList *unwind_ops;
 				sprintf (user_symbol, "%sunbox_trampoline_p", acfg->user_symbol_prefix);
 
 				emit_label (acfg, "ut_end");
@@ -7502,6 +7505,13 @@ emit_code (MonoAotCompile *acfg)
 				emit_label (acfg, user_symbol);
 
 				emit_symbol_diff (acfg, "ut_end", symbol, 0);
+
+				unwind_ops = mono_unwind_get_cie_program ();
+				encoded = mono_unwind_ops_encode (unwind_ops, &encoded_len);
+				uw_offset = get_unwind_info_offset (acfg, encoded, encoded_len);
+				mono_free_unwind_info (unwind_ops);
+				g_free (encoded);
+				emit_int32 (acfg, uw_offset);
 
 				saved_unbox_info = TRUE;
 			}

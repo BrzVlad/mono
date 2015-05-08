@@ -4969,9 +4969,13 @@ mono_aot_get_unbox_trampoline (MonoMethod *method)
 	guint32 method_index = mono_metadata_token_index (method->token) - 1;
 	MonoAotModule *amodule;
 	gpointer code;
+	guint32 code_size;
 	guint32 *ut, *ut_end, *entry;
 	int low, high, entry_index = 0;
 	gpointer symbol_addr;
+	MonoTrampInfo *tinfo;
+	guint32 uw_offset, uw_info_len;
+	guint8 *uw_info;
 
 	if (method->is_inflated && !mono_method_is_generic_sharable_full (method, FALSE, FALSE, FALSE)) {
 		method_index = find_aot_method (method, &amodule);
@@ -5008,10 +5012,21 @@ mono_aot_get_unbox_trampoline (MonoMethod *method)
 	g_assert (code);
 
 	find_symbol (amodule->sofile, amodule->globals, "unbox_trampoline_p", &symbol_addr);
+	if (!symbol_addr)
+		return FALSE;
 
-	g_assert (symbol_addr);
+	code_size = *(guint32*)symbol_addr;
+	symbol_addr = (guint32*)symbol_addr + 1;
+	uw_offset = *(guint32*)symbol_addr;
 
-	mono_tramp_info_register (mono_tramp_info_create (NULL, code, *(guint32*)symbol_addr, NULL, NULL), mono_domain_get ());
+	uw_info = amodule->unwind_info + uw_offset;
+	uw_info_len = decode_value (uw_info, &uw_info);
+
+	tinfo = mono_tramp_info_create (NULL, code, code_size, NULL, NULL);
+	tinfo->uw_info = uw_info;
+	tinfo->uw_info_len = uw_info_len;
+
+	mono_tramp_info_register (tinfo, mono_domain_get ());
 
 	/* The caller expects an ftnptr */
 	return mono_create_ftnptr (mono_domain_get (), code);
