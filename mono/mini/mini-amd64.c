@@ -7907,7 +7907,7 @@ mono_arch_get_this_arg_from_call (mgreg_t *regs, guint8 *code)
 #define MAX_ARCH_DELEGATE_PARAMS 10
 
 static gpointer
-get_delegate_invoke_impl (gboolean has_target, guint32 param_count, guint32 *code_len)
+get_delegate_invoke_impl (MonoTrampInfo **info, gboolean has_target, guint32 param_count)
 {
 	guint8 *code, *start;
 	int i;
@@ -7948,8 +7948,13 @@ get_delegate_invoke_impl (gboolean has_target, guint32 param_count, guint32 *cod
 	nacl_global_codeman_validate (&start, 64, &code);
 	mono_arch_flush_icache (start, code - start);
 
-	if (code_len)
-		*code_len = code - start;
+	if (has_target) {
+		*info = mono_tramp_info_create ("delegate_invoke_impl_has_target", start, code - start, NULL, NULL);
+	} else {
+		char *name = g_strdup_printf ("delegate_invoke_impl_target_%d", param_count);
+		*info = mono_tramp_info_create (name, start, code - start, NULL, NULL);
+		g_free (name);
+	}
 
 	if (mono_jit_map_is_enabled ()) {
 		char *buff;
@@ -7976,19 +7981,15 @@ GSList*
 mono_arch_get_delegate_invoke_impls (void)
 {
 	GSList *res = NULL;
-	guint8 *code;
-	guint32 code_len;
+	MonoTrampInfo *info;
 	int i;
-	char *tramp_name;
 
-	code = get_delegate_invoke_impl (TRUE, 0, &code_len);
-	res = g_slist_prepend (res, mono_tramp_info_create ("delegate_invoke_impl_has_target", code, code_len, NULL, NULL));
+	get_delegate_invoke_impl (&info, TRUE, 0);
+	res = g_slist_prepend (res, info);
 
 	for (i = 0; i < MAX_ARCH_DELEGATE_PARAMS; ++i) {
-		code = get_delegate_invoke_impl (FALSE, i, &code_len);
-		tramp_name = g_strdup_printf ("delegate_invoke_impl_target_%d", i);
-		res = g_slist_prepend (res, mono_tramp_info_create (tramp_name, code, code_len, NULL, NULL));
-		g_free (tramp_name);
+		get_delegate_invoke_impl (&info, FALSE, i);
+		res = g_slist_prepend (res, info);
 	}
 
 	return res;
@@ -7998,6 +7999,7 @@ gpointer
 mono_arch_get_delegate_invoke_impl (MonoMethodSignature *sig, gboolean has_target)
 {
 	guint8 *code, *start;
+	MonoTrampInfo *info;
 	int i;
 
 	if (sig->param_count > MAX_ARCH_DELEGATE_PARAMS)
@@ -8014,9 +8016,9 @@ mono_arch_get_delegate_invoke_impl (MonoMethodSignature *sig, gboolean has_targe
 			return cached;
 
 		if (mono_aot_only)
-			start = mono_aot_get_trampoline ("delegate_invoke_impl_has_target");
+			start = mono_aot_get_trampoline_full ("delegate_invoke_impl_has_target", &info);
 		else
-			start = get_delegate_invoke_impl (TRUE, 0, NULL);
+			start = get_delegate_invoke_impl (&info, TRUE, 0);
 
 		mono_memory_barrier ();
 
@@ -8035,16 +8037,18 @@ mono_arch_get_delegate_invoke_impl (MonoMethodSignature *sig, gboolean has_targe
 
 		if (mono_aot_only) {
 			char *name = g_strdup_printf ("delegate_invoke_impl_target_%d", sig->param_count);
-			start = mono_aot_get_trampoline (name);
+			start = mono_aot_get_trampoline_full (name, &info);
 			g_free (name);
 		} else {
-			start = get_delegate_invoke_impl (FALSE, sig->param_count, NULL);
+			start = get_delegate_invoke_impl (&info, FALSE, sig->param_count);
 		}
 
 		mono_memory_barrier ();
 
 		cache [sig->param_count] = start;
 	}
+
+	mono_tramp_info_register (info);
 
 	return start;
 }

@@ -544,7 +544,7 @@ mono_arch_get_argument_info (MonoGenericSharingContext *gsctx, MonoMethodSignatu
 #define MAX_ARCH_DELEGATE_PARAMS (4 - 1)
 
 static gpointer
-get_delegate_invoke_impl (gboolean has_target, gboolean param_count, guint32 *code_size)
+get_delegate_invoke_impl (MonoTrampInfo **info, gboolean has_target, gboolean param_count)
 {
 	guint8 *code, *start;
 
@@ -579,8 +579,13 @@ get_delegate_invoke_impl (gboolean has_target, gboolean param_count, guint32 *co
 		mono_arch_flush_icache (start, size);
 	}
 
-	if (code_size)
-		*code_size = code - start;
+	if (has_target) {
+		*info = mono_tramp_info_create ("delegate_invoke_impl_has_target", start, code - start, NULL, NULL);
+	} else {
+		char *name = g_strdup_printf ("delegate_invoke_impl_target_%d", param_count);
+		*info = mono_tramp_info_create (name, start, code - start, NULL, NULL);
+		g_free (name);
+	}
 
 	return start;
 }
@@ -595,19 +600,15 @@ GSList*
 mono_arch_get_delegate_invoke_impls (void)
 {
 	GSList *res = NULL;
-	guint8 *code;
-	guint32 code_len;
+	MonoTrampInfo *info;
 	int i;
-	char *tramp_name;
 
-	code = get_delegate_invoke_impl (TRUE, 0, &code_len);
-	res = g_slist_prepend (res, mono_tramp_info_create ("delegate_invoke_impl_has_target", code, code_len, NULL, NULL));
+	get_delegate_invoke_impl (&info, TRUE, 0);
+	res = g_slist_prepend (res, info);
 
 	for (i = 0; i <= MAX_ARCH_DELEGATE_PARAMS; ++i) {
-		code = get_delegate_invoke_impl (FALSE, i, &code_len);
-		tramp_name = g_strdup_printf ("delegate_invoke_impl_target_%d", i);
-		res = g_slist_prepend (res, mono_tramp_info_create (tramp_name, code, code_len, NULL, NULL));
-		g_free (tramp_name);
+		get_delegate_invoke_impl (&info, FALSE, i);
+		res = g_slist_prepend (res, info);
 	}
 
 	return res;
@@ -616,7 +617,8 @@ mono_arch_get_delegate_invoke_impls (void)
 gpointer
 mono_arch_get_delegate_invoke_impl (MonoMethodSignature *sig, gboolean has_target)
 {
-	guint8 *code, *start;
+	guint8 *start;
+	MonoTrampInfo *info;
 
 	/* FIXME: Support more cases */
 	if (MONO_TYPE_ISSTRUCT (sig->ret))
@@ -631,11 +633,12 @@ mono_arch_get_delegate_invoke_impl (MonoMethodSignature *sig, gboolean has_targe
 		}
 
 		if (mono_aot_only)
-			start = mono_aot_get_trampoline ("delegate_invoke_impl_has_target");
+			start = mono_aot_get_trampoline_full ("delegate_invoke_impl_has_target", &info);
 		else
-			start = get_delegate_invoke_impl (TRUE, 0, NULL);
+			start = get_delegate_invoke_impl (&info, TRUE, 0);
 		cached = start;
 		mono_mini_arch_unlock ();
+		mono_tramp_info_register (info);
 		return cached;
 	} else {
 		static guint8* cache [MAX_ARCH_DELEGATE_PARAMS + 1] = {NULL};
@@ -656,13 +659,14 @@ mono_arch_get_delegate_invoke_impl (MonoMethodSignature *sig, gboolean has_targe
 
 		if (mono_aot_only) {
 			char *name = g_strdup_printf ("delegate_invoke_impl_target_%d", sig->param_count);
-			start = mono_aot_get_trampoline (name);
+			start = mono_aot_get_trampoline_full (name, &info);
 			g_free (name);
 		} else {
-			start = get_delegate_invoke_impl (FALSE, sig->param_count, NULL);
+			start = get_delegate_invoke_impl (&info, FALSE, sig->param_count);
 		}
 		cache [sig->param_count] = start;
 		mono_mini_arch_unlock ();
+		mono_tramp_info_register (info);
 		return start;
 	}
 
