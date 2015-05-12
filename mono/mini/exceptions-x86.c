@@ -712,6 +712,7 @@ void
 mono_arch_exceptions_init (void)
 {
 	guint8 *tramp;
+	MonoTrampInfo *tinfo;
 
 /* 
  * If we're running WoW64, we need to set the usermode exception policy 
@@ -735,7 +736,8 @@ mono_arch_exceptions_init (void)
 #endif
 
 	if (mono_aot_only) {
-		signal_exception_trampoline = mono_aot_get_trampoline ("x86_signal_exception_trampoline");
+		signal_exception_trampoline = mono_aot_get_trampoline_full ("x86_signal_exception_trampoline", &tinfo);
+		mono_tramp_info_register (tinfo);
 		return;
 	}
 

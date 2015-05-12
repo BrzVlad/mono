@@ -86,10 +86,16 @@ mono_exceptions_init (void)
 {
 	MonoRuntimeExceptionHandlingCallbacks cbs;
 	if (mono_aot_only) {
-		restore_context_func = mono_aot_get_trampoline ("restore_context");
-		call_filter_func = mono_aot_get_trampoline ("call_filter");
-		throw_exception_func = mono_aot_get_trampoline ("throw_exception");
-		rethrow_exception_func = mono_aot_get_trampoline ("rethrow_exception");
+		MonoTrampInfo *info;
+
+		restore_context_func = mono_aot_get_trampoline_full ("restore_context", &info);
+		mono_tramp_info_register (info);
+		call_filter_func = mono_aot_get_trampoline_full ("call_filter", &info);
+		mono_tramp_info_register (info);
+		throw_exception_func = mono_aot_get_trampoline_full ("throw_exception", &info);
+		mono_tramp_info_register (info);
+		rethrow_exception_func = mono_aot_get_trampoline_full ("rethrow_exception", &info);
+		mono_tramp_info_register (info);
 	} else {
 		MonoTrampInfo *info;
 
@@ -158,11 +164,11 @@ mono_get_throw_corlib_exception (void)
 		return throw_corlib_exception_func;
 
 	if (mono_aot_only)
-		code = mono_aot_get_trampoline ("throw_corlib_exception");
-	else {
+		code = mono_aot_get_trampoline_full ("throw_corlib_exception", &info);
+	else
 		code = mono_arch_get_throw_corlib_exception (&info, FALSE);
-		mono_tramp_info_register (info);
-	}
+
+	mono_tramp_info_register (info);
 
 	mono_memory_barrier ();
 

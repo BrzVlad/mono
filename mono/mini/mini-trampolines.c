@@ -1431,11 +1431,11 @@ mono_create_generic_class_init_trampoline (void)
 	if (!code) {
 		if (mono_aot_only)
 			/* get_named_code () might return an ftnptr, but our caller expects a direct pointer */
-			code = mono_get_addr_from_ftnptr (mono_aot_get_trampoline ("generic_class_init_trampoline"));
+			code = mono_get_addr_from_ftnptr (mono_aot_get_trampoline_full ("generic_class_init_trampoline", &info));
 		else {
 			code = mono_arch_create_generic_class_init_trampoline (&info, FALSE);
-			mono_tramp_info_register (info);
 		}
+		mono_tramp_info_register (info);
 	}
 
 	mono_trampolines_unlock ();
@@ -1660,19 +1660,15 @@ mono_create_monitor_enter_trampoline (void)
 {
 	static gpointer code;
 
-	if (mono_aot_only) {
-		if (!code)
-			code = mono_aot_get_trampoline ("monitor_enter_trampoline");
-		return code;
-	}
-
 #ifdef MONO_ARCH_MONITOR_OBJECT_REG
 	mono_trampolines_lock ();
 
 	if (!code) {
 		MonoTrampInfo *info;
-
-		code = mono_arch_create_monitor_enter_trampoline (&info, FALSE, FALSE);
+		if (mono_aot_only)
+			code = mono_aot_get_trampoline_full ("monitor_enter_trampoline", &info);
+		else
+			code = mono_arch_create_monitor_enter_trampoline (&info, FALSE, FALSE);
 		mono_tramp_info_register (info);
 	}
 
@@ -1690,19 +1686,15 @@ mono_create_monitor_enter_v4_trampoline (void)
 {
 	static gpointer code;
 
-	if (mono_aot_only) {
-		if (!code)
-			code = mono_aot_get_trampoline ("monitor_enter_v4_trampoline");
-		return code;
-	}
-
 #if defined(MONO_ARCH_MONITOR_OBJECT_REG) && defined(MONO_ARCH_MONITOR_LOCK_TAKEN_REG)
 	mono_trampolines_lock ();
 
 	if (!code) {
 		MonoTrampInfo *info;
-
-		code = mono_arch_create_monitor_enter_trampoline (&info, TRUE, FALSE);
+		if (mono_aot_only)
+			code = mono_aot_get_trampoline_full ("monitor_enter_v4_trampoline", &info);
+		else
+			code = mono_arch_create_monitor_enter_trampoline (&info, TRUE, FALSE);
 		mono_tramp_info_register (info);
 	}
 
@@ -1720,19 +1712,15 @@ mono_create_monitor_exit_trampoline (void)
 {
 	static gpointer code;
 
-	if (mono_aot_only) {
-		if (!code)
-			code = mono_aot_get_trampoline ("monitor_exit_trampoline");
-		return code;
-	}
-
 #ifdef MONO_ARCH_MONITOR_OBJECT_REG
 	mono_trampolines_lock ();
 
 	if (!code) {
 		MonoTrampInfo *info;
-
-		code = mono_arch_create_monitor_exit_trampoline (&info, FALSE);
+		if (mono_aot_only)
+			code = mono_aot_get_trampoline_full ("monitor_exit_trampoline", &info);
+		else
+			code = mono_arch_create_monitor_exit_trampoline (&info, FALSE);
 		mono_tramp_info_register (info);
 	}
 
@@ -1864,11 +1852,11 @@ mini_get_nullified_class_init_trampoline (void)
 		MonoTrampInfo *info;
 
 		if (mono_aot_only) {
-			tramp = mono_aot_get_trampoline ("nullified_class_init_trampoline");
+			tramp = mono_aot_get_trampoline_full ("nullified_class_init_trampoline", &info);
 		} else {
 			tramp = mono_arch_get_nullified_class_init_trampoline (&info);
-			mono_tramp_info_register (info);
 		}
+		mono_tramp_info_register (info);
 		mono_memory_barrier ();
 		nullified_class_init_trampoline = tramp;
 	}
@@ -1889,18 +1877,17 @@ mini_get_single_step_trampoline (void)
 	if (!trampoline) {
 		gpointer tramp;
 
-		if (mono_aot_only) {
-			tramp = mono_aot_get_trampoline ("sdb_single_step_trampoline");
-		} else {
 #ifdef MONO_ARCH_HAVE_SDB_TRAMPOLINES
-			MonoTrampInfo *info;
+		MonoTrampInfo *info;
+		if (mono_aot_only)
+			tramp = mono_aot_get_trampoline_full ("sdb_single_step_trampoline", &info);
+		else
 			tramp = mono_arch_create_sdb_trampoline (TRUE, &info, FALSE);
-			mono_tramp_info_register (info);
+		mono_tramp_info_register (info);
 #else
-			tramp = NULL;
-			g_assert_not_reached ();
+		tramp = NULL;
+		g_assert_not_reached ();
 #endif
-		}
 		mono_memory_barrier ();
 		trampoline = tramp;
 	}
@@ -1921,18 +1908,17 @@ mini_get_breakpoint_trampoline (void)
 	if (!trampoline) {
 		gpointer tramp;
 
-		if (mono_aot_only) {
-			tramp = mono_aot_get_trampoline ("sdb_breakpoint_trampoline");
-		} else {
 #ifdef MONO_ARCH_HAVE_SDB_TRAMPOLINES
-			MonoTrampInfo *info;
+		MonoTrampInfo *info;
+		if (mono_aot_only)
+			tramp = mono_aot_get_trampoline_full ("sdb_breakpoint_trampoline", &info);
+		else
 			tramp = mono_arch_create_sdb_trampoline (FALSE, &info, FALSE);
-			mono_tramp_info_register (info);
+		mono_tramp_info_register (info);
 #else
-			tramp = NULL;
-			g_assert_not_reached ();
+		tramp = NULL;
+		g_assert_not_reached ();
 #endif
-		}
 		mono_memory_barrier ();
 		trampoline = tramp;
 	}

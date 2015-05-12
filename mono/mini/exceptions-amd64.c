@@ -1081,13 +1081,22 @@ mono_arch_exceptions_init (void)
 	gpointer tramp;
 
 	if (mono_aot_only) {
-		throw_pending_exception = mono_aot_get_trampoline ("throw_pending_exception");
-		tramp = mono_aot_get_trampoline ("llvm_throw_corlib_exception_trampoline");
+		MonoTrampInfo *info;
+
+		throw_pending_exception = mono_aot_get_trampoline_full ("throw_pending_exception", &info);
+		mono_tramp_info_register (info);
+
+		tramp = mono_aot_get_trampoline_full ("llvm_throw_corlib_exception_trampoline", &info);
 		mono_register_jit_icall (tramp, "llvm_throw_corlib_exception_trampoline", NULL, TRUE);
-		tramp = mono_aot_get_trampoline ("llvm_throw_corlib_exception_abs_trampoline");
+		mono_tramp_info_register (info);
+
+		tramp = mono_aot_get_trampoline_full ("llvm_throw_corlib_exception_abs_trampoline", &info);
 		mono_register_jit_icall (tramp, "llvm_throw_corlib_exception_abs_trampoline", NULL, TRUE);
-		tramp = mono_aot_get_trampoline ("llvm_resume_unwind_trampoline");
+		mono_tramp_info_register (info);
+
+		tramp = mono_aot_get_trampoline_full ("llvm_resume_unwind_trampoline", &info);
 		mono_register_jit_icall (tramp, "llvm_resume_unwind_trampoline", NULL, TRUE);
+		mono_tramp_info_register (info);
 	} else {
 		/* Call this to avoid initialization races */
 		throw_pending_exception = mono_arch_get_throw_pending_exception (NULL, FALSE);
