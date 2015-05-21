@@ -108,6 +108,7 @@ typedef struct {
 #define mono_add_unwind_op_def_cfa_offset(op_list,code,buf,offset) do { (op_list) = g_slist_append ((op_list), mono_create_unwind_op ((code) - (buf), DW_CFA_def_cfa_offset, 0, (offset))); } while (0)
 #define mono_add_unwind_op_same_value(op_list,code,buf,reg) do { (op_list) = g_slist_append ((op_list), mono_create_unwind_op ((code) - (buf), DW_CFA_same_value, (reg), 0)); } while (0)
 #define mono_add_unwind_op_offset(op_list,code,buf,reg,offset) do { (op_list) = g_slist_append ((op_list), mono_create_unwind_op ((code) - (buf), DW_CFA_offset, (reg), (offset))); } while (0)
+#define mono_add_unwind_op_register(op_list,code,buf,reg,reg_loc) do { (op_list) = g_slist_append ((op_list), mono_create_unwind_op ((code) - (buf), DW_CFA_register, (reg), (reg_loc))); } while (0)
 
 /* Pointer Encoding in the .eh_frame */
 enum {

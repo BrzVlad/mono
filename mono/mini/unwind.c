@@ -18,12 +18,16 @@
 
 typedef enum {
 	LOC_SAME,
-	LOC_OFFSET
+	LOC_OFFSET,
+	LOC_REGISTER
 } LocType;
 
 typedef struct {
 	LocType loc_type;
-	int offset;
+	union {
+		int offset;
+		int reg;
+	} where;
 } Loc;
 
 typedef struct {
@@ -321,6 +325,17 @@ mono_print_unwind_info (guint8 *unwind_info, int unwind_info_len)
 			case DW_CFA_mono_advance_loc:
 				printf ("CFA: [%x] mono_advance_loc\n", pos);
 				break;
+			case DW_CFA_register: {
+				int hreg, loc_hreg;
+				reg = decode_uleb128 (p, &p);
+				hreg = mono_dwarf_reg_to_hw_reg (reg);
+				loc_hreg = mono_dwarf_reg_to_hw_reg (decode_uleb128 (p, &p));
+				if (reg == DWARF_PC_REG)
+					printf ("CFA: [%x] register: %s in register %s\n", pos, "pc", mono_arch_regname (loc_hreg));
+				else
+					printf ("CFA: [%x] register: %s in register %s\n", pos, mono_arch_regname (hreg), mono_arch_regname (loc_hreg));
+				break;
+			}
 			default:
 				g_assert_not_reached ();
 			}
@@ -420,6 +435,11 @@ mono_unwind_ops_encode (GSList *unwind_ops, guint32 *out_len)
 				encode_uleb128 (op->val / DWARF_DATA_ALIGN, p, &p);
 			}
 			break;
+		case DW_CFA_register:
+			*p ++ = op->op;
+			encode_uleb128 (reg, p, &p);
+			encode_uleb128 (op->val, p, &p);
+			break;
 		case DW_CFA_remember_state:
 		case DW_CFA_restore_state:
 			*p ++ = op->op;
@@ -457,7 +477,7 @@ print_dwarf_state (int cfa_reg, int cfa_offset, int ip, int nregs, Loc *location
 
 	for (i = 0; i < nregs; ++i)
 		if (reg_saved [i] && locations [i].loc_type == LOC_OFFSET)
-			printf ("r%d@%d(cfa) ", i, locations [i].offset);
+			printf ("r%d@%d(cfa) ", i, locations [i].where.offset);
 	printf ("\n");
 }
 
@@ -515,7 +535,7 @@ mono_unwind_frame (guint8 *unwind_info, guint32 unwind_info_len,
 			p ++;
 			reg_saved [reg] = TRUE;
 			locations [reg].loc_type = LOC_OFFSET;
-			locations [reg].offset = decode_uleb128 (p, &p) * DWARF_DATA_ALIGN;
+			locations [reg].where.offset = decode_uleb128 (p, &p) * DWARF_DATA_ALIGN;
 			break;
 		case 0: {
 			int ext_op = *p;
@@ -537,7 +557,7 @@ mono_unwind_frame (guint8 *unwind_info, guint32 unwind_info_len,
 				g_assert (reg < NUM_REGS);
 				reg_saved [reg] = TRUE;
 				locations [reg].loc_type = LOC_OFFSET;
-				locations [reg].offset = offset * DWARF_DATA_ALIGN;
+				locations [reg].where.offset = offset * DWARF_DATA_ALIGN;
 				break;
 			case DW_CFA_offset_extended:
 				reg = decode_uleb128 (p, &p);
@@ -545,7 +565,7 @@ mono_unwind_frame (guint8 *unwind_info, guint32 unwind_info_len,
 				g_assert (reg < NUM_REGS);
 				reg_saved [reg] = TRUE;
 				locations [reg].loc_type = LOC_OFFSET;
-				locations [reg].offset = offset * DWARF_DATA_ALIGN;
+				locations [reg].where.offset = offset * DWARF_DATA_ALIGN;
 				break;
 			case DW_CFA_same_value:
 				reg = decode_uleb128 (p, &p);
@@ -583,6 +603,13 @@ mono_unwind_frame (guint8 *unwind_info, guint32 unwind_info_len,
 				g_assert (mark_locations [0]);
 				pos = mark_locations [0] - start_ip;
 				break;
+			case DW_CFA_register:
+				reg = decode_uleb128 (p, &p);
+				g_assert (reg < NUM_REGS);
+				reg_saved [reg] = TRUE;
+				locations [reg].loc_type = LOC_REGISTER;
+				locations [reg].where.reg = decode_uleb128 (p, &p);
+				break;
 			default:
 				g_assert_not_reached ();
 			}
@@ -602,9 +629,12 @@ mono_unwind_frame (guint8 *unwind_info, guint32 unwind_info_len,
 		if (reg_saved [i] && locations [i].loc_type == LOC_OFFSET) {
 			int hreg = mono_dwarf_reg_to_hw_reg (i);
 			g_assert (hreg < nregs);
-			regs [hreg] = *(mgreg_t*)(cfa_val + locations [i].offset);
+			regs [hreg] = *(mgreg_t*)(cfa_val + locations [i].where.offset);
 			if (save_locations && hreg < save_locations_len)
-				save_locations [hreg] = (mgreg_t*)(cfa_val + locations [i].offset);
+				save_locations [hreg] = (mgreg_t*)(cfa_val + locations [i].where.offset);
+		} else if (reg_saved [i] && locations [i].loc_type == LOC_REGISTER) {
+			int hreg = mono_dwarf_reg_to_hw_reg (i);
+			regs [hreg] = regs [locations [i].where.reg];
 		}
 	}
 
@@ -783,6 +813,11 @@ decode_cie_op (guint8 *p, guint8 **endp)
 			p += 4;
 			break;
 		case DW_CFA_offset_extended_sf:
+			decode_uleb128 (p, &p);
+			decode_uleb128 (p, &p);
+			break;
+		case DW_CFA_register:
+			/* ? */
 			decode_uleb128 (p, &p);
 			decode_uleb128 (p, &p);
 			break;
