@@ -7410,6 +7410,7 @@ static void
 emit_code (MonoAotCompile *acfg)
 {
 	int oindex, i, prev_index;
+	gboolean saved_unbox_info = FALSE;
 	char symbol [256];
 
 #if defined(TARGET_POWERPC64)
@@ -7490,6 +7491,20 @@ emit_code (MonoAotCompile *acfg)
 
 			if (acfg->thumb_mixed && cfg->compile_llvm)
 				emit_set_arm_mode (acfg);
+
+			if (!saved_unbox_info) {
+				char user_symbol [128];
+				sprintf (user_symbol, "%sunbox_trampoline_p", acfg->user_symbol_prefix);
+
+				emit_label (acfg, "ut_end");
+				emit_section_change (acfg, RODATA_SECT, 0);
+				emit_global (acfg, user_symbol, FALSE);
+				emit_label (acfg, user_symbol);
+
+				emit_symbol_diff (acfg, "ut_end", symbol, 0);
+
+				saved_unbox_info = TRUE;
+			}
 		}
 
 		if (cfg->compile_llvm)
