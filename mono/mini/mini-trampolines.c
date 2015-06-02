@@ -1469,17 +1469,23 @@ mono_create_jump_trampoline (MonoDomain *domain, MonoMethod *method, gboolean ad
 	code = mono_create_specific_trampoline (method, MONO_TRAMPOLINE_JUMP, mono_domain_get (), &code_size);
 	g_assert (code_size);
 
-	ji = mono_domain_alloc0 (domain, MONO_SIZEOF_JIT_INFO);
-	ji->code_start = code;
-	ji->code_size = code_size;
-	ji->d.method = method;
-
 	/*
 	 * mono_delegate_ctor needs to find the method metadata from the 
 	 * trampoline address, so we save it here.
 	 */
+	ji = mono_jit_info_table_find (domain, code);
+	if (ji) {
+		g_assert (ji->is_trampoline);
+		ji->is_trampoline = 0;
+		ji->d.method = method;
+	} else {
+		ji = mono_domain_alloc0 (domain, MONO_SIZEOF_JIT_INFO);
+		ji->code_start = code;
+		ji->code_size = code_size;
+		ji->d.method = method;
 
-	mono_jit_info_table_add (domain, ji);
+		mono_jit_info_table_add (domain, ji);
+	}
 
 	mono_domain_lock (domain);
 	g_hash_table_insert (domain_jit_info (domain)->jump_trampoline_hash, method, ji->code_start);

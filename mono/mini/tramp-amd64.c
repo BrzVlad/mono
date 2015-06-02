@@ -796,6 +796,8 @@ mono_arch_create_specific_trampoline (gpointer arg1, MonoTrampolineType tramp_ty
 	mono_arch_flush_icache (buf, size);
 	mono_profiler_code_buffer_new (buf, code - buf, MONO_PROFILER_CODE_BUFFER_SPECIFIC_TRAMPOLINE, mono_get_generic_trampoline_simple_name (tramp_type));
 
+	mono_tramp_info_register (mono_tramp_info_create (NULL, buf, size, NULL, NULL));
+
 	return buf;
 }	
 

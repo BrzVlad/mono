@@ -4640,7 +4640,7 @@ get_new_trampoline_from_page (int tramp_type)
 		code = page->trampolines;
 		page->trampolines += specific_trampoline_size;
 		mono_aot_page_unlock ();
-		return code;
+		goto ret;
 	}
 	mono_aot_page_unlock ();
 	psize = mono_pagesize ();
@@ -4710,10 +4710,16 @@ get_new_trampoline_from_page (int tramp_type)
 		code = page->trampolines;
 		page->trampolines += specific_trampoline_size;
 		mono_aot_page_unlock ();
-		return code;
+		/* Register the generic part at the beggining of the trampoline page */
+		mono_tramp_info_register (mono_tramp_info_create (NULL, taddr, amodule->info.tramp_page_code_offsets [tramp_type], NULL, NULL));
+		goto ret;
 	}
 	g_error ("Cannot allocate more trampoline pages: %d", ret);
 	return NULL;
+ret:
+	/* Register the specific part */
+	mono_tramp_info_register (mono_tramp_info_create (NULL, code, specific_trampoline_size, NULL, NULL));
+	return code;
 }
 
 #else
@@ -4795,6 +4801,7 @@ get_numerous_trampoline (MonoAotTrampoline tramp_type, int n_got_slots, MonoAotM
 	MonoAotModule *amodule;
 	int index, tramp_size;
 	MonoImage *image;
+	gpointer code;
 
 	/* Currently, we keep all trampolines in the mscorlib AOT image */
 	image = mono_defaults.corlib;
@@ -4823,11 +4830,13 @@ get_numerous_trampoline (MonoAotTrampoline tramp_type, int n_got_slots, MonoAotM
 	*got_offset = amodule->info.trampoline_got_offset_base [tramp_type] + (index * n_got_slots);
 
 	tramp_size = amodule->info.trampoline_size [tramp_type];
-
+	code = amodule->trampolines [tramp_type] + (index * tramp_size);
 	if (out_tramp_size)
 		*out_tramp_size = tramp_size;
 
-	return amodule->trampolines [tramp_type] + (index * tramp_size);
+	mono_tramp_info_register (mono_tramp_info_create (NULL, code, tramp_size, NULL,	NULL));
+
+	return code;
 }
 
 /*

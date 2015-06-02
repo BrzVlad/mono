@@ -491,6 +491,8 @@ mono_arch_create_specific_trampoline (gpointer arg1, MonoTrampolineType tramp_ty
 
 	if (code_len)
 		*code_len = buf - code;
+
+	mono_tramp_info_register (mono_tramp_info_create (NULL, code, buf - code, NULL, NULL));
 	
 	return code;
 }	

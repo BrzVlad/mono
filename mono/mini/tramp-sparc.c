@@ -254,6 +254,8 @@ mono_arch_create_specific_trampoline (gpointer arg1, MonoTrampolineType tramp_ty
 	if (code_len)
 		*code_len = (code - buf) * 4;
 
+	mono_tramp_info_register (mono_tramp_info_create (NULL, buf, (code - buf) * 4, NULL, NULL));
+
 	mono_arch_flush_icache ((guint8*)buf, (code - buf) * 4);
 
 	return buf;
