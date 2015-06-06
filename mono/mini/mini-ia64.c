@@ -4622,7 +4622,7 @@ mono_arch_build_imt_thunk (MonoVTable *vtable, MonoDomain *domain, MonoIMTCheckI
 
 	mono_stats.imt_thunks_size += size;
 
-	mono_tramp_info_register (mono_tramp_info_create (NULL, start, code - start, NULL, NULL));
+	mono_tramp_info_register (mono_tramp_info_create (NULL, start, code - start, NULL, NULL), domain);
 
 	return start;
 }
