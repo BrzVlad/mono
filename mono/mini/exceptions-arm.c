@@ -366,22 +366,22 @@ mono_arch_exceptions_init (void)
 
 		tramp = mono_aot_get_trampoline_full ("llvm_throw_corlib_exception_trampoline", &info);
 		mono_register_jit_icall (tramp, "llvm_throw_corlib_exception_trampoline", NULL, TRUE);
-		mono_tramp_info_register (info);
+		mono_tramp_info_register (info, NULL);
 
 		tramp = mono_aot_get_trampoline_full ("llvm_throw_corlib_exception_abs_trampoline", &info);
 		mono_register_jit_icall (tramp, "llvm_throw_corlib_exception_abs_trampoline", NULL, TRUE);
-		mono_tramp_info_register (info);
+		mono_tramp_info_register (info, NULL);
 
 		tramp = mono_aot_get_trampoline_full ("llvm_resume_unwind_trampoline", &info);
 		mono_register_jit_icall (tramp, "llvm_resume_unwind_trampoline", NULL, TRUE);
-		mono_tramp_info_register (info);
+		mono_tramp_info_register (info, NULL);
 	} else {
 		tramps = mono_arm_get_exception_trampolines (FALSE);
 		for (l = tramps; l; l = l->next) {
 			MonoTrampInfo *info = l->data;
 
 			mono_register_jit_icall (info->code, g_strdup (info->name), NULL, TRUE);
-			mono_tramp_info_register (info);
+			mono_tramp_info_register (info, NULL);
 		}
 		g_slist_free (tramps);
 	}

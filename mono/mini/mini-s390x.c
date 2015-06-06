@@ -5748,7 +5748,7 @@ mono_arch_get_delegate_invoke_impl (MonoMethodSignature *sig, gboolean has_targe
 		cache [sig->param_count] = start;
 	}
 
-	mono_tramp_info_register (info);
+	mono_tramp_info_register (info, NULL);
 
 	return start;
 }
@@ -5933,7 +5933,7 @@ mono_arch_build_imt_thunk (MonoVTable *vtable, MonoDomain *domain,
 
 	g_assert (code - start <= size);
 
-	mono_tramp_info_register (mono_tramp_info_create (NULL, start, code - start, NULL, NULL));
+	mono_tramp_info_register (mono_tramp_info_create (NULL, start, code - start, NULL, NULL), domain);
 
 	return (start);
 }

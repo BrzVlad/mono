@@ -4653,7 +4653,7 @@ read_page_trampoline_uwinfo (MonoTrampInfo *info, int tramp_type, gboolean is_ge
 }
 
 static unsigned char*
-get_new_trampoline_from_page (int tramp_type)
+get_new_trampoline_from_page (MonoTrampInfo **info, int tramp_type)
 {
 	MonoAotModule *amodule;
 	MonoImage *image;
@@ -4751,7 +4751,7 @@ get_new_trampoline_from_page (int tramp_type)
 		/* Register the generic part at the beginning of the trampoline page */
 		gen_info = mono_tramp_info_create (NULL, taddr, amodule->info.tramp_page_code_offsets [tramp_type], NULL, NULL);
 		read_page_trampoline_uwinfo (gen_info, tramp_type, TRUE);
-		mono_tramp_info_register (gen_info);
+		mono_tramp_info_register (gen_info, NULL);
 		goto ret;
 	}
 	g_error ("Cannot allocate more trampoline pages: %d", ret);
@@ -4760,13 +4760,13 @@ ret:
 	/* Register the specific part */
 	sp_info = mono_tramp_info_create (NULL, code, specific_trampoline_size, NULL, NULL);
 	read_page_trampoline_uwinfo (sp_info, tramp_type, FALSE);
-	mono_tramp_info_register (sp_info);
+	*info = sp_info;
 	return code;
 }
 
 #else
 static unsigned char*
-get_new_trampoline_from_page (int tramp_type)
+get_new_trampoline_from_page (MonoTrampInfo **info, int tramp_type)
 {
 	g_error ("Page trampolines not supported.");
 	return NULL;
@@ -4775,12 +4775,12 @@ get_new_trampoline_from_page (int tramp_type)
 
 
 static gpointer
-get_new_specific_trampoline_from_page (gpointer tramp, gpointer arg)
+get_new_specific_trampoline_from_page (MonoTrampInfo **info, gpointer tramp, gpointer arg)
 {
 	void *code;
 	gpointer *data;
 
-	code = get_new_trampoline_from_page (MONO_AOT_TRAMP_SPECIFIC);
+	code = get_new_trampoline_from_page (info, MONO_AOT_TRAMP_SPECIFIC);
 
 	data = (gpointer*)((char*)code - mono_pagesize ());
 	data [0] = arg;
@@ -4791,12 +4791,12 @@ get_new_specific_trampoline_from_page (gpointer tramp, gpointer arg)
 }
 
 static gpointer
-get_new_rgctx_trampoline_from_page (gpointer tramp, gpointer arg)
+get_new_rgctx_trampoline_from_page (MonoTrampInfo **info, gpointer tramp, gpointer arg)
 {
 	void *code;
 	gpointer *data;
 
-	code = get_new_trampoline_from_page (MONO_AOT_TRAMP_STATIC_RGCTX);
+	code = get_new_trampoline_from_page (info, MONO_AOT_TRAMP_STATIC_RGCTX);
 
 	data = (gpointer*)((char*)code - mono_pagesize ());
 	data [0] = arg;
@@ -4807,12 +4807,12 @@ get_new_rgctx_trampoline_from_page (gpointer tramp, gpointer arg)
 }
 
 static gpointer
-get_new_imt_trampoline_from_page (gpointer arg)
+get_new_imt_trampoline_from_page (MonoTrampInfo **info, gpointer arg)
 {
 	void *code;
 	gpointer *data;
 
-	code = get_new_trampoline_from_page (MONO_AOT_TRAMP_IMT_THUNK);
+	code = get_new_trampoline_from_page (info, MONO_AOT_TRAMP_IMT_THUNK);
 
 	data = (gpointer*)((char*)code - mono_pagesize ());
 	data [0] = arg;
@@ -4822,12 +4822,12 @@ get_new_imt_trampoline_from_page (gpointer arg)
 }
 
 static gpointer
-get_new_gsharedvt_arg_trampoline_from_page (gpointer tramp, gpointer arg)
+get_new_gsharedvt_arg_trampoline_from_page (MonoTrampInfo **info, gpointer tramp, gpointer arg)
 {
 	void *code;
 	gpointer *data;
 
-	code = get_new_trampoline_from_page (MONO_AOT_TRAMP_GSHAREDVT_ARG);
+	code = get_new_trampoline_from_page (info, MONO_AOT_TRAMP_GSHAREDVT_ARG);
 
 	data = (gpointer*)((char*)code - mono_pagesize ());
 	data [0] = arg;
@@ -4839,7 +4839,7 @@ get_new_gsharedvt_arg_trampoline_from_page (gpointer tramp, gpointer arg)
 /* Return a given kind of trampoline */
 /* FIXME set unwind info for these trampolines */
 static gpointer
-get_numerous_trampoline (MonoAotTrampoline tramp_type, int n_got_slots, MonoAotModule **out_amodule, guint32 *got_offset, guint32 *out_tramp_size)
+get_numerous_trampoline (MonoTrampInfo **info, MonoAotTrampoline tramp_type, int n_got_slots, MonoAotModule **out_amodule, guint32 *got_offset, guint32 *out_tramp_size)
 {
 	MonoAotModule *amodule;
 	int index, tramp_size;
@@ -4877,7 +4877,7 @@ get_numerous_trampoline (MonoAotTrampoline tramp_type, int n_got_slots, MonoAotM
 	if (out_tramp_size)
 		*out_tramp_size = tramp_size;
 
-	mono_tramp_info_register (mono_tramp_info_create (NULL, code, tramp_size, NULL,	NULL));
+	*info = mono_tramp_info_create (NULL, code, tramp_size, NULL, NULL);
 
 	return code;
 }
@@ -4894,6 +4894,7 @@ mono_aot_create_specific_trampoline (MonoImage *image, gpointer arg1, MonoTrampo
 	static gpointer generic_trampolines [MONO_TRAMPOLINE_NUM];
 	static gboolean inited;
 	static guint32 num_trampolines;
+	MonoTrampInfo *tinfo;
 
 	if (!inited) {
 		mono_aot_lock ();
@@ -4914,7 +4915,7 @@ mono_aot_create_specific_trampoline (MonoImage *image, gpointer arg1, MonoTrampo
 
 		symbol = mono_get_generic_trampoline_name (tramp_type);
 		generic_trampolines [tramp_type] = mono_aot_get_trampoline_full (symbol, &info);
-		mono_tramp_info_register (info);
+		mono_tramp_info_register (info, NULL);
 		g_free (symbol);
 	}
 
@@ -4922,14 +4923,16 @@ mono_aot_create_specific_trampoline (MonoImage *image, gpointer arg1, MonoTrampo
 	g_assert (tramp);
 
 	if (USE_PAGE_TRAMPOLINES) {
-		code = get_new_specific_trampoline_from_page (tramp, arg1);
+		code = get_new_specific_trampoline_from_page (&tinfo, tramp, arg1);
 		tramp_size = 8;
 	} else {
-		code = get_numerous_trampoline (MONO_AOT_TRAMP_SPECIFIC, 2, &amodule, &got_offset, &tramp_size);
+		code = get_numerous_trampoline (&tinfo, MONO_AOT_TRAMP_SPECIFIC, 2, &amodule, &got_offset, &tramp_size);
 
 		amodule->got [got_offset] = tramp;
 		amodule->got [got_offset + 1] = arg1;
 	}
+
+	mono_tramp_info_register (tinfo, domain);
 
 	if (code_len)
 		*code_len = tramp_size;
@@ -4943,15 +4946,18 @@ mono_aot_get_static_rgctx_trampoline (gpointer ctx, gpointer addr)
 	MonoAotModule *amodule;
 	guint8 *code;
 	guint32 got_offset;
+	MonoTrampInfo *tinfo;
 
 	if (USE_PAGE_TRAMPOLINES) {
-		code = get_new_rgctx_trampoline_from_page (addr, ctx);
+		code = get_new_rgctx_trampoline_from_page (&tinfo, addr, ctx);
 	} else {
-		code = get_numerous_trampoline (MONO_AOT_TRAMP_STATIC_RGCTX, 2, &amodule, &got_offset, NULL);
+		code = get_numerous_trampoline (&tinfo, MONO_AOT_TRAMP_STATIC_RGCTX, 2, &amodule, &got_offset, NULL);
 
 		amodule->got [got_offset] = ctx;
 		amodule->got [got_offset + 1] = addr; 
 	}
+
+	mono_tramp_info_register (tinfo, mono_domain_get ());
 
 	/* The caller expects an ftnptr */
 	return mono_create_ftnptr (mono_domain_get (), code);
@@ -5005,7 +5011,7 @@ mono_aot_get_unbox_trampoline (MonoMethod *method)
 
 	g_assert (symbol_addr);
 
-	mono_tramp_info_register (mono_tramp_info_create (NULL, code, *(guint32*)symbol_addr, NULL, NULL));
+	mono_tramp_info_register (mono_tramp_info_create (NULL, code, *(guint32*)symbol_addr, NULL, NULL), mono_domain_get ());
 
 	/* The caller expects an ftnptr */
 	return mono_create_ftnptr (mono_domain_get (), code);
@@ -5052,6 +5058,7 @@ mono_aot_get_imt_thunk (MonoVTable *vtable, MonoDomain *domain, MonoIMTCheckItem
 	gpointer *buf;
 	int i, index, real_count;
 	MonoAotModule *amodule;
+	MonoTrampInfo *tinfo;
 
 	real_count = 0;
 	for (i = 0; i < count; ++i) {
@@ -5086,12 +5093,14 @@ mono_aot_get_imt_thunk (MonoVTable *vtable, MonoDomain *domain, MonoIMTCheckItem
 	buf [(index * 2) + 1] = fail_tramp;
 	
 	if (USE_PAGE_TRAMPOLINES) {
-		code = get_new_imt_trampoline_from_page (buf);
+		code = get_new_imt_trampoline_from_page (&tinfo, buf);
 	} else {
-		code = get_numerous_trampoline (MONO_AOT_TRAMP_IMT_THUNK, 1, &amodule, &got_offset, NULL);
+		code = get_numerous_trampoline (&tinfo, MONO_AOT_TRAMP_IMT_THUNK, 1, &amodule, &got_offset, NULL);
 
 		amodule->got [got_offset] = buf;
 	}
+
+	mono_tramp_info_register (tinfo, domain);
 
 	return code;
 }
@@ -5102,15 +5111,18 @@ mono_aot_get_gsharedvt_arg_trampoline (gpointer arg, gpointer addr)
 	MonoAotModule *amodule;
 	guint8 *code;
 	guint32 got_offset;
+	MonoTrampInfo *tinfo;
 
 	if (USE_PAGE_TRAMPOLINES) {
-		code = get_new_gsharedvt_arg_trampoline_from_page (addr, arg);
+		code = get_new_gsharedvt_arg_trampoline_from_page (&tinfo, addr, arg);
 	} else {
-		code = get_numerous_trampoline (MONO_AOT_TRAMP_GSHAREDVT_ARG, 2, &amodule, &got_offset, NULL);
+		code = get_numerous_trampoline (&tinfo, MONO_AOT_TRAMP_GSHAREDVT_ARG, 2, &amodule, &got_offset, NULL);
 
 		amodule->got [got_offset] = arg;
 		amodule->got [got_offset + 1] = addr; 
 	}
+
+	mono_tramp_info_register (tinfo, mono_domain_get ());
 
 	/* The caller expects an ftnptr */
 	return mono_create_ftnptr (mono_domain_get (), code);

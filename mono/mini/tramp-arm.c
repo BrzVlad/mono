@@ -581,7 +581,7 @@ mono_arch_create_specific_trampoline (gpointer arg1, MonoTrampolineType tramp_ty
 	if (code_len)
 		*code_len = code - buf;
 
-	mono_tramp_info_register (mono_tramp_info_create (NULL, buf, code - buf, NULL, NULL));
+	mono_tramp_info_register (mono_tramp_info_create (NULL, buf, code - buf, NULL, NULL), domain);
 
 	return buf;
 }
@@ -628,7 +628,7 @@ mono_arch_get_unbox_trampoline (MonoMethod *m, gpointer addr)
 	/*g_print ("unbox trampoline at %d for %s:%s\n", this_pos, m->klass->name, m->name);
 	g_print ("unbox code is at %p for method at %p\n", start, addr);*/
 
-	mono_tramp_info_register (mono_tramp_info-create (NULL, start, code - start, NULL, NULL));
+	mono_tramp_info_register (mono_tramp_info_create (NULL, start, code - start, NULL, NULL), domain);
 
 	return start;
 }
@@ -669,7 +669,7 @@ mono_arch_get_static_rgctx_trampoline (MonoMethod *m, MonoMethodRuntimeGenericCo
 	mono_arch_flush_icache (start, code - start);
 	mono_profiler_code_buffer_new (start, code - start, MONO_PROFILER_CODE_BUFFER_GENERICS_TRAMPOLINE, NULL);
 
-	mono_tramp_info_register (mono_tramp_info_create (NULL, start, code - start, NULL, NULL));
+	mono_tramp_info_register (mono_tramp_info_create (NULL, start, code - start, NULL, NULL), domain);
 
 	return start;
 }
@@ -1214,7 +1214,7 @@ mono_arch_get_gsharedvt_arg_trampoline (MonoDomain *domain, gpointer arg, gpoint
 	mono_arch_flush_icache (buf, code - buf);
 	mono_profiler_code_buffer_new (buf, code - buf, MONO_PROFILER_CODE_BUFFER_GENERICS_TRAMPOLINE, NULL);
 
-	mono_tramp_info_register (mono_tramp_info_create (NULL, buf, code - buf, NULL, NULL));
+	mono_tramp_info_register (mono_tramp_info_create (NULL, buf, code - buf, NULL, NULL), domain);
 
 	return buf;
 }

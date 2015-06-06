@@ -89,24 +89,24 @@ mono_exceptions_init (void)
 		MonoTrampInfo *info;
 
 		restore_context_func = mono_aot_get_trampoline_full ("restore_context", &info);
-		mono_tramp_info_register (info);
+		mono_tramp_info_register (info, NULL);
 		call_filter_func = mono_aot_get_trampoline_full ("call_filter", &info);
-		mono_tramp_info_register (info);
+		mono_tramp_info_register (info, NULL);
 		throw_exception_func = mono_aot_get_trampoline_full ("throw_exception", &info);
-		mono_tramp_info_register (info);
+		mono_tramp_info_register (info, NULL);
 		rethrow_exception_func = mono_aot_get_trampoline_full ("rethrow_exception", &info);
-		mono_tramp_info_register (info);
+		mono_tramp_info_register (info, NULL);
 	} else {
 		MonoTrampInfo *info;
 
 		restore_context_func = mono_arch_get_restore_context (&info, FALSE);
-		mono_tramp_info_register (info);
+		mono_tramp_info_register (info, NULL);
 		call_filter_func = mono_arch_get_call_filter (&info, FALSE);
-		mono_tramp_info_register (info);
+		mono_tramp_info_register (info, NULL);
 		throw_exception_func = mono_arch_get_throw_exception (&info, FALSE);
-		mono_tramp_info_register (info);
+		mono_tramp_info_register (info, NULL);
 		rethrow_exception_func = mono_arch_get_rethrow_exception (&info, FALSE);
-		mono_tramp_info_register (info);
+		mono_tramp_info_register (info, NULL);
 	}
 #ifdef MONO_ARCH_HAVE_RESTORE_STACK_SUPPORT
 	try_more_restore_tramp = mono_create_specific_trampoline (try_more_restore, MONO_TRAMPOLINE_RESTORE_STACK_PROT, mono_domain_get (), NULL);
@@ -168,7 +168,7 @@ mono_get_throw_corlib_exception (void)
 	else
 		code = mono_arch_get_throw_corlib_exception (&info, FALSE);
 
-	mono_tramp_info_register (info);
+	mono_tramp_info_register (info, NULL);
 
 	mono_memory_barrier ();
 

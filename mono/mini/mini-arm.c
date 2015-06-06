@@ -743,7 +743,7 @@ mono_arch_get_delegate_invoke_impl (MonoMethodSignature *sig, gboolean has_targe
 			start = get_delegate_invoke_impl (&info, TRUE, 0);
 		cached = start;
 		mono_mini_arch_unlock ();
-		mono_tramp_info_register (info);
+		mono_tramp_info_register (info, NULL);
 		return cached;
 	} else {
 		static guint8* cache [MAX_ARCH_DELEGATE_PARAMS + 1] = {NULL};
@@ -771,7 +771,7 @@ mono_arch_get_delegate_invoke_impl (MonoMethodSignature *sig, gboolean has_targe
 		}
 		cache [sig->param_count] = start;
 		mono_mini_arch_unlock ();
-		mono_tramp_info_register (info);
+		mono_tramp_info_register (info, NULL);
 		return start;
 	}
 
@@ -7190,7 +7190,7 @@ mono_arch_build_imt_thunk (MonoVTable *vtable, MonoDomain *domain, MonoIMTCheckI
 
 	g_assert (DISTANCE (start, code) <= size);
 
-	mono_tramp_info_register (mono_tramp_info_create (NULL, (guint8*)start, DISTANCE (start, code), NULL, NULL));
+	mono_tramp_info_register (mono_tramp_info_create (NULL, (guint8*)start, DISTANCE (start, code), NULL, NULL), domain);
 
 	return start;
 }

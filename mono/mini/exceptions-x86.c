@@ -737,7 +737,7 @@ mono_arch_exceptions_init (void)
 
 	if (mono_aot_only) {
 		signal_exception_trampoline = mono_aot_get_trampoline_full ("x86_signal_exception_trampoline", &tinfo);
-		mono_tramp_info_register (tinfo);
+		mono_tramp_info_register (tinfo, NULL);
 		return;
 	}
 
