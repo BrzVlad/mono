@@ -55,6 +55,7 @@ static gboolean debug_print_allowance = FALSE;
 
 /* use this to tune when to do a major/minor collection */
 static mword major_collection_trigger_size;
+static mword major_alloc_while_concurrent;
 
 static mword last_major_num_sections = 0;
 static mword last_los_memory_usage = 0;
@@ -86,8 +87,7 @@ sgen_memgov_calculate_minor_collection_allowance (void)
 	 * We allow the heap to grow by one third its current size before we start the next
 	 * major collection.
 	 */
-	allowance_target = new_heap_size / 3;
-
+	allowance_target = new_heap_size / 3 - major_alloc_while_concurrent;
 	allowance = MAX (allowance_target, MIN_MINOR_COLLECTION_ALLOWANCE);
 
 	if (new_heap_size + allowance > soft_heap_limit) {
@@ -144,6 +144,8 @@ sgen_memgov_minor_collection_end (void)
 {
 }
 
+extern int alloced_obj;
+
 void
 sgen_memgov_major_collection_start (void)
 {
@@ -152,6 +154,8 @@ sgen_memgov_major_collection_start (void)
 	if (debug_print_allowance) {
 		SGEN_LOG (0, "Starting collection with heap size %ld bytes", (long)(major_collector.get_num_major_sections () * major_collector.section_size + los_memory_usage));
 	}
+
+	alloced_obj = 0;
 }
 
 void
@@ -163,6 +167,8 @@ sgen_memgov_major_collection_end (gboolean forced)
 		sgen_get_major_collector ()->finish_sweeping ();
 		sgen_memgov_calculate_minor_collection_allowance ();
 	}
+
+	major_alloc_while_concurrent = alloced_obj;
 }
 
 void
