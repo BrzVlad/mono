@@ -642,12 +642,16 @@ unlink_slot_from_free_list_uncontested (MSBlockInfo * volatile *free_blocks, int
 	return obj;
 }
 
+mword alloced_obj;
+
 static void*
 alloc_obj (GCVTable *vtable, size_t size, gboolean pinned, gboolean has_references)
 {
 	int size_index = MS_BLOCK_OBJ_SIZE_INDEX (size);
 	MSBlockInfo * volatile * free_blocks = FREE_BLOCKS (pinned, has_references);
 	void *obj;
+
+	alloced_obj += size;
 
 	if (!free_blocks [size_index]) {
 		if (G_UNLIKELY (!ms_alloc_block (size_index, pinned, has_references)))
