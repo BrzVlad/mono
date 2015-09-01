@@ -103,6 +103,7 @@ sgen_memgov_calculate_minor_collection_allowance (void)
 
 	major_collection_trigger_size = new_heap_size + allowance;
 
+fprintf (stderr, "Seg major collection trigger size %ld\n", major_collection_trigger_size);
 	need_calculate_minor_collection_allowance = FALSE;
 
 	if (debug_print_allowance) {

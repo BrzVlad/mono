@@ -238,6 +238,8 @@ static gboolean do_concurrent_checks = FALSE;
 /* If set, do a plausibility check on the scan_starts before and after
    each collection */
 static gboolean do_scan_starts_check = FALSE;
+/* If set, check how many dead objects are left alive after a concurrent collection */
+static gboolean check_dead_concurrent = FALSE;
 
 /*
  * If the major collector is concurrent and this is FALSE, we will
@@ -1862,7 +1864,7 @@ major_finish_copy_or_mark (CopyOrMarkFromRootsMode mode)
 }
 
 static void
-major_start_collection (gboolean concurrent, size_t *old_next_pin_slot)
+major_start_collection (gboolean concurrent, size_t *old_next_pin_slot, gboolean notify_memgov)
 {
 	SgenObjectOperations *object_ops;
 
@@ -1886,7 +1888,8 @@ major_start_collection (gboolean concurrent, size_t *old_next_pin_slot)
 
 	reset_pinned_from_failed_allocation ();
 
-	sgen_memgov_major_collection_start ();
+	if (notify_memgov)
+		sgen_memgov_major_collection_start ();
 
 	//count_ref_nonref_objs ();
 	//consistency_check ();
@@ -1905,7 +1908,7 @@ major_start_collection (gboolean concurrent, size_t *old_next_pin_slot)
 }
 
 static void
-major_finish_collection (const char *reason, size_t old_next_pin_slot, gboolean forced)
+major_finish_collection (const char *reason, size_t old_next_pin_slot, gboolean forced, gboolean notify_memgov)
 {
 	ScannedObjectCounts counts;
 	SgenObjectOperations *object_ops;
@@ -2027,7 +2030,8 @@ major_finish_collection (const char *reason, size_t old_next_pin_slot, gboolean 
 
 	g_assert (sgen_gray_object_queue_is_empty (&gray_queue));
 
-	sgen_memgov_major_collection_end (forced);
+	if (notify_memgov)
+		sgen_memgov_major_collection_end (forced || check_dead_concurrent);
 	current_collection_generation = -1;
 
 	memset (&counts, 0, sizeof (ScannedObjectCounts));
@@ -2049,7 +2053,7 @@ major_finish_collection (const char *reason, size_t old_next_pin_slot, gboolean 
 }
 
 static gboolean
-major_do_collection (const char *reason, gboolean forced)
+major_do_collection (const char *reason, gboolean forced, gboolean notify_memgov)
 {
 	TV_DECLARE (time_start);
 	TV_DECLARE (time_end);
@@ -2066,8 +2070,8 @@ major_do_collection (const char *reason, gboolean forced)
 	/* world must be stopped already */
 	TV_GETTIME (time_start);
 
-	major_start_collection (FALSE, &old_next_pin_slot);
-	major_finish_collection (reason, old_next_pin_slot, forced);
+	major_start_collection (FALSE, &old_next_pin_slot, notify_memgov);
+	major_finish_collection (reason, old_next_pin_slot, forced, notify_memgov);
 
 	TV_GETTIME (time_end);
 	gc_stats.major_gc_time += TV_ELAPSED (time_start, time_end);
@@ -2098,7 +2102,7 @@ major_start_concurrent_collection (const char *reason)
 	binary_protocol_concurrent_start ();
 
 	// FIXME: store reason and pass it when finishing
-	major_start_collection (TRUE, NULL);
+	major_start_collection (TRUE, NULL, TRUE);
 
 	gray_queue_redirect (&gray_queue);
 
@@ -2137,6 +2141,24 @@ major_update_concurrent_collection (void)
 	gc_stats.major_gc_time += TV_ELAPSED (total_start, total_end);
 }
 
+static mword
+get_alive_object_space (void)
+{
+	return major_collector.get_used_size () + los_memory_usage;
+}
+
+static void
+sgen_check_dead_concurrent (void)
+{
+	mword before, after;
+
+	before = get_alive_object_space ();
+	major_do_collection ("check dead alive objects", TRUE, FALSE);
+	after = get_alive_object_space ();
+
+	fprintf (stderr, "Before %ld, after %ld\n", before, after);
+}
+
 static void
 major_finish_concurrent_collection (gboolean forced)
 {
@@ -2166,7 +2188,7 @@ major_finish_concurrent_collection (gboolean forced)
 
 	current_collection_generation = GENERATION_OLD;
 	sgen_cement_reset ();
-	major_finish_collection ("finishing", -1, forced);
+	major_finish_collection ("finishing", -1, forced, TRUE);
 
 	if (whole_heap_check_before_collection)
 		sgen_check_whole_heap (FALSE);
@@ -2175,6 +2197,9 @@ major_finish_concurrent_collection (gboolean forced)
 	gc_stats.major_gc_time += TV_ELAPSED (total_start, total_end) - TV_ELAPSED (last_minor_collection_start_tv, last_minor_collection_end_tv);
 
 	current_collection_generation = -1;
+
+	if (check_dead_concurrent)
+		sgen_check_dead_concurrent ();
 }
 
 /*
@@ -2300,7 +2325,7 @@ sgen_perform_collection (size_t requested_size, int generation_to_collect, const
 			goto done;
 		}
 
-		if (major_do_collection (reason, wait_to_finish)) {
+		if (major_do_collection (reason, wait_to_finish, TRUE)) {
 			overflow_generation_to_collect = GENERATION_NURSERY;
 			overflow_reason = "Excessive pinning";
 		}
@@ -2331,7 +2356,7 @@ sgen_perform_collection (size_t requested_size, int generation_to_collect, const
 		if (overflow_generation_to_collect == GENERATION_NURSERY)
 			collect_nursery (NULL, FALSE);
 		else
-			major_do_collection (overflow_reason, wait_to_finish);
+			major_do_collection (overflow_reason, wait_to_finish, TRUE);
 
 		TV_GETTIME (gc_end);
 		infos [1].total_time = SGEN_TV_ELAPSED (gc_start, gc_end);
@@ -3165,6 +3190,8 @@ sgen_gc_init (void)
 				}
 				nursery_clear_policy = CLEAR_AT_GC;
 				do_concurrent_checks = TRUE;
+			} else if (!strcmp (opt, "check-dead-concurrent")) {
+				check_dead_concurrent = TRUE;
 			} else if (!strcmp (opt, "dump-nursery-at-minor-gc")) {
 				do_dump_nursery_content = TRUE;
 			} else if (!strcmp (opt, "disable-minor")) {
