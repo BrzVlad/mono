@@ -58,8 +58,5 @@ namespace Mono {
 
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
 		static extern string GetNativeStackTrace (Exception exception);
-
-		[MethodImplAttribute (MethodImplOptions.InternalCall)]
-		public static extern bool SetGCAllowSynchronousMajor (bool flag);
 	}
 }
