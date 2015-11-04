@@ -171,9 +171,12 @@ COPY_OR_MARK_FUNCTION_NAME (GCObject **ptr, GCObject *obj, SgenGrayQueue *queue)
 				int size_index = block->obj_size_index;
 
 				if (evacuate_block_obj_sizes [size_index] && !block->has_pinned) {
+					int word, bit;
 					HEAVY_STAT (++stat_optimized_copy_major_small_evacuate);
 					if (block->is_to_space)
 						return FALSE;
+					MS_CALC_MARK_BIT (word, bit, obj);
+					MS_UNSET_MARK_BIT (block, word, bit);
 					goto do_copy_object;
 				}
 			}
@@ -220,7 +223,13 @@ SCAN_OBJECT_FUNCTION_NAME (GCObject *full_object, SgenDescriptor desc, SgenGrayQ
 		GCObject *__old = *(ptr);				\
 		binary_protocol_scan_process_reference ((obj), (ptr), __old); \
 		if (__old && !sgen_ptr_in_nursery (__old)) {            \
-			PREFETCH_READ (__old);				\
+			PREFETCH_READ (__old);			\
+			if (G_UNLIKELY (!sgen_ptr_in_nursery (ptr) && \
+					sgen_safe_object_is_small (__old, sgen_obj_get_descriptor (__old) & DESC_TYPE_MASK) && \
+					evacuate_block_obj_sizes [MS_BLOCK_FOR_OBJ (__old)->obj_size_index] && \
+					!MS_BLOCK_FOR_OBJ (__old)->has_pinned)) { \
+				mark_mod_union_card ((full_object), (void**)(ptr)); \
+			}						\
 			COPY_OR_MARK_FUNCTION_NAME ((ptr), __old, queue); \
 		} else {                                                \
 			if (G_UNLIKELY (sgen_ptr_in_nursery (__old) && !sgen_ptr_in_nursery ((ptr)))) \

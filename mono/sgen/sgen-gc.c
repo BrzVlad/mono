@@ -1901,6 +1901,9 @@ major_finish_collection (const char *reason, size_t old_next_pin_slot, gboolean 
 
 	TV_GETTIME (btv);
 
+	if (major_collector.start_major_collection_finish)
+		major_collector.start_major_collection_finish ();
+
 	if (concurrent_collection_in_progress) {
 		object_ops = &major_collector.major_ops_concurrent_finish;
 

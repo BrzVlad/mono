@@ -147,7 +147,9 @@ typedef struct {
 	} while (0)
 
 #define MS_MARK_BIT(bl,w,b)	((bl)->mark_words [(w)] & (ONE_P << (b)))
+#define MS_UNSET_MARK_BIT(bl,w,b)	((bl)->mark_words [(w)] &= ~(ONE_P << (b)))
 #define MS_SET_MARK_BIT(bl,w,b)	((bl)->mark_words [(w)] |= (ONE_P << (b)))
+
 
 #define MS_OBJ_ALLOCED(o,b)	(*(void**)(o) && (*(char**)(o) < MS_BLOCK_FOR_BLOCK_INFO (b) || *(char**)(o) >= MS_BLOCK_FOR_BLOCK_INFO (b) + MS_BLOCK_SIZE))
 
@@ -1220,7 +1222,7 @@ major_copy_or_mark_object_concurrent_canonical (GCObject **ptr, SgenGrayQueue *q
 static void
 major_copy_or_mark_object_concurrent_finish_canonical (GCObject **ptr, SgenGrayQueue *queue)
 {
-	major_copy_or_mark_object_no_evacuation (ptr, *ptr, queue);
+	major_copy_or_mark_object_with_evacuation (ptr, *ptr, queue);
 }
 
 static void
@@ -1772,6 +1774,20 @@ major_finish_nursery_collection (void)
 }
 
 static void
+clear_evacuation_blocks_freelists (void)
+{
+	int i;
+
+	for (i = 0; i < num_block_obj_sizes; ++i) {
+		if (!evacuate_block_obj_sizes [i])
+			continue;
+
+		free_block_lists [0][i] = NULL;
+		free_block_lists [MS_BLOCK_FLAG_REFS][i] = NULL;
+	}
+}
+
+static void
 major_start_major_collection (void)
 {
 	MSBlockInfo *block;
@@ -1782,17 +1798,8 @@ major_start_major_collection (void)
 	 * Clear the free lists for block sizes where we do evacuation.  For those block
 	 * sizes we will have to allocate new blocks.
 	 */
-	if (!sgen_concurrent_collection_in_progress ()) {
-		int i;
-
-		for (i = 0; i < num_block_obj_sizes; ++i) {
-			if (!evacuate_block_obj_sizes [i])
-				continue;
-
-			free_block_lists [0][i] = NULL;
-			free_block_lists [MS_BLOCK_FLAG_REFS][i] = NULL;
-		}
-	}
+	if (!sgen_concurrent_collection_in_progress ())
+		clear_evacuation_blocks_freelists ();
 
 	if (lazy_sweep)
 		binary_protocol_sweep_begin (GENERATION_OLD, TRUE);
@@ -1809,6 +1816,13 @@ major_start_major_collection (void)
 		binary_protocol_sweep_end (GENERATION_OLD, TRUE);
 
 	set_sweep_state (SWEEP_STATE_NEED_SWEEPING, SWEEP_STATE_SWEPT);
+}
+
+static void
+major_start_major_collection_finish (void)
+{
+	if (sgen_concurrent_collection_in_progress ())
+		clear_evacuation_blocks_freelists ();
 }
 
 static void
@@ -2460,6 +2474,7 @@ sgen_marksweep_init_internal (SgenMajorCollector *collector, gboolean is_concurr
 	collector->start_nursery_collection = major_start_nursery_collection;
 	collector->finish_nursery_collection = major_finish_nursery_collection;
 	collector->start_major_collection = major_start_major_collection;
+	collector->start_major_collection_finish = major_start_major_collection_finish;
 	collector->finish_major_collection = major_finish_major_collection;
 	collector->ptr_is_in_non_pinned_space = major_ptr_is_in_non_pinned_space;
 	collector->ptr_is_from_pinned_alloc = ptr_is_from_pinned_alloc;
@@ -2482,9 +2497,9 @@ sgen_marksweep_init_internal (SgenMajorCollector *collector, gboolean is_concurr
 		collector->major_ops_concurrent_start.drain_gray_stack = drain_gray_stack_concurrent;
 
 		collector->major_ops_concurrent_finish.copy_or_mark_object = major_copy_or_mark_object_concurrent_finish_canonical;
-		collector->major_ops_concurrent_finish.scan_object = major_scan_object_no_evacuation;
+		collector->major_ops_concurrent_finish.scan_object = major_scan_object_with_evacuation;
 		collector->major_ops_concurrent_finish.scan_vtype = major_scan_vtype_concurrent_finish;
-		collector->major_ops_concurrent_finish.drain_gray_stack = drain_gray_stack_no_evacuation;
+		collector->major_ops_concurrent_finish.drain_gray_stack = drain_gray_stack;
 	}
 
 #ifdef HEAVY_STATISTICS

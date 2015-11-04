@@ -649,6 +649,7 @@ struct _SgenMajorCollector {
 	void (*start_nursery_collection) (void);
 	void (*finish_nursery_collection) (void);
 	void (*start_major_collection) (void);
+	void (*start_major_collection_finish) (void);
 	void (*finish_major_collection) (ScannedObjectCounts *counts);
 	gboolean (*ptr_is_in_non_pinned_space) (char *ptr, char **start);
 	gboolean (*ptr_is_from_pinned_alloc) (char *ptr);
