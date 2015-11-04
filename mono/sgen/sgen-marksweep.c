@@ -1216,7 +1216,7 @@ major_copy_or_mark_object_concurrent_canonical (GCObject **ptr, SgenGrayQueue *q
 static void
 major_copy_or_mark_object_concurrent_finish_canonical (GCObject **ptr, SgenGrayQueue *queue)
 {
-	major_copy_or_mark_object_no_evacuation (ptr, *ptr, queue);
+	major_copy_or_mark_object_with_evacuation (ptr, *ptr, queue);
 }
 
 static void
@@ -2461,9 +2461,9 @@ sgen_marksweep_init_internal (SgenMajorCollector *collector, gboolean is_concurr
 		collector->major_ops_concurrent_start.drain_gray_stack = drain_gray_stack_concurrent;
 
 		collector->major_ops_concurrent_finish.copy_or_mark_object = major_copy_or_mark_object_concurrent_finish_canonical;
-		collector->major_ops_concurrent_finish.scan_object = major_scan_object_no_evacuation;
+		collector->major_ops_concurrent_finish.scan_object = major_scan_object_with_evacuation;
 		collector->major_ops_concurrent_finish.scan_vtype = major_scan_vtype_concurrent_finish;
-		collector->major_ops_concurrent_finish.drain_gray_stack = drain_gray_stack_no_evacuation;
+		collector->major_ops_concurrent_finish.drain_gray_stack = drain_gray_stack;
 	}
 
 #ifdef HEAVY_STATISTICS
