@@ -228,12 +228,12 @@ SCAN_OBJECT_FUNCTION_NAME (GCObject *full_object, SgenDescriptor desc, SgenGrayQ
 					sgen_safe_object_is_small (__old, sgen_obj_get_descriptor (__old) & DESC_TYPE_MASK) && \
 					evacuate_block_obj_sizes [MS_BLOCK_FOR_OBJ (__old)->obj_size_index] && \
 					!MS_BLOCK_FOR_OBJ (__old)->has_pinned)) { \
-				mark_mod_union_card ((full_object), (void**)(ptr)); \
+				mark_mod_union_card ((full_object), (void**)(ptr), __old); \
 			}						\
 			COPY_OR_MARK_FUNCTION_NAME ((ptr), __old, queue); \
 		} else {                                                \
 			if (G_UNLIKELY (sgen_ptr_in_nursery (__old) && !sgen_ptr_in_nursery ((ptr)))) \
-				mark_mod_union_card ((full_object), (void**)(ptr)); \
+				mark_mod_union_card ((full_object), (void**)(ptr), __old); \
 			}						\
 		} while (0)
 #else

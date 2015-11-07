@@ -1066,7 +1066,7 @@ major_get_cardtable_mod_union_for_reference (char *ptr)
  * Mark the mod-union card for `ptr`, which must be a reference within the object `obj`.
  */
 static void
-mark_mod_union_card (GCObject *obj, void **ptr)
+mark_mod_union_card (GCObject *obj, void **ptr, GCObject *value_obj)
 {
 	int type = sgen_obj_get_descriptor (obj) & DESC_TYPE_MASK;
 	if (sgen_safe_object_is_small (obj, type)) {
@@ -1076,6 +1076,8 @@ mark_mod_union_card (GCObject *obj, void **ptr)
 	} else {
 		sgen_los_mark_mod_union_card (obj, ptr);
 	}
+
+	binary_protocol_mod_union_remset (obj, ptr, value_obj, SGEN_LOAD_VTABLE (value_obj));
 }
 
 #define LOAD_VTABLE	SGEN_LOAD_VTABLE
@@ -2256,6 +2258,7 @@ scan_card_table_for_block (MSBlockInfo *block, gboolean mod_union, ScanCopyConte
 		binary_protocol_card_scan (first_obj, end - first_obj);
 
 		while (obj < end) {
+			GCObject *forwarded;
 			if (obj < scan_front || !MS_OBJ_ALLOCED_FAST (obj, block_start))
 				goto next_object;
 
@@ -2268,6 +2271,9 @@ scan_card_table_for_block (MSBlockInfo *block, gboolean mod_union, ScanCopyConte
 			}
 
 			GCObject *object = (GCObject*)obj;
+			forwarded = (GCObject*)SGEN_OBJECT_IS_FORWARDED (obj);
+                        if (forwarded)
+                                object = forwarded;
 
 			if (small_objects) {
 				HEAVY_STAT (++scanned_objects);
