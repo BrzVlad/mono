@@ -1775,7 +1775,6 @@ static void
 major_start_major_collection (void)
 {
 	MSBlockInfo *block;
-	int i;
 
 	major_finish_sweep_checking ();
 
@@ -1783,12 +1782,16 @@ major_start_major_collection (void)
 	 * Clear the free lists for block sizes where we do evacuation.  For those block
 	 * sizes we will have to allocate new blocks.
 	 */
-	for (i = 0; i < num_block_obj_sizes; ++i) {
-		if (!evacuate_block_obj_sizes [i])
-			continue;
+	if (!sgen_concurrent_collection_in_progress ()) {
+		int i;
 
-		free_block_lists [0][i] = NULL;
-		free_block_lists [MS_BLOCK_FLAG_REFS][i] = NULL;
+		for (i = 0; i < num_block_obj_sizes; ++i) {
+			if (!evacuate_block_obj_sizes [i])
+				continue;
+
+			free_block_lists [0][i] = NULL;
+			free_block_lists [MS_BLOCK_FLAG_REFS][i] = NULL;
+		}
 	}
 
 	if (lazy_sweep)
