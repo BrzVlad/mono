@@ -5185,6 +5185,7 @@ encode_patch (MonoAotCompile *acfg, MonoJumpInfo *patch_info, guint8 *buf, guint
 	case MONO_PATCH_INFO_JIT_TLS_ID:
 	case MONO_PATCH_INFO_GC_CARD_TABLE_ADDR:
 	case MONO_PATCH_INFO_GC_NURSERY_START:
+	case MONO_PATCH_INFO_GC_NURSERY_BITS:
 		break;
 	case MONO_PATCH_INFO_CASTCLASS_CACHE:
 		encode_value (patch_info->data.index, p, &p);
@@ -5457,6 +5458,7 @@ emit_method_info (MonoAotCompile *acfg, MonoCompile *cfg)
 
 		if (patch_info->type == MONO_PATCH_INFO_GC_CARD_TABLE_ADDR ||
 			patch_info->type == MONO_PATCH_INFO_GC_NURSERY_START ||
+			patch_info->type == MONO_PATCH_INFO_GC_NURSERY_BITS ||
 			patch_info->type == MONO_PATCH_INFO_AOT_MODULE) {
 			/* Stored in a GOT slot initialized at module load time */
 			patch_info->type = MONO_PATCH_INFO_NONE;
@@ -7060,6 +7062,7 @@ compile_method (MonoAotCompile *acfg, MonoMethod *method)
 		case MONO_PATCH_INFO_NONE:
 		case MONO_PATCH_INFO_GC_CARD_TABLE_ADDR:
 		case MONO_PATCH_INFO_GC_NURSERY_START:
+		case MONO_PATCH_INFO_GC_NURSERY_BITS:
 			break;
 		case MONO_PATCH_INFO_IMAGE:
 			/* The assembly is stored in GOT slot 0 */
@@ -9511,6 +9514,11 @@ add_preinit_got_slots (MonoAotCompile *acfg)
 
 	ji = mono_mempool_alloc0 (acfg->mempool, sizeof (MonoJumpInfo));
 	ji->type = MONO_PATCH_INFO_AOT_MODULE;
+	get_got_offset (acfg, FALSE, ji);
+	get_got_offset (acfg, TRUE, ji);
+
+	ji = mono_mempool_alloc0 (acfg->mempool, sizeof (MonoJumpInfo));
+	ji->type = MONO_PATCH_INFO_GC_NURSERY_BITS;
 	get_got_offset (acfg, FALSE, ji);
 	get_got_offset (acfg, TRUE, ji);
 
