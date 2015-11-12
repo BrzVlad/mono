@@ -95,7 +95,7 @@ SERIAL_COPY_OBJECT (GCObject **obj_slot, SgenGrayQueue *queue)
 
 	HEAVY_STAT (++stat_objects_copied_nursery);
 
-	copy = copy_object_no_checks (obj, queue);
+	copy = copy_object_no_checks (obj, queue, TRUE);
 	SGEN_UPDATE_REFERENCE (obj_slot, copy);
 }
 
@@ -197,7 +197,7 @@ SERIAL_COPY_OBJECT_FROM_OBJ (GCObject **obj_slot, SgenGrayQueue *queue)
 
 	HEAVY_STAT (++stat_objects_copied_nursery);
 
-	copy = copy_object_no_checks (obj, queue);
+	copy = copy_object_no_checks (obj, queue, TRUE);
 	SGEN_UPDATE_REFERENCE (obj_slot, copy);
 #ifndef SGEN_SIMPLE_NURSERY
 	if (G_UNLIKELY (sgen_ptr_in_nursery (copy) && !sgen_ptr_in_nursery (obj_slot) && !SGEN_OBJECT_IS_CEMENTED (copy)))

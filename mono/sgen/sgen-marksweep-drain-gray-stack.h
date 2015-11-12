@@ -36,7 +36,7 @@ static inline MONO_ALWAYS_INLINE gboolean
 COPY_OR_MARK_FUNCTION_NAME (GCObject **ptr, GCObject *obj, SgenGrayQueue *queue)
 {
 	MSBlockInfo *block;
-
+	gboolean enqueue = TRUE;
 #ifdef HEAVY_STATISTICS
 	++stat_optimized_copy;
 	{
@@ -88,7 +88,7 @@ COPY_OR_MARK_FUNCTION_NAME (GCObject **ptr, GCObject *obj, SgenGrayQueue *queue)
 	do_copy_object:
 #endif
 		old_obj = obj;
-		obj = copy_object_no_checks (obj, queue);
+		obj = copy_object_no_checks (obj, queue, enqueue);
 		if (G_UNLIKELY (old_obj == obj)) {
 			/*
 			 * If we fail to evacuate an object we just stop doing it for a
@@ -176,7 +176,16 @@ COPY_OR_MARK_FUNCTION_NAME (GCObject **ptr, GCObject *obj, SgenGrayQueue *queue)
 					if (block->is_to_space)
 						return FALSE;
 					MS_CALC_MARK_BIT (word, bit, obj);
-					MS_UNSET_MARK_BIT (block, word, bit);
+					if (MS_MARK_BIT (block, word, bit)) {
+						/*
+						 * An object that is supposed to be evacuated can only be marked by the concurrent mark
+						 * We unmark it so the space can be reclaimed and we also avoid enqueuing it since it
+						 * was already scanned by the concurrent mark. If this object needs scanning though, it
+						 * will show in the cardtable and it will get scanned there.
+						 */
+						MS_UNSET_MARK_BIT (block, word, bit);
+						enqueue = FALSE;
+					}
 					goto do_copy_object;
 				}
 			}

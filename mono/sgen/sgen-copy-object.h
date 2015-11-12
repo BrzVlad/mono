@@ -58,7 +58,7 @@ par_copy_object_no_checks (char *destination, GCVTable vt, void *obj, mword objs
  * This can return OBJ itself on OOM.
  */
 static MONO_NEVER_INLINE void*
-copy_object_no_checks (void *obj, SgenGrayQueue *queue)
+copy_object_no_checks (void *obj, SgenGrayQueue *queue, gboolean enqueue)
 {
 	GCVTable vt = SGEN_LOAD_VTABLE_UNCHECKED (obj);
 	gboolean has_references = SGEN_VTABLE_HAS_REFERENCES (vt);
@@ -73,7 +73,7 @@ copy_object_no_checks (void *obj, SgenGrayQueue *queue)
 		return obj;
 	}
 
-	if (!has_references)
+	if (!has_references || !enqueue)
 		queue = NULL;
 
 	par_copy_object_no_checks (destination, vt, obj, objsize, queue);
