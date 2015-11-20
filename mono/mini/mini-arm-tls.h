@@ -57,6 +57,26 @@ known_kernel_helper (void)
 	return memcmp (kuser_get_tls, expected, 8) == 0;
 }
 
+static void
+dump_code (guint32 *ptr)
+{
+	char current_impl [256];
+	char hex [16];
+	int i;
+	guint32 page_mask = ~((guint32)mono_pagesize () - 1);
+
+	current_impl [0] = 0;
+	for (i = 0; i < 16; i++) {
+		/* Don't risk page fault since we don't know where the code ends */
+		if (((guint32)&ptr [i] & page_mask) != ((guint32)ptr & page_mask))
+			break;
+		sprintf (hex, "0x%x ", ptr [i]);
+		strcat (current_impl, hex);
+	}
+
+	g_warning (current_impl);
+}
+
 static TlsImplementation
 mono_arm_get_tls_implementation (void)
 {
@@ -74,7 +94,9 @@ mono_arm_get_tls_implementation (void)
 		}
 	}
 
-	g_warning ("No fast tls on device. Using fallbacks.\n");
+	g_warning ("No fast tls on device. Using fallbacks. Current implementation : ");
+	dump_code (pthread_getspecific_addr);
+
 	return (TlsImplementation) { NULL, 0, FALSE, mono_fallback_get_tls_key, NULL, mono_fallback_set_tls_key, NULL };
 }
 #endif
