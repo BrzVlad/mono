@@ -27,6 +27,7 @@
 #include <mono/metadata/opcodes.h>
 #include "mini.h"
 #include "ir-emit.h"
+#include "magic-division.h"
 
 #ifndef MONO_ARCH_IS_OP_MEMBASE
 #define MONO_ARCH_IS_OP_MEMBASE(opcode) FALSE
@@ -99,22 +100,18 @@ mono_strength_reduction_ins (MonoCompile *cfg, MonoInst *ins, const char **spec)
 			}
 		}
 		break;
-	case OP_IREM_UN_IMM:
-	case OP_IDIV_UN_IMM: {
-		int c = ins->inst_imm;
-		int power2 = mono_is_power_of_two (c);
+	case OP_IREM_UN_IMM: {
+		int power2 = mono_is_power_of_two (ins->inst_imm);
 
 		if (power2 >= 0) {
-			if (ins->opcode == OP_IREM_UN_IMM) {
-				ins->opcode = OP_IAND_IMM;
-				ins->sreg2 = -1;
-				ins->inst_imm = (1 << power2) - 1;
-			} else if (ins->opcode == OP_IDIV_UN_IMM) {
-				ins->opcode = OP_ISHR_UN_IMM;
-				ins->sreg2 = -1;
-				ins->inst_imm = power2;
-			}
+			ins->opcode = OP_IAND_IMM;
+			ins->sreg2 = -1;
+			ins->inst_imm = (1 << power2) - 1;
 		}
+		break;
+	}
+	case OP_IDIV_UN_IMM: {
+		allocated_vregs = mono_strength_reduction_division (cfg, ins);
 		break;
 	}
 	case OP_IDIV_IMM: {
