@@ -110,32 +110,9 @@ mono_strength_reduction_ins (MonoCompile *cfg, MonoInst *ins, const char **spec)
 		}
 		break;
 	}
-	case OP_IDIV_UN_IMM: {
-		allocated_vregs = mono_strength_reduction_division (cfg, ins);
-		break;
-	}
+	case OP_IDIV_UN_IMM:
 	case OP_IDIV_IMM: {
-		int c = ins->inst_imm;
-		int power2 = mono_is_power_of_two (c);
-
-		if (power2 == 1) {
-			int r1 = mono_alloc_ireg (cfg);
-
-			MONO_EMIT_NEW_BIALU_IMM (cfg, OP_ISHR_UN_IMM, r1, ins->sreg1, 31);
-			MONO_EMIT_NEW_BIALU (cfg, OP_IADD, r1, r1, ins->sreg1);
-			MONO_EMIT_NEW_BIALU_IMM (cfg, OP_ISHR_IMM, ins->dreg, r1, 1);
-
-			allocated_vregs = TRUE;
-		} else if (power2 > 0 && power2 < 31) {
-			int r1 = mono_alloc_ireg (cfg);
-
-			MONO_EMIT_NEW_BIALU_IMM (cfg, OP_ISHR_IMM, r1, ins->sreg1, 31);
-			MONO_EMIT_NEW_BIALU_IMM (cfg, OP_ISHR_UN_IMM, r1, r1, (32 - power2));
-			MONO_EMIT_NEW_BIALU (cfg, OP_IADD, r1, r1, ins->sreg1);
-			MONO_EMIT_NEW_BIALU_IMM (cfg, OP_ISHR_IMM, ins->dreg, r1, power2);
-
-			allocated_vregs = TRUE;
-		}
+		allocated_vregs = mono_strength_reduction_division (cfg, ins);
 		break;
 	}
 #if SIZEOF_REGISTER == 8
