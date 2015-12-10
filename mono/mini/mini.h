@@ -1893,6 +1893,7 @@ typedef struct {
 	gint32 alias_removed;
 	gint32 loads_eliminated;
 	gint32 stores_eliminated;
+	gint32 optimized_divisions;
 	int methods_with_llvm;
 	int methods_without_llvm;
 	char *max_ratio_method;
