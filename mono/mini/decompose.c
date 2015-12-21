@@ -519,8 +519,6 @@ mono_decompose_opcode (MonoCompile *cfg, MonoInst *ins)
 	}
 
 	if (emulate) {
-		MonoJitICallInfo *info = NULL;
-
 #if SIZEOF_REGISTER == 8
 		if (decompose_long_opcode (cfg, ins, &repl))
 			emulate = FALSE;
@@ -529,33 +527,8 @@ mono_decompose_opcode (MonoCompile *cfg, MonoInst *ins)
 			emulate = FALSE;
 #endif
 
-		if (emulate)
-			info = mono_find_jit_opcode_emulation (ins->opcode);
-		if (info) {
-			MonoInst **args;
-			MonoInst *call;
-
-			/* Create dummy MonoInst's for the arguments */
-			g_assert (!info->sig->hasthis);
-			g_assert (info->sig->param_count <= MONO_MAX_SRC_REGS);
-
-			args = (MonoInst **)mono_mempool_alloc0 (cfg->mempool, sizeof (MonoInst*) * info->sig->param_count);
-			if (info->sig->param_count > 0) {
-				int sregs [MONO_MAX_SRC_REGS];
-				int num_sregs, i;
-				num_sregs = mono_inst_get_src_registers (ins, sregs);
-				g_assert (num_sregs == info->sig->param_count);
-				for (i = 0; i < num_sregs; ++i) {
-					MONO_INST_NEW (cfg, args [i], OP_ARG);
-					args [i]->dreg = sregs [i];
-				}
-			}
-
-			call = mono_emit_jit_icall_by_info (cfg, info, args);
-			call->dreg = ins->dreg;
-
-			NULLIFY_INS (ins);
-		}
+		if (emulate && mono_find_jit_opcode_emulation (ins->opcode))
+			cfg->has_emulated_ops = TRUE;
 	}
 
 	if (ins->opcode == OP_NOP) {
@@ -713,15 +686,21 @@ mono_decompose_long_opts (MonoCompile *cfg)
 			case OP_LCONV_TO_U:
 				MONO_EMIT_NEW_UNALU (cfg, OP_MOVE, tree->dreg, MONO_LVREG_LS (tree->sreg1));
 				break;
+#ifndef MONO_ARCH_EMULATE_LCONV_TO_R8
 			case OP_LCONV_TO_R8:
 				MONO_EMIT_NEW_BIALU (cfg, OP_LCONV_TO_R8_2, tree->dreg, MONO_LVREG_LS (tree->sreg1), MONO_LVREG_MS (tree->sreg1));
 				break;
+#endif
+#ifndef MONO_ARCH_EMULATE_LCONV_TO_R4
 			case OP_LCONV_TO_R4:
 				MONO_EMIT_NEW_BIALU (cfg, OP_LCONV_TO_R4_2, tree->dreg, MONO_LVREG_LS (tree->sreg1), MONO_LVREG_MS (tree->sreg1));
 				break;
+#endif
+#ifndef MONO_ARCH_EMULATE_LCONV_TO_R8_UN
 			case OP_LCONV_TO_R_UN:
 				MONO_EMIT_NEW_BIALU (cfg, OP_LCONV_TO_R_UN_2, tree->dreg, MONO_LVREG_LS (tree->sreg1), MONO_LVREG_MS (tree->sreg1));
 				break;
+#endif
 			case OP_LCONV_TO_OVF_I1: {
 				MonoBasicBlock *is_negative, *end_label;
 
@@ -1881,5 +1860,198 @@ mono_decompose_soft_float (MonoCompile *cfg)
 }
 
 #endif
+
+void
+mono_local_emulate_ops (MonoCompile *cfg)
+{
+	MonoBasicBlock *bb;
+	gboolean emulate, is_imm;
+
+	for (bb = cfg->bb_entry; bb; bb = bb->next_bb) {
+		MonoInst *ins;
+
+		MONO_BB_FOR_EACH_INS (bb, ins) {
+			/* Fast check, synchronized with opcode emulation registering */
+			switch (ins->opcode) {
+#ifndef MONO_ARCH_NO_EMULATE_LONG_MUL_OPTS
+				case OP_LMUL:
+				case OP_LDIV:
+				case OP_LDIV_UN:
+				case OP_LREM:
+				case OP_LREM_UN:
+#endif
+#if !defined(MONO_ARCH_NO_EMULATE_LONG_MUL_OPTS) || defined(MONO_ARCH_EMULATE_LONG_MUL_OVF_OPTS)
+				case OP_LMUL_OVF_UN:
+				case OP_LMUL_OVF:
+#endif
+#ifndef MONO_ARCH_NO_EMULATE_LONG_SHIFT_OPS
+				case OP_LSHL:
+				case OP_LSHR:
+				case OP_LSHR_UN:
+#endif
+#if defined(MONO_ARCH_EMULATE_MUL_DIV) || defined(MONO_ARCH_EMULATE_DIV)
+				case OP_IDIV:
+				case OP_IDIV_UN:
+				case OP_IREM:
+				case OP_IREM_UN:
+#endif
+#ifdef MONO_ARCH_EMULATE_MUL_DIV
+				case OP_IMUL:
+#endif
+#if defined(MONO_ARCH_EMULATE_MUL_DIV) || defined(MONO_ARCH_EMULATE_MUL_OVF)
+				case OP_IMUL_OVF:
+				case OP_IMUL_OVF_UN:
+#endif
+#if defined(MONO_ARCH_EMULATE_MUL_DIV) || defined(MONO_ARCH_SOFT_FLOAT_FALLBACK)
+				case OP_FDIV:
+#endif
+				case OP_FCONV_TO_U8:
+				case OP_RCONV_TO_U8:
+				case OP_FCONV_TO_U4:
+				case OP_FCONV_TO_OVF_I8:
+				case OP_FCONV_TO_OVF_U8:
+				case OP_RCONV_TO_OVF_I8:
+				case OP_RCONV_TO_OVF_U8:
+#ifdef MONO_ARCH_EMULATE_FCONV_TO_I8
+				case OP_FCONV_TO_I8:
+				case OP_RCONV_TO_I8:
+#endif
+#ifdef MONO_ARCH_EMULATE_CONV_R8_UN
+				case OP_ICONV_TO_R_UN:
+#endif
+#ifdef MONO_ARCH_EMULATE_LCONV_TO_R8
+				case OP_LCONV_TO_R8:
+#endif
+#ifdef MONO_ARCH_EMULATE_LCONV_TO_R4
+				case OP_LCONV_TO_R4:
+#endif
+#ifdef MONO_ARCH_EMULATE_LCONV_TO_R8_UN
+				case OP_LCONV_TO_R_UN:
+#endif
+#ifdef MONO_ARCH_EMULATE_FREM
+				case OP_FREM:
+				case OP_RREM:
+#endif
+#ifdef MONO_ARCH_SOFT_FLOAT_FALLBACK
+				case OP_FSUB:
+				case OP_FADD:
+				case OP_FMUL:
+				case OP_FNEG:
+				case OP_ICONV_TO_R8:
+				case OP_ICONV_TO_R4:
+				case OP_FCONV_TO_R4:
+				case OP_FCONV_TO_I1:
+				case OP_FCONV_TO_I2:
+				case OP_FCONV_TO_I4:
+				case OP_FCONV_TO_U1:
+				case OP_FCONV_TO_U2:
+#if SIZEOF_REGISTER == 4
+				case OP_FCONV_TO_I:
+#endif
+				case OP_FBEQ:
+				case OP_FBLT:
+				case OP_FBGT:
+				case OP_FBLE:
+				case OP_FBGE:
+				case OP_FBNE_UN:
+				case OP_FBLT_UN:
+				case OP_FBGT_UN:
+				case OP_FBLE_UN:
+				case OP_FBGE_UN:
+				case OP_FCEQ:
+				case OP_FCGT:
+				case OP_FCGT_UN:
+				case OP_FCLT:
+				case OP_FCLT_UN:
+#endif
+				case OP_FCONV_TO_U: {
+					emulate = TRUE;
+					is_imm = FALSE;
+					break;
+				}
+#ifndef MONO_ARCH_NO_EMULATE_LONG_MUL_OPTS
+				case OP_LMUL_IMM:
+				case OP_LDIV_IMM:
+				case OP_LDIV_UN_IMM:
+				case OP_LREM_IMM:
+				case OP_LREM_UN_IMM: {
+					emulate = TRUE;
+					is_imm = TRUE;
+					break;
+				}
+#endif
+#ifndef MONO_ARCH_NO_EMULATE_LONG_SHIFT_OPS
+				case OP_LSHL_IMM:
+				case OP_LSHR_IMM:
+				case OP_LSHR_UN_IMM: {
+					emulate = TRUE;
+					is_imm = TRUE;
+					break;
+				}
+#endif
+#if defined(MONO_ARCH_EMULATE_MUL_DIV) || defined(MONO_ARCH_EMULATE_DIV)
+				case OP_IDIV_IMM:
+				case OP_IDIV_UN_IMM:
+				case OP_IREM_IMM:
+				case OP_IREM_UN_IMM: {
+					emulate = TRUE;
+					is_imm = TRUE;
+					break;
+				}
+#endif
+#ifdef MONO_ARCH_EMULATE_MUL_DIV
+				case OP_IMUL_IMM: {
+					emulate = TRUE;
+					is_imm = TRUE;
+					break;
+				}
+#endif
+				default:
+					emulate = FALSE;
+			}
+
+			if (emulate) {
+				MonoJitICallInfo *info;
+
+				if (is_imm)
+					info = mono_find_jit_opcode_emulation (mono_op_imm_to_op (ins->opcode));
+				else
+					info = mono_find_jit_opcode_emulation (ins->opcode);
+
+				if (info) {
+					MonoInst **args;
+					MonoInst *call, *saved_start, *saved_end;
+
+					/* Create dummy MonoInst's for the arguments */
+					g_assert (!info->sig->hasthis);
+					g_assert (info->sig->param_count <= MONO_MAX_SRC_REGS);
+
+					if (is_imm)
+						mono_decompose_op_imm (cfg, bb, ins);
+
+					args = (MonoInst **)mono_mempool_alloc0 (cfg->mempool, sizeof (MonoInst*) * info->sig->param_count);
+					if (info->sig->param_count > 0) {
+						int sregs [MONO_MAX_SRC_REGS];
+						int num_sregs, i;
+						num_sregs = mono_inst_get_src_registers (ins, sregs);
+						g_assert (num_sregs == info->sig->param_count);
+						for (i = 0; i < num_sregs; ++i) {
+							MONO_INST_NEW (cfg, args [i], OP_ARG);
+							args [i]->dreg = sregs [i];
+						}
+					}
+
+					MONO_START_BB_PATCH (cfg, bb, ins, saved_start, saved_end);
+
+					call = mono_emit_native_call (cfg, mono_icall_get_wrapper (info), info->sig, args);
+					call->dreg = ins->dreg;
+
+					MONO_END_BB_PATCH (cfg, saved_start, saved_end);
+					NULLIFY_INS (ins);
+				}
+			}
+		}
+	}
+}
 
 #endif /* DISABLE_JIT */

@@ -836,6 +836,24 @@ static int ccount = 0;
 	    (cfg)->cbb = (bblock); \
     } while (0)
 
+/* Macros that ease instruction emitting inside bblocks */
+#define MONO_START_BB_PATCH(cfg, bblock, ins, saved_start, saved_end) do { \
+		saved_start = ins->next;	\
+		saved_end = (bblock->last_ins != ins) ? bblock->last_ins : NULL;	\
+		ins->next = NULL;		\
+		saved_start->prev = NULL;	\
+		bblock->last_ins = ins;		\
+		cfg->cbb = bblock;		\
+	} while (0)
+
+#define MONO_END_BB_PATCH(cfg, saved_start, saved_end) do { \
+		if (saved_start)				\
+			MONO_ADD_INS (cfg->cbb, saved_start);	\
+		if (saved_end)					\
+			cfg->cbb->last_ins = saved_end;		\
+		cfg->cbb = NULL;				\
+	} while (0)
+
 /* This marks a place in code where an implicit exception could be thrown */
 #define MONO_EMIT_NEW_IMPLICIT_EXCEPTION(cfg) do { \
 		if (COMPILE_LLVM ((cfg))) {									\
