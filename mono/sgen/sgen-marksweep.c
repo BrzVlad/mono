@@ -63,7 +63,7 @@
  * of a block is the MSBlockHeader, then opional padding, then come
  * the objects, so this must be >= sizeof (MSBlockHeader).
  */
-#define MS_BLOCK_SKIP	((sizeof (MSBlockHeader) + 15) & ~15)
+#define MS_BLOCK_SKIP	(0)
 
 #define MS_BLOCK_FREE	(MS_BLOCK_SIZE - MS_BLOCK_SKIP)
 
@@ -99,6 +99,9 @@ enum {
 	BLOCK_STATE_SWEEPING
 };
 
+typedef struct {
+} MSBlockHeader;
+
 typedef struct _MSBlockInfo MSBlockInfo;
 struct _MSBlockInfo {
 	guint16 obj_size;
@@ -113,23 +116,20 @@ struct _MSBlockInfo {
 	unsigned int has_references : 1;
 	unsigned int has_pinned : 1;	/* means cannot evacuate */
 	unsigned int is_to_space : 1;
+	char * block;
 	void ** volatile free_list;
-	MSBlockInfo * volatile next_free;
+	MSBlockHeader * volatile next_free;
 	guint8 * volatile cardtable_mod_union;
 	mword mark_words [MS_NUM_MARK_WORDS];
 };
 
-#define MS_BLOCK_FOR_BLOCK_INFO(b)	((char*)(b))
+#define MS_BLOCK_FOR_BLOCK_INFO(b)	((b)->block)
 
 #define MS_BLOCK_OBJ(b,i)		((GCObject *)(MS_BLOCK_FOR_BLOCK_INFO(b) + MS_BLOCK_SKIP + (b)->obj_size * (i)))
 #define MS_BLOCK_OBJ_FOR_SIZE(b,i,obj_size)		(MS_BLOCK_FOR_BLOCK_INFO(b) + MS_BLOCK_SKIP + (obj_size) * (i))
 #define MS_BLOCK_DATA_FOR_OBJ(o)	((char*)((mword)(o) & ~(mword)(MS_BLOCK_SIZE - 1)))
 
-typedef struct {
-	MSBlockInfo info;
-} MSBlockHeader;
-
-#define MS_BLOCK_FOR_OBJ(o)		(&((MSBlockHeader*)MS_BLOCK_DATA_FOR_OBJ ((o)))->info)
+#define MS_BLOCK_FOR_OBJ(o)		(find_block_info_for_block (MS_BLOCK_DATA_FOR_OBJ ((o))))
 
 /* object index will always be small */
 #define MS_BLOCK_OBJ_INDEX(o,b)	((int)(((char*)(o) - (MS_BLOCK_FOR_BLOCK_INFO(b) + MS_BLOCK_SKIP)) / (b)->obj_size))
@@ -192,12 +192,16 @@ static gboolean concurrent_sweep = TRUE;
 #define BLOCK_IS_TAGGED_CHECKING(bl)		SGEN_POINTER_IS_TAGGED_2 ((bl))
 #define BLOCK_TAG_CHECKING(bl)			SGEN_POINTER_TAG_2 ((bl))
 
-#define BLOCK_UNTAG(bl)				((MSBlockInfo *)SGEN_POINTER_UNTAG_12 ((bl)))
+#define BLOCK_UNTAG(bl)				((char *)SGEN_POINTER_UNTAG_12 ((bl)))
 
-#define BLOCK_TAG(bl)				((bl)->has_references ? BLOCK_TAG_HAS_REFERENCES ((bl)) : (bl))
+#define BLOCK_TAG(info)				((info)->has_references ? BLOCK_TAG_HAS_REFERENCES ((info)->block) : (info)->block)
 
 /* all allocated blocks in the system */
 static SgenPointerQueue allocated_blocks;
+/* all block infos in the system */
+static MSBlockInfo *block_infos = NULL;
+static size_t block_infos_capacity = 0;
+static size_t block_infos_used = 0;
 
 /* non-allocated block free-list */
 static void *empty_blocks = NULL;
@@ -207,14 +211,14 @@ static size_t num_empty_blocks = 0;
 	size_t __index;							\
 	SGEN_ASSERT (0, (cond) && !sweep_in_progress (), "Can't iterate blocks while the world is running or sweep is in progress."); \
 	for (__index = 0; __index < allocated_blocks.next_slot; ++__index) { \
-		(bl) = BLOCK_UNTAG (allocated_blocks.data [__index]);
+		(bl) = find_block_info_for_block (BLOCK_UNTAG (allocated_blocks.data [__index]));
 #define FOREACH_BLOCK_NO_LOCK(bl)					\
 	FOREACH_BLOCK_NO_LOCK_CONDITION(sgen_is_world_stopped (), bl)
 #define FOREACH_BLOCK_HAS_REFERENCES_NO_LOCK(bl,hr) {			\
 	size_t __index;							\
 	SGEN_ASSERT (0, sgen_is_world_stopped () && !sweep_in_progress (), "Can't iterate blocks while the world is running or sweep is in progress."); \
 	for (__index = 0; __index < allocated_blocks.next_slot; ++__index) { \
-		(bl) = (MSBlockInfo *)allocated_blocks.data [__index];			\
+		(bl) = allocated_blocks.data [__index];			\
 		(hr) = BLOCK_IS_TAGGED_HAS_REFERENCES ((bl));		\
 		(bl) = BLOCK_UNTAG ((bl));
 #define END_FOREACH_BLOCK_NO_LOCK	} }
@@ -238,7 +242,7 @@ static volatile size_t num_major_sections = 0;
  * The only item of those that doesn't require the GC lock is the sweep thread.  The sweep
  * thread only ever adds blocks to the free list, so the ABA problem can't occur.
  */
-static MSBlockInfo * volatile *free_block_lists [MS_BLOCK_TYPE_MAX];
+static MSBlockHeader * volatile *free_block_lists [MS_BLOCK_TYPE_MAX];
 
 static guint64 stat_major_blocks_alloced = 0;
 static guint64 stat_major_blocks_freed = 0;
@@ -381,14 +385,100 @@ ms_get_empty_block (void)
 	return block;
 }
 
+#define CONSTRAIN_HASH(h)	((h) & (block_infos_capacity - 1))
+#define NEXT_HASH(h)		(CONSTRAIN_HASH ((h) + 1))
+
+static inline size_t
+block_hash (char *block)
+{
+	return CONSTRAIN_HASH (((size_t)block) >> MS_BLOCK_SIZE_SHIFT);
+}
+
+static inline MSBlockInfo*
+find_block_info_for_block (char *block)
+{
+	SGEN_ASSERT (9, block, "Must have a block.");
+	for (size_t hash = block_hash (block); ; hash = NEXT_HASH (hash)) {
+		if (block_infos [hash].block == block)
+			return &block_infos [hash];
+	}
+	SGEN_ASSERT (0, FALSE, "Why did we not find this block?");
+	return NULL;
+}
+
+static void
+grow_block_infos (void)
+{
+	int old_capacity = block_infos_capacity;
+	int new_capacity = old_capacity ? old_capacity * 2 : 64;
+	MSBlockInfo *old_infos = block_infos;
+	MSBlockInfo *new_infos = sgen_alloc_internal_dynamic (sizeof (MSBlockInfo) * new_capacity, INTERNAL_MEM_MS_BLOCK_INFO, TRUE);
+
+	for (int i = 0; i < new_capacity; ++i)
+		new_infos [i].block = NULL;
+
+	block_infos_capacity = new_capacity;
+	block_infos = new_infos;
+
+	for (int i = 0; i < old_capacity; ++i) {
+		size_t hash;
+
+		if (!old_infos [i].block)
+			continue;
+
+		for (hash = block_hash (old_infos [i].block); block_infos [hash].block; hash = NEXT_HASH (hash))
+			;
+		SGEN_ASSERT (0, !block_infos [hash].block, "How did this loop ever exit?");
+
+		block_infos [hash] = old_infos [i];
+	}
+
+	/*
+	for (int i = 0; i < old_capacity; ++i) {
+		if (!old_infos [i].block)
+			continue;
+		SGEN_ASSERT (0, find_block_info_for_block (old_infos [i].block), "We haven't migrated?");
+	}
+	*/
+
+	if (old_capacity)
+		sgen_free_internal_dynamic (old_infos, sizeof (MSBlockInfo) * old_capacity, INTERNAL_MEM_MS_BLOCK_INFO);
+}
+
+static MSBlockInfo*
+alloc_block_info_for_block (char *block)
+{
+	if (block_infos_used * 4 >= block_infos_capacity)
+		grow_block_infos ();
+
+	for (size_t hash = block_hash (block); ; hash = NEXT_HASH (hash)) {
+		if (!block_infos [hash].block) {
+			++block_infos_used;
+			block_infos [hash].block = block;
+			return &block_infos [hash];
+		}
+	}
+	SGEN_ASSERT (0, FALSE, "How did we fail to find a free slot after growing?");
+}
+
+static void
+free_block_info (MSBlockInfo *info)
+{
+	info->block = NULL;
+	--block_infos_used;
+}
+
 /*
  * This doesn't actually free a block immediately, but enqueues it into the `empty_blocks`
  * list, where it will either be freed later on, or reused in nursery collections.
  */
 static void
-ms_free_block (void *block)
+ms_free_block (MSBlockInfo *info)
 {
 	void *empty;
+	char *block = info->block;
+
+	free_block_info (info);
 
 	sgen_memgov_release_space (MS_BLOCK_SIZE, SPACE_MAJOR);
 	memset (block, 0, MS_BLOCK_SIZE);
@@ -495,12 +585,12 @@ consistency_check (void)
 #endif
 
 static void
-add_free_block (MSBlockInfo * volatile *free_blocks, int size_index, MSBlockInfo *block)
+add_free_block (MSBlockHeader * volatile *free_blocks, int size_index, MSBlockInfo *info)
 {
-	MSBlockInfo *old;
+	MSBlockHeader *old;
 	do {
-		block->next_free = old = free_blocks [size_index];
-	} while (SGEN_CAS_PTR ((volatile gpointer *)&free_blocks [size_index], block, old) != old);
+		info->next_free = old = free_blocks [size_index];
+	} while (SGEN_CAS_PTR ((volatile gpointer *)&free_blocks [size_index], info->block, old) != old);
 }
 
 static void major_finish_sweep_checking (void);
@@ -511,14 +601,16 @@ ms_alloc_block (int size_index, gboolean pinned, gboolean has_references)
 	int size = block_obj_sizes [size_index];
 	int count = MS_BLOCK_FREE / size;
 	MSBlockInfo *info;
-	MSBlockInfo * volatile * free_blocks = FREE_BLOCKS (pinned, has_references);
-	char *obj_start;
+	MSBlockHeader * volatile * free_blocks = FREE_BLOCKS (pinned, has_references);
+	char *obj_start, *block;
 	int i;
 
 	if (!sgen_memgov_try_alloc_space (MS_BLOCK_SIZE, SPACE_MAJOR))
 		return FALSE;
 
-	info = (MSBlockInfo*)ms_get_empty_block ();
+	block = (char*)ms_get_empty_block ();
+	info = alloc_block_info_for_block (block);
+	SGEN_ASSERT (9, info->block == block, "Why is this not the block info we wanted ?");
 
 	SGEN_ASSERT (9, count >= 2, "block with %d objects, it must hold at least 2", count);
 
@@ -613,13 +705,15 @@ ensure_can_access_block_free_list (MSBlockInfo *block)
 }
 
 static void*
-unlink_slot_from_free_list_uncontested (MSBlockInfo * volatile *free_blocks, int size_index)
+unlink_slot_from_free_list_uncontested (MSBlockHeader * volatile *free_blocks, int size_index)
 {
-	MSBlockInfo *block, *next_free_block;
+	MSBlockInfo *block;
+	char *free_block_data;
 	void *obj, *next_free_slot;
 
  retry:
-	block = free_blocks [size_index];
+	free_block_data = (char*)free_blocks [size_index];
+	block = find_block_info_for_block (free_block_data);
 	SGEN_ASSERT (9, block, "no free block to unlink from free_blocks %p size_index %d", free_blocks, size_index);
 
 	ensure_can_access_block_free_list (block);
@@ -633,8 +727,7 @@ unlink_slot_from_free_list_uncontested (MSBlockInfo * volatile *free_blocks, int
 		return obj;
 	}
 
-	next_free_block = block->next_free;
-	if (SGEN_CAS_PTR ((volatile gpointer *)&free_blocks [size_index], next_free_block, block) != block)
+	if (SGEN_CAS_PTR ((volatile gpointer *)&free_blocks [size_index], block->next_free, free_block_data) != free_block_data)
 		goto retry;
 
 	block->free_list = NULL;
@@ -647,7 +740,7 @@ static GCObject*
 alloc_obj (GCVTable vtable, size_t size, gboolean pinned, gboolean has_references)
 {
 	int size_index = MS_BLOCK_OBJ_SIZE_INDEX (size);
-	MSBlockInfo * volatile * free_blocks = FREE_BLOCKS (pinned, has_references);
+	MSBlockHeader * volatile * free_blocks = FREE_BLOCKS (pinned, has_references);
 	void *obj;
 
 	if (!free_blocks [size_index]) {
@@ -698,7 +791,7 @@ free_object (GCObject *obj, size_t size, gboolean pinned)
 	block->free_list = (void**)obj;
 
 	if (!in_free_list) {
-		MSBlockInfo * volatile *free_blocks = FREE_BLOCKS (pinned, block->has_references);
+		MSBlockHeader * volatile *free_blocks = FREE_BLOCKS (pinned, block->has_references);
 		int size_index = MS_BLOCK_OBJ_SIZE_INDEX (size);
 		SGEN_ASSERT (9, !block->next_free, "block %p doesn't have a free-list of object but belongs to a free-list of blocks", block);
 		add_free_block (free_blocks, size_index, block);
@@ -1412,7 +1505,7 @@ sweep_start (void)
 
 	/* clear all the free lists */
 	for (i = 0; i < MS_BLOCK_TYPE_MAX; ++i) {
-		MSBlockInfo * volatile *free_blocks = free_block_lists [i];
+		MSBlockHeader * volatile *free_blocks = free_block_lists [i];
 		int j;
 		for (j = 0; j < num_block_obj_sizes; ++j)
 			free_blocks [j] = NULL;
@@ -1461,7 +1554,7 @@ ensure_block_is_checked_for_sweeping (int block_index, gboolean wait, gboolean *
 	if (SGEN_CAS_PTR (&allocated_blocks.data [block_index], BLOCK_TAG_CHECKING (tagged_block), tagged_block) != tagged_block)
 		goto retry;
 
-	block = BLOCK_UNTAG (tagged_block);
+	block = find_block_info_for_block (BLOCK_UNTAG (tagged_block));
 	block_state = block->state;
 
 	if (!sweep_in_progress ()) {
@@ -1536,7 +1629,7 @@ ensure_block_is_checked_for_sweeping (int block_index, gboolean wait, gboolean *
 		 * the block to the corresponding free list.
 		 */
 		if (have_free) {
-			MSBlockInfo * volatile *free_blocks = FREE_BLOCKS (block->pinned, block->has_references);
+			MSBlockHeader * volatile *free_blocks = FREE_BLOCKS (block->pinned, block->has_references);
 
 			if (!lazy_sweep)
 				SGEN_ASSERT (6, block->free_list, "How do we not have a free list when there are free slots?");
@@ -1603,7 +1696,7 @@ sweep_job_func (void *thread_data_untyped, SgenThreadPoolJob *job)
 
 	if (SGEN_MAX_ASSERT_LEVEL >= 6) {
 		for (block_index = num_blocks; block_index < allocated_blocks.next_slot; ++block_index) {
-			MSBlockInfo *block = BLOCK_UNTAG (allocated_blocks.data [block_index]);
+			MSBlockInfo *block = find_block_info_for_block (BLOCK_UNTAG (allocated_blocks.data [block_index]));
 			SGEN_ASSERT (6, block && block->state == BLOCK_STATE_SWEPT, "How did a new block to be swept get added while swept?");
 		}
 	}
@@ -2106,13 +2199,13 @@ major_print_gc_param_usage (void)
 static void
 major_iterate_live_block_ranges (sgen_cardtable_block_callback callback)
 {
-	MSBlockInfo *block;
+	char *block;
 	gboolean has_references;
 
 	major_finish_sweep_checking ();
 	FOREACH_BLOCK_HAS_REFERENCES_NO_LOCK (block, has_references) {
 		if (has_references)
-			callback ((mword)MS_BLOCK_FOR_BLOCK_INFO (block), MS_BLOCK_SIZE);
+			callback ((mword)block, MS_BLOCK_SIZE);
 	} END_FOREACH_BLOCK_NO_LOCK;
 }
 
@@ -2291,19 +2384,19 @@ scan_card_table_for_block (MSBlockInfo *block, gboolean mod_union, ScanCopyConte
 static void
 major_scan_card_table (gboolean mod_union, ScanCopyContext ctx)
 {
-	MSBlockInfo *block;
+	char *block_data;
 	gboolean has_references;
 
 	if (!concurrent_mark)
 		g_assert (!mod_union);
 
 	major_finish_sweep_checking ();
-	FOREACH_BLOCK_HAS_REFERENCES_NO_LOCK (block, has_references) {
+	FOREACH_BLOCK_HAS_REFERENCES_NO_LOCK (block_data, has_references) {
 #ifdef PREFETCH_CARDS
 		int prefetch_index = __index + 6;
 		if (prefetch_index < allocated_blocks.next_slot) {
-			MSBlockInfo *prefetch_block = BLOCK_UNTAG (allocated_blocks.data [prefetch_index]);
-			guint8 *prefetch_cards = sgen_card_table_get_card_scan_address ((mword)MS_BLOCK_FOR_BLOCK_INFO (prefetch_block));
+			char *prefetch_block = BLOCK_UNTAG (allocated_blocks.data [prefetch_index]);
+			guint8 *prefetch_cards = sgen_card_table_get_card_scan_address ((mword)prefetch_block);
 			PREFETCH_READ (prefetch_block);
 			PREFETCH_WRITE (prefetch_cards);
 			PREFETCH_WRITE (prefetch_cards + 32);
@@ -2313,14 +2406,14 @@ major_scan_card_table (gboolean mod_union, ScanCopyContext ctx)
 		if (!has_references)
 			continue;
 
-		scan_card_table_for_block (block, mod_union, ctx);
+		scan_card_table_for_block (find_block_info_for_block (block_data), mod_union, ctx);
 	} END_FOREACH_BLOCK_NO_LOCK;
 }
 
 static void
 major_count_cards (long long *num_total_cards, long long *num_marked_cards)
 {
-	MSBlockInfo *block;
+	char *block;
 	gboolean has_references;
 	long long total_cards = 0;
 	long long marked_cards = 0;
@@ -2332,7 +2425,7 @@ major_count_cards (long long *num_total_cards, long long *num_marked_cards)
 	}
 
 	FOREACH_BLOCK_HAS_REFERENCES_NO_LOCK (block, has_references) {
-		guint8 *cards = sgen_card_table_get_card_scan_address ((mword) MS_BLOCK_FOR_BLOCK_INFO (block));
+		guint8 *cards = sgen_card_table_get_card_scan_address ((mword) block);
 		int i;
 
 		if (!has_references)
@@ -2400,7 +2493,7 @@ sgen_marksweep_init_internal (SgenMajorCollector *collector, gboolean is_concurr
 	*/
 
 	for (i = 0; i < MS_BLOCK_TYPE_MAX; ++i)
-		free_block_lists [i] = (MSBlockInfo *volatile *)sgen_alloc_internal_dynamic (sizeof (MSBlockInfo*) * num_block_obj_sizes, INTERNAL_MEM_MS_TABLES, TRUE);
+		free_block_lists [i] = (MSBlockHeader *volatile *)sgen_alloc_internal_dynamic (sizeof (MSBlockInfo*) * num_block_obj_sizes, INTERNAL_MEM_MS_TABLES, TRUE);
 
 	for (i = 0; i < MS_NUM_FAST_BLOCK_OBJ_SIZE_INDEXES; ++i)
 		fast_block_obj_size_indexes [i] = ms_find_block_obj_size_index (i * 8);
