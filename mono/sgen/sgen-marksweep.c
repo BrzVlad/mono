@@ -53,19 +53,27 @@
 #define CARDS_PER_BLOCK (MS_BLOCK_SIZE / CARD_SIZE_IN_BYTES)
 
 /*
+ * Given a pointer inside the block, determines whether the block info
+ * is stored at the start of the block or at the end of the block. We
+ * do this to improve caching of mark bits.
+ */
+#define MS_BLOCK_INFO_AT_START(p) (((mword)(p) & MS_BLOCK_SIZE) ? 1 : 0)
+
+/*
  * Don't allocate single blocks, but alloc a contingent of this many
  * blocks in one swoop.  This must be a power of two.
  */
 #define MS_BLOCK_ALLOC_NUM	32
 
+#define MS_BLOCK_INFO_SIZE	((sizeof (MSBlockInfo) + 15) & ~15)
 /*
  * Number of bytes before the first object in a block.  At the start
  * of a block is the MSBlockHeader, then opional padding, then come
  * the objects, so this must be >= sizeof (MSBlockHeader).
  */
-#define MS_BLOCK_SKIP	((sizeof (MSBlockHeader) + 15) & ~15)
+#define MS_BLOCK_SKIP(p)	(MS_BLOCK_INFO_AT_START (p) ? MS_BLOCK_INFO_SIZE : 0)
 
-#define MS_BLOCK_FREE	(MS_BLOCK_SIZE - MS_BLOCK_SKIP)
+#define MS_BLOCK_FREE		(MS_BLOCK_SIZE - MS_BLOCK_INFO_SIZE)
 
 #define MS_NUM_MARK_WORDS	((MS_BLOCK_SIZE / SGEN_ALLOC_ALIGN + sizeof (mword) * 8 - 1) / (sizeof (mword) * 8))
 
@@ -99,6 +107,9 @@ enum {
 	BLOCK_STATE_SWEEPING
 };
 
+typedef struct {
+} MSBlockHeader;
+
 typedef struct _MSBlockInfo MSBlockInfo;
 struct _MSBlockInfo {
 	guint16 obj_size;
@@ -114,25 +125,24 @@ struct _MSBlockInfo {
 	unsigned int has_pinned : 1;	/* means cannot evacuate */
 	unsigned int is_to_space : 1;
 	void ** volatile free_list;
-	MSBlockInfo * volatile next_free;
+	MSBlockHeader * volatile next_free;
 	guint8 * volatile cardtable_mod_union;
 	mword mark_words [MS_NUM_MARK_WORDS];
 };
 
-#define MS_BLOCK_FOR_BLOCK_INFO(b)	((char*)(b))
+#define MS_BLOCK_DATA_FOR_PTR(p)	((char*)((mword)(p) & ~(mword)(MS_BLOCK_SIZE - 1)))
+#define MS_BLOCK_INFO_FOR_PTR(p)	((MSBlockInfo*)(MS_BLOCK_DATA_FOR_PTR (p) + (MS_BLOCK_INFO_AT_START (p) ? 0 : MS_BLOCK_FREE)))
+#define MS_BLOCK_DATA_FOR_OBJ(o)	(MS_BLOCK_DATA_FOR_PTR (o))
+#define MS_BLOCK_FOR_BLOCK_INFO(b)	(MS_BLOCK_DATA_FOR_PTR (b))
 
-#define MS_BLOCK_OBJ(b,i)		((GCObject *)(MS_BLOCK_FOR_BLOCK_INFO(b) + MS_BLOCK_SKIP + (b)->obj_size * (i)))
-#define MS_BLOCK_OBJ_FOR_SIZE(b,i,obj_size)		(MS_BLOCK_FOR_BLOCK_INFO(b) + MS_BLOCK_SKIP + (obj_size) * (i))
-#define MS_BLOCK_DATA_FOR_OBJ(o)	((char*)((mword)(o) & ~(mword)(MS_BLOCK_SIZE - 1)))
+#define MS_BLOCK_OBJ(b,i)		((GCObject *)(MS_BLOCK_FOR_BLOCK_INFO(b) + MS_BLOCK_SKIP(b) + (b)->obj_size * (i)))
+#define MS_BLOCK_OBJ_FOR_SIZE(b,i,obj_size)		(MS_BLOCK_FOR_BLOCK_INFO(b) + MS_BLOCK_SKIP(b) + (obj_size) * (i))
 
-typedef struct {
-	MSBlockInfo info;
-} MSBlockHeader;
-
-#define MS_BLOCK_FOR_OBJ(o)		(&((MSBlockHeader*)MS_BLOCK_DATA_FOR_OBJ ((o)))->info)
+#define MS_BLOCK_FOR_OBJ(o)		(MS_BLOCK_INFO_FOR_PTR(o))
+#define MS_BLOCK_INFO_FOR_BLOCK(b)	(MS_BLOCK_INFO_FOR_PTR(b))
 
 /* object index will always be small */
-#define MS_BLOCK_OBJ_INDEX(o,b)	((int)(((char*)(o) - (MS_BLOCK_FOR_BLOCK_INFO(b) + MS_BLOCK_SKIP)) / (b)->obj_size))
+#define MS_BLOCK_OBJ_INDEX(o,b)	((int)(((char*)(o) - (MS_BLOCK_FOR_BLOCK_INFO(b) + MS_BLOCK_SKIP(b))) / (b)->obj_size))
 
 //casting to int is fine since blocks are 32k
 #define MS_CALC_MARK_BIT(w,b,o) 	do {				\
@@ -192,7 +202,7 @@ static gboolean concurrent_sweep = TRUE;
 #define BLOCK_IS_TAGGED_CHECKING(bl)		SGEN_POINTER_IS_TAGGED_2 ((bl))
 #define BLOCK_TAG_CHECKING(bl)			SGEN_POINTER_TAG_2 ((bl))
 
-#define BLOCK_UNTAG(bl)				((MSBlockInfo *)SGEN_POINTER_UNTAG_12 ((bl)))
+#define BLOCK_UNTAG(bl)				((MSBlockInfo*)SGEN_POINTER_UNTAG_12 ((bl)))
 
 #define BLOCK_TAG(bl)				((bl)->has_references ? BLOCK_TAG_HAS_REFERENCES ((bl)) : (bl))
 
@@ -207,14 +217,14 @@ static size_t num_empty_blocks = 0;
 	size_t __index;							\
 	SGEN_ASSERT (0, (cond) && !sweep_in_progress (), "Can't iterate blocks while the world is running or sweep is in progress."); \
 	for (__index = 0; __index < allocated_blocks.next_slot; ++__index) { \
-		(bl) = BLOCK_UNTAG (allocated_blocks.data [__index]);
+		(bl) = MS_BLOCK_INFO_FOR_BLOCK (BLOCK_UNTAG (allocated_blocks.data [__index]));
 #define FOREACH_BLOCK_NO_LOCK(bl)					\
 	FOREACH_BLOCK_NO_LOCK_CONDITION(sgen_is_world_stopped (), bl)
 #define FOREACH_BLOCK_HAS_REFERENCES_NO_LOCK(bl,hr) {			\
 	size_t __index;							\
 	SGEN_ASSERT (0, sgen_is_world_stopped () && !sweep_in_progress (), "Can't iterate blocks while the world is running or sweep is in progress."); \
 	for (__index = 0; __index < allocated_blocks.next_slot; ++__index) { \
-		(bl) = (MSBlockInfo *)allocated_blocks.data [__index];			\
+		(bl) = allocated_blocks.data [__index];			\
 		(hr) = BLOCK_IS_TAGGED_HAS_REFERENCES ((bl));		\
 		(bl) = BLOCK_UNTAG ((bl));
 #define END_FOREACH_BLOCK_NO_LOCK	} }
@@ -238,7 +248,7 @@ static volatile size_t num_major_sections = 0;
  * The only item of those that doesn't require the GC lock is the sweep thread.  The sweep
  * thread only ever adds blocks to the free list, so the ABA problem can't occur.
  */
-static MSBlockInfo * volatile *free_block_lists [MS_BLOCK_TYPE_MAX];
+static MSBlockHeader * volatile *free_block_lists [MS_BLOCK_TYPE_MAX];
 
 static guint64 stat_major_blocks_alloced = 0;
 static guint64 stat_major_blocks_freed = 0;
@@ -495,9 +505,9 @@ consistency_check (void)
 #endif
 
 static void
-add_free_block (MSBlockInfo * volatile *free_blocks, int size_index, MSBlockInfo *block)
+add_free_block (MSBlockHeader * volatile *free_blocks, int size_index, MSBlockInfo *block)
 {
-	MSBlockInfo *old;
+	MSBlockHeader *old;
 	do {
 		block->next_free = old = free_blocks [size_index];
 	} while (SGEN_CAS_PTR ((volatile gpointer *)&free_blocks [size_index], block, old) != old);
@@ -510,15 +520,17 @@ ms_alloc_block (int size_index, gboolean pinned, gboolean has_references)
 {
 	int size = block_obj_sizes [size_index];
 	int count = MS_BLOCK_FREE / size;
+	char *block_data;
 	MSBlockInfo *info;
-	MSBlockInfo * volatile * free_blocks = FREE_BLOCKS (pinned, has_references);
+	MSBlockHeader * volatile * free_blocks = FREE_BLOCKS (pinned, has_references);
 	char *obj_start;
 	int i;
 
 	if (!sgen_memgov_try_alloc_space (MS_BLOCK_SIZE, SPACE_MAJOR))
 		return FALSE;
 
-	info = (MSBlockInfo*)ms_get_empty_block ();
+	block_data = (char*) ms_get_empty_block ();
+	info = MS_BLOCK_INFO_FOR_BLOCK (block_data);
 
 	SGEN_ASSERT (9, count >= 2, "block with %d objects, it must hold at least 2", count);
 
@@ -544,7 +556,7 @@ ms_alloc_block (int size_index, gboolean pinned, gboolean has_references)
 	binary_protocol_block_alloc (info, MS_BLOCK_SIZE);
 
 	/* build free list */
-	obj_start = MS_BLOCK_FOR_BLOCK_INFO (info) + MS_BLOCK_SKIP;
+	obj_start = block_data + MS_BLOCK_SKIP (block_data);
 	info->free_list = (void**)obj_start;
 	/* we're skipping the last one - it must be nulled */
 	for (i = 0; i < count - 1; ++i) {
@@ -613,13 +625,16 @@ ensure_can_access_block_free_list (MSBlockInfo *block)
 }
 
 static void*
-unlink_slot_from_free_list_uncontested (MSBlockInfo * volatile *free_blocks, int size_index)
+unlink_slot_from_free_list_uncontested (MSBlockHeader * volatile *free_blocks, int size_index)
 {
-	MSBlockInfo *block, *next_free_block;
+	MSBlockInfo *block;
+	MSBlockHeader *next_free_block;
+	char *free_block_data;
 	void *obj, *next_free_slot;
 
  retry:
-	block = free_blocks [size_index];
+	free_block_data = (char*) free_blocks [size_index];
+	block = MS_BLOCK_INFO_FOR_BLOCK (free_block_data);
 	SGEN_ASSERT (9, block, "no free block to unlink from free_blocks %p size_index %d", free_blocks, size_index);
 
 	ensure_can_access_block_free_list (block);
@@ -634,7 +649,7 @@ unlink_slot_from_free_list_uncontested (MSBlockInfo * volatile *free_blocks, int
 	}
 
 	next_free_block = block->next_free;
-	if (SGEN_CAS_PTR ((volatile gpointer *)&free_blocks [size_index], next_free_block, block) != block)
+	if (SGEN_CAS_PTR ((volatile gpointer *)&free_blocks [size_index], next_free_block, free_block_data) != free_block_data)
 		goto retry;
 
 	block->free_list = NULL;
@@ -647,7 +662,7 @@ static GCObject*
 alloc_obj (GCVTable vtable, size_t size, gboolean pinned, gboolean has_references)
 {
 	int size_index = MS_BLOCK_OBJ_SIZE_INDEX (size);
-	MSBlockInfo * volatile * free_blocks = FREE_BLOCKS (pinned, has_references);
+	MSBlockHeader * volatile * free_blocks = FREE_BLOCKS (pinned, has_references);
 	void *obj;
 
 	if (!free_blocks [size_index]) {
@@ -698,7 +713,7 @@ free_object (GCObject *obj, size_t size, gboolean pinned)
 	block->free_list = (void**)obj;
 
 	if (!in_free_list) {
-		MSBlockInfo * volatile *free_blocks = FREE_BLOCKS (pinned, block->has_references);
+		MSBlockHeader * volatile *free_blocks = FREE_BLOCKS (pinned, block->has_references);
 		int size_index = MS_BLOCK_OBJ_SIZE_INDEX (size);
 		SGEN_ASSERT (9, !block->next_free, "block %p doesn't have a free-list of object but belongs to a free-list of blocks", block);
 		add_free_block (free_blocks, size_index, block);
@@ -1412,7 +1427,7 @@ sweep_start (void)
 
 	/* clear all the free lists */
 	for (i = 0; i < MS_BLOCK_TYPE_MAX; ++i) {
-		MSBlockInfo * volatile *free_blocks = free_block_lists [i];
+		MSBlockHeader * volatile *free_blocks = free_block_lists [i];
 		int j;
 		for (j = 0; j < num_block_obj_sizes; ++j)
 			free_blocks [j] = NULL;
@@ -1536,7 +1551,7 @@ ensure_block_is_checked_for_sweeping (int block_index, gboolean wait, gboolean *
 		 * the block to the corresponding free list.
 		 */
 		if (have_free) {
-			MSBlockInfo * volatile *free_blocks = FREE_BLOCKS (block->pinned, block->has_references);
+			MSBlockHeader * volatile *free_blocks = FREE_BLOCKS (block->pinned, block->has_references);
 
 			if (!lazy_sweep)
 				SGEN_ASSERT (6, block->free_list, "How do we not have a free list when there are free slots?");
@@ -1555,7 +1570,7 @@ ensure_block_is_checked_for_sweeping (int block_index, gboolean wait, gboolean *
 		SGEN_ASSERT (6, allocated_blocks.data [block_index] == BLOCK_TAG_CHECKING (tagged_block), "How did the block move?");
 
 		binary_protocol_empty (MS_BLOCK_OBJ (block, 0), (char*)MS_BLOCK_OBJ (block, count) - (char*)MS_BLOCK_OBJ (block, 0));
-		ms_free_block (block);
+		ms_free_block (MS_BLOCK_FOR_BLOCK_INFO (block));
 
 		SGEN_ATOMIC_ADD_P (num_major_sections, -1);
 
@@ -2001,7 +2016,7 @@ major_pin_objects (SgenGrayQueue *queue)
 	FOREACH_BLOCK_NO_LOCK (block) {
 		size_t first_entry, last_entry;
 		SGEN_ASSERT (6, block_is_swept_or_marking (block), "All blocks must be swept when we're pinning.");
-		sgen_find_optimized_pin_queue_area (MS_BLOCK_FOR_BLOCK_INFO (block) + MS_BLOCK_SKIP, MS_BLOCK_FOR_BLOCK_INFO (block) + MS_BLOCK_SIZE,
+		sgen_find_optimized_pin_queue_area (MS_BLOCK_FOR_BLOCK_INFO (block) + MS_BLOCK_SKIP (block), MS_BLOCK_FOR_BLOCK_INFO (block) + MS_BLOCK_SKIP (block) + MS_BLOCK_FREE,
 				&first_entry, &last_entry);
 		mark_pinned_objects_in_block (block, first_entry, last_entry, queue);
 	} END_FOREACH_BLOCK_NO_LOCK;
@@ -2159,8 +2174,8 @@ initial_skip_card (guint8 *card_data)
 #endif
 }
 
-#define MS_BLOCK_OBJ_INDEX_FAST(o,b,os)	(((char*)(o) - ((b) + MS_BLOCK_SKIP)) / (os))
-#define MS_BLOCK_OBJ_FAST(b,os,i)			((b) + MS_BLOCK_SKIP + (os) * (i))
+#define MS_BLOCK_OBJ_INDEX_FAST(o,b,os)	(((char*)(o) - ((b) + MS_BLOCK_SKIP(b))) / (os))
+#define MS_BLOCK_OBJ_FAST(b,os,i)			((b) + MS_BLOCK_SKIP(b) + (os) * (i))
 #define MS_OBJ_ALLOCED_FAST(o,b)		(*(void**)(o) && (*(char**)(o) < (b) || *(char**)(o) >= (b) + MS_BLOCK_SIZE))
 
 static void
@@ -2209,7 +2224,7 @@ scan_card_table_for_block (MSBlockInfo *block, gboolean mod_union, ScanCopyConte
 	}
 	card_data_end = card_data + CARDS_PER_BLOCK;
 
-	card_data += MS_BLOCK_SKIP >> CARD_BITS;
+	card_data += MS_BLOCK_SKIP (block) >> CARD_BITS;
 
 	card_data = initial_skip_card (card_data);
 	while (card_data < card_data_end) {
@@ -2228,6 +2243,7 @@ scan_card_table_for_block (MSBlockInfo *block, gboolean mod_union, ScanCopyConte
 		card_index = card_data - card_base;
 		start = (char*)(block_start + card_index * CARD_SIZE_IN_BYTES);
 		end = start + CARD_SIZE_IN_BYTES;
+		end = MIN (end, block_start + MS_BLOCK_SKIP (block_start) + MS_BLOCK_FREE);
 
 		if (!block_is_swept_or_marking (block))
 			sweep_block (block);
@@ -2243,7 +2259,7 @@ scan_card_table_for_block (MSBlockInfo *block, gboolean mod_union, ScanCopyConte
 		 * the index of the object we're hypothetically starting at, because
 		 * it would be negative.
 		 */
-		if (card_index <= (MS_BLOCK_SKIP >> CARD_BITS))
+		if (card_index <= (MS_BLOCK_SKIP (block) >> CARD_BITS))
 			first_object_index = 0;
 		else
 			first_object_index = MS_BLOCK_OBJ_INDEX_FAST (start, block_start, block_obj_size);
@@ -2285,6 +2301,8 @@ scan_card_table_for_block (MSBlockInfo *block, gboolean mod_union, ScanCopyConte
 			++card_data;
 		else
 			card_data = card_base + sgen_card_table_get_card_offset (obj, block_start);
+		if (((mword)end & (CARD_SIZE_IN_BYTES - 1)) != 0)
+			break;
 	}
 }
 
@@ -2400,7 +2418,7 @@ sgen_marksweep_init_internal (SgenMajorCollector *collector, gboolean is_concurr
 	*/
 
 	for (i = 0; i < MS_BLOCK_TYPE_MAX; ++i)
-		free_block_lists [i] = (MSBlockInfo *volatile *)sgen_alloc_internal_dynamic (sizeof (MSBlockInfo*) * num_block_obj_sizes, INTERNAL_MEM_MS_TABLES, TRUE);
+		free_block_lists [i] = (MSBlockHeader *volatile *)sgen_alloc_internal_dynamic (sizeof (MSBlockHeader*) * num_block_obj_sizes, INTERNAL_MEM_MS_TABLES, TRUE);
 
 	for (i = 0; i < MS_NUM_FAST_BLOCK_OBJ_SIZE_INDEXES; ++i)
 		fast_block_obj_size_indexes [i] = ms_find_block_obj_size_index (i * 8);
