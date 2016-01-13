@@ -510,6 +510,7 @@ ms_alloc_block (int size_index, gboolean pinned, gboolean has_references)
 {
 	int size = block_obj_sizes [size_index];
 	int count = MS_BLOCK_FREE / size;
+	int start_index;
 	MSBlockInfo *info;
 	MSBlockInfo * volatile * free_blocks = FREE_BLOCKS (pinned, has_references);
 	char *obj_start;
@@ -544,11 +545,12 @@ ms_alloc_block (int size_index, gboolean pinned, gboolean has_references)
 	binary_protocol_block_alloc (info, MS_BLOCK_SIZE);
 
 	/* build free list */
-	obj_start = MS_BLOCK_FOR_BLOCK_INFO (info) + MS_BLOCK_SKIP;
+	start_index = (((mword)info - 1) * 2654435761u) % count;
+	obj_start = MS_BLOCK_OBJ_FOR_SIZE (info, start_index, size);
 	info->free_list = (void**)obj_start;
 	/* we're skipping the last one - it must be nulled */
-	for (i = 0; i < count - 1; ++i) {
-		char *next_obj_start = obj_start + size;
+	for (i = 1; i < count; ++i) {
+		char *next_obj_start = MS_BLOCK_OBJ_FOR_SIZE (info, (start_index + i) % count, size);
 		*(void**)obj_start = next_obj_start;
 		obj_start = next_obj_start;
 	}
@@ -1262,9 +1264,10 @@ mark_pinned_objects_in_block (MSBlockInfo *block, size_t first_entry, size_t las
 static inline void
 sweep_block_for_size (MSBlockInfo *block, int count, int obj_size)
 {
-	int obj_index;
+	int i;
+	int obj_index = (((mword)block - 1) * 2654435761u) % count;
 
-	for (obj_index = 0; obj_index < count; ++obj_index) {
+	for (i = 0; i < count; i++, obj_index = (obj_index + count - 1) % count) {
 		int word, bit;
 		void *obj = MS_BLOCK_OBJ_FOR_SIZE (block, obj_index, obj_size);
 
