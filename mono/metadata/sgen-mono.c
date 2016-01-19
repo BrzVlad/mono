@@ -1592,7 +1592,7 @@ find_next_card (guint8 *card_data, guint8 *end)
 #define ARRAY_OBJ_INDEX(ptr,array,elem_size) (((char*)(ptr) - ((char*)(array) + G_STRUCT_OFFSET (MonoArray, vector))) / (elem_size))
 
 gboolean
-sgen_client_cardtable_scan_object (GCObject *obj, mword block_obj_size, guint8 *cards, gboolean mod_union, ScanCopyContext ctx)
+sgen_client_cardtable_scan_object (GCObject *obj, mword block_obj_size, guint8 *cards, gboolean mod_union, gpointer *last_ptr_mod_marked, ScanCopyContext ctx)
 {
 	MonoVTable *vt = SGEN_LOAD_VTABLE (obj);
 	MonoClass *klass = vt->klass;
@@ -1657,6 +1657,17 @@ LOOP_HEAD:
 
 			if (!cards)
 				sgen_card_table_prepare_card_for_scanning (card_data);
+			else if (last_ptr_mod_marked && *last_ptr_mod_marked < (gpointer)start) {
+				if (card_data < (card_data_end - 1)) {
+					/*
+					 * The last card might also contain data from the next object
+					 * given we are in a block. We are not allowed to preclean the
+					 * card since we could lose a remset in that object.
+					 */
+					*card_data = 0;
+					mono_memory_write_barrier ();
+				}
+			}
 
 			card_end = MIN (card_end, obj_end);
 
@@ -1670,13 +1681,13 @@ LOOP_HEAD:
 				ScanVTypeFunc scan_vtype_func = ctx.ops->scan_vtype;
 
 				for (; elem < card_end; elem += elem_size)
-					scan_vtype_func (obj, elem, desc, ctx.queue BINARY_PROTOCOL_ARG (elem_size));
+					scan_vtype_func (obj, elem, desc, ctx.queue, last_ptr_mod_marked BINARY_PROTOCOL_ARG (elem_size));
 			} else {
 				ScanPtrFieldFunc scan_ptr_field_func = ctx.ops->scan_ptr_field;
 
 				HEAVY_STAT (++los_array_cards);
 				for (; elem < card_end; elem += SIZEOF_VOID_P)
-					scan_ptr_field_func (obj, (GCObject**)elem, ctx.queue);
+					scan_ptr_field_func (obj, (GCObject**)elem, ctx.queue, last_ptr_mod_marked);
 			}
 
 			binary_protocol_card_scan (first_elem, elem - first_elem);

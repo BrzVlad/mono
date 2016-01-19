@@ -31,7 +31,7 @@ void sgen_card_table_reset_region (mword start, mword end);
 void* sgen_card_table_align_pointer (void *ptr);
 void sgen_card_table_mark_range (mword address, mword size);
 void sgen_cardtable_scan_object (GCObject *obj, mword obj_size, guint8 *cards,
-		gboolean mod_union, ScanCopyContext ctx);
+		gboolean mod_union, gpointer *last_ptr_mod_marked, ScanCopyContext ctx);
 
 gboolean sgen_card_table_get_card_data (guint8 *dest, mword address, mword cards);
 

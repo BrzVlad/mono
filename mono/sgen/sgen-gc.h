@@ -405,9 +405,9 @@ struct _SgenThreadInfo {
 gboolean sgen_is_worker_thread (MonoNativeThreadId thread);
 
 typedef void (*CopyOrMarkObjectFunc) (GCObject**, SgenGrayQueue*);
-typedef void (*ScanObjectFunc) (GCObject *obj, SgenDescriptor desc, SgenGrayQueue*);
-typedef void (*ScanVTypeFunc) (GCObject *full_object, char *start, SgenDescriptor desc, SgenGrayQueue* BINARY_PROTOCOL_ARG (size_t size));
-typedef void (*ScanPtrFieldFunc) (GCObject *obj, GCObject **ptr, SgenGrayQueue* queue);
+typedef void (*ScanObjectFunc) (GCObject *obj, SgenDescriptor desc, SgenGrayQueue*, gpointer*);
+typedef void (*ScanVTypeFunc) (GCObject *full_object, char *start, SgenDescriptor desc, SgenGrayQueue*, gpointer* BINARY_PROTOCOL_ARG (size_t size));
+typedef void (*ScanPtrFieldFunc) (GCObject *obj, GCObject **ptr, SgenGrayQueue* queue, gpointer*);
 typedef gboolean (*DrainGrayStackFunc) (SgenGrayQueue *queue);
 
 typedef struct {
@@ -626,7 +626,7 @@ struct _SgenMajorCollector {
 	void (*free_non_pinned_object) (GCObject *obj, size_t size);
 	void (*pin_objects) (SgenGrayQueue *queue);
 	void (*pin_major_object) (GCObject *obj, SgenGrayQueue *queue);
-	void (*scan_card_table) (gboolean mod_union, ScanCopyContext ctx);
+	void (*scan_card_table) (gboolean mod_union, gboolean pre_clean, ScanCopyContext ctx);
 	void (*iterate_live_block_ranges) (sgen_cardtable_block_callback callback);
 	void (*update_cardtable_mod_union) (void);
 	void (*init_to_space) (void);
@@ -852,7 +852,7 @@ void sgen_los_sweep (void);
 gboolean sgen_ptr_is_in_los (char *ptr, char **start);
 void sgen_los_iterate_objects (IterateObjectCallbackFunc cb, void *user_data);
 void sgen_los_iterate_live_block_ranges (sgen_cardtable_block_callback callback);
-void sgen_los_scan_card_table (gboolean mod_union, ScanCopyContext ctx);
+void sgen_los_scan_card_table (gboolean mod_union, gboolean pre_clean, ScanCopyContext ctx);
 void sgen_los_update_cardtable_mod_union (void);
 void sgen_los_count_cards (long long *num_total_cards, long long *num_marked_cards);
 gboolean sgen_los_is_valid_object (char *object);

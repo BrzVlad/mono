@@ -426,11 +426,11 @@ sgen_card_table_scan_remsets (ScanCopyContext ctx)
 	sgen_card_table_clear_cards ();
 #endif
 	SGEN_TV_GETTIME (atv);
-	sgen_get_major_collector ()->scan_card_table (FALSE, ctx);
+	sgen_get_major_collector ()->scan_card_table (FALSE, FALSE, ctx);
 	SGEN_TV_GETTIME (btv);
 	last_major_scan_time = SGEN_TV_ELAPSED (atv, btv); 
 	major_card_scan_time += last_major_scan_time;
-	sgen_los_scan_card_table (FALSE, ctx);
+	sgen_los_scan_card_table (FALSE, FALSE, ctx);
 	SGEN_TV_GETTIME (atv);
 	last_los_scan_time = SGEN_TV_ELAPSED (btv, atv);
 	los_card_scan_time += last_los_scan_time;
@@ -477,19 +477,32 @@ sgen_card_table_dump_obj_card (GCObject *object, size_t size, void *dummy)
 #endif
 
 void
-sgen_cardtable_scan_object (GCObject *obj, mword block_obj_size, guint8 *cards, gboolean mod_union, ScanCopyContext ctx)
+sgen_cardtable_scan_object (GCObject *obj, mword block_obj_size, guint8 *cards, gboolean mod_union, gpointer *last_marked, ScanCopyContext ctx)
 {
 	HEAVY_STAT (++large_objects);
 
-	if (sgen_client_cardtable_scan_object (obj, block_obj_size, cards, mod_union, ctx))
+	if (sgen_client_cardtable_scan_object (obj, block_obj_size, cards, mod_union, last_marked, ctx))
 		return;
 
 	HEAVY_STAT (++bloby_objects);
 	if (cards) {
-		if (sgen_card_table_is_range_marked (cards, (mword)obj, block_obj_size))
-			ctx.ops->scan_object (obj, sgen_obj_get_descriptor (obj), ctx.queue);
+		if (sgen_card_table_is_range_marked (cards, (mword)obj, block_obj_size)) {
+			if (last_marked) {
+				const gpointer card_aligned_obj = sgen_card_table_align_pointer (obj);
+				/* Don't clean cards marked in the preclean phase */
+				const mword card_skip = (*last_marked < card_aligned_obj) ? 0 : sgen_card_table_number_of_cards_in_range ((mword)card_aligned_obj, (mword)(*last_marked) - (mword)card_aligned_obj);
+				/* Additionally don't clean the last card, which can be a remeset in the next object */
+				const mword card_clean = sgen_card_table_number_of_cards_in_range ((mword)obj, block_obj_size) - card_skip - 1;
+				/* Preclean phase */
+				if (card_clean > 0) {
+					memset (cards + card_skip, 0, card_clean);
+					mono_memory_write_barrier ();
+				}
+			}
+			ctx.ops->scan_object (obj, sgen_obj_get_descriptor (obj), ctx.queue, last_marked);
+		}
 	} else if (sgen_card_table_region_begin_scanning ((mword)obj, block_obj_size)) {
-		ctx.ops->scan_object (obj, sgen_obj_get_descriptor (obj), ctx.queue);
+		ctx.ops->scan_object (obj, sgen_obj_get_descriptor (obj), ctx.queue, NULL);
 	}
 
 	binary_protocol_card_scan (obj, sgen_safe_object_get_size (obj));

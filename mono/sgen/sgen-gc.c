@@ -550,7 +550,7 @@ sgen_drain_gray_stack (ScanCopyContext ctx)
 		if (!obj)
 			return TRUE;
 		SGEN_LOG (9, "Precise gray object scan %p (%s)", obj, sgen_client_vtable_get_name (SGEN_LOAD_VTABLE (obj)));
-		scan_func (obj, desc, queue);
+		scan_func (obj, desc, queue, NULL);
 	}
 	return FALSE;
 }
@@ -692,7 +692,7 @@ pin_objects_from_nursery_pin_queue (gboolean do_scan_objects, ScanCopyContext ct
 		 */
 		desc = sgen_obj_get_descriptor_safe (obj_to_pin);
 		if (do_scan_objects) {
-			scan_func (obj_to_pin, desc, queue);
+			scan_func (obj_to_pin, desc, queue, NULL);
 		} else {
 			SGEN_LOG (4, "Pinned object %p, vtable %p (%s), count %d\n",
 					obj_to_pin, *(void**)obj_to_pin, sgen_client_vtable_get_name (SGEN_LOAD_VTABLE (obj_to_pin)), count);
@@ -1392,7 +1392,7 @@ job_scan_major_mod_union_card_table (void *worker_data_untyped, SgenThreadPoolJo
 	ScanCopyContext ctx = CONTEXT_FROM_OBJECT_OPERATIONS (job_data->ops, sgen_workers_get_job_gray_queue (worker_data));
 
 	g_assert (concurrent_collection_in_progress);
-	major_collector.scan_card_table (TRUE, ctx);
+	major_collector.scan_card_table (TRUE, FALSE, ctx);
 }
 
 static void
@@ -1403,7 +1403,20 @@ job_scan_los_mod_union_card_table (void *worker_data_untyped, SgenThreadPoolJob 
 	ScanCopyContext ctx = CONTEXT_FROM_OBJECT_OPERATIONS (job_data->ops, sgen_workers_get_job_gray_queue (worker_data));
 
 	g_assert (concurrent_collection_in_progress);
-	sgen_los_scan_card_table (TRUE, ctx);
+	sgen_los_scan_card_table (TRUE, FALSE, ctx);
+}
+
+static void
+job_mod_union_preclean (void *worker_data_untyped, SgenThreadPoolJob *job)
+{
+	WorkerData *worker_data = (WorkerData *)worker_data_untyped;
+	ScanJob *job_data = (ScanJob*)job;
+	ScanCopyContext ctx = CONTEXT_FROM_OBJECT_OPERATIONS (job_data->ops, sgen_workers_get_job_gray_queue (worker_data));
+
+	g_assert (concurrent_collection_in_progress);
+
+	major_collector.scan_card_table (TRUE, TRUE, ctx);
+	sgen_los_scan_card_table (TRUE, TRUE, ctx);
 }
 
 static void
@@ -1776,12 +1789,16 @@ major_copy_or_mark_from_roots (size_t *old_next_pin_slot, CopyOrMarkFromRootsMod
 	 * collector we start the workers after pinning.
 	 */
 	if (mode == COPY_OR_MARK_FROM_ROOTS_START_CONCURRENT) {
+		ScanJob *sj;
 		SGEN_ASSERT (0, sgen_workers_all_done (), "Why are the workers not done when we start or finish a major collection?");
-		sgen_workers_start_all_workers (object_ops);
+		/* Mod union preclean job */
+		sj = (ScanJob*)sgen_thread_pool_job_alloc ("preclean mod union cardtable", job_mod_union_preclean, sizeof (ScanJob));
+		sj->ops = object_ops;
+		sgen_workers_start_all_workers (object_ops, &sj->job);
 		gray_queue_enable_redirect (WORKERS_DISTRIBUTE_GRAY_QUEUE);
 	} else if (mode == COPY_OR_MARK_FROM_ROOTS_FINISH_CONCURRENT) {
 		if (sgen_workers_have_idle_work ()) {
-			sgen_workers_start_all_workers (object_ops);
+			sgen_workers_start_all_workers (object_ops, NULL);
 			sgen_workers_join ();
 		}
 	}

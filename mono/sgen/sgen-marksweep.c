@@ -1066,7 +1066,7 @@ major_get_cardtable_mod_union_for_reference (char *ptr)
  * Mark the mod-union card for `ptr`, which must be a reference within the object `obj`.
  */
 static void
-mark_mod_union_card (GCObject *obj, void **ptr, GCObject *value_obj)
+mark_mod_union_card (GCObject *obj, void **ptr, GCObject *value_obj, gpointer *last_marked)
 {
 	int type = sgen_obj_get_descriptor (obj) & DESC_TYPE_MASK;
 	if (sgen_safe_object_is_small (obj, type)) {
@@ -1076,7 +1076,9 @@ mark_mod_union_card (GCObject *obj, void **ptr, GCObject *value_obj)
 	} else {
 		sgen_los_mark_mod_union_card (obj, ptr);
 	}
-
+	if (last_marked && *last_marked < (gpointer)ptr) {
+		*last_marked = ptr;
+	}
 	binary_protocol_mod_union_remset (obj, ptr, value_obj, SGEN_LOAD_VTABLE (value_obj));
 }
 
@@ -1199,6 +1201,8 @@ static guint64 stat_drain_loops;
 #define COPY_OR_MARK_CONCURRENT_WITH_EVACUATION
 #define COPY_OR_MARK_FUNCTION_NAME	major_copy_or_mark_object_concurrent_with_evacuation
 #define SCAN_OBJECT_FUNCTION_NAME	major_scan_object_concurrent_with_evacuation
+#define SCAN_VTYPE_FUNCTION_NAME	major_scan_vtype_concurrent_with_evacuation
+#define SCAN_PTR_FIELD_FUNCTION_NAME	major_scan_ptr_field_concurrent_with_evacuation
 #define DRAIN_GRAY_STACK_FUNCTION_NAME	drain_gray_stack_concurrent_with_evacuation
 #include "sgen-marksweep-drain-gray-stack.h"
 
@@ -2182,7 +2186,7 @@ initial_skip_card (guint8 *card_data)
 #define MS_OBJ_ALLOCED_FAST(o,b)		(*(void**)(o) && (*(char**)(o) < (b) || *(char**)(o) >= (b) + MS_BLOCK_SIZE))
 
 static void
-scan_card_table_for_block (MSBlockInfo *block, gboolean mod_union, ScanCopyContext ctx)
+scan_card_table_for_block (MSBlockInfo *block, gboolean mod_union, gboolean pre_clean, ScanCopyContext ctx)
 {
 	SgenGrayQueue *queue = ctx.queue;
 	ScanObjectFunc scan_func = ctx.ops->scan_object;
@@ -2195,6 +2199,11 @@ scan_card_table_for_block (MSBlockInfo *block, gboolean mod_union, ScanCopyConte
 	guint8 *card_data, *card_base;
 	guint8 *card_data_end;
 	char *scan_front = NULL;
+	gpointer last_marked = NULL;
+	gpointer *last_ptr_mod_marked = pre_clean ? &last_marked : NULL;
+
+	if (pre_clean && major_block_is_evacuating (block))
+		return;
 
 	block_obj_size = block->obj_size;
 	small_objects = block_obj_size < CARD_SIZE_IN_BYTES;
@@ -2252,8 +2261,26 @@ scan_card_table_for_block (MSBlockInfo *block, gboolean mod_union, ScanCopyConte
 
 		HEAVY_STAT (++marked_cards);
 
-		if (small_objects)
+		if (small_objects) {
 			sgen_card_table_prepare_card_for_scanning (card_data);
+			/*
+			 * Cards marked in the preclean scan phase shouldn't be cleaned.
+			 * If the scan from the previous cards might have dirtied the
+			 * current card to be scanned, we skip cleaning it.
+			 */
+			if (pre_clean && last_marked < (gpointer)start) {
+				*card_data = 0;
+				/*
+				 * When precleaning we need to make sure the card cleaning
+				 * takes place before the object is scanned. If we don't
+				 * do this we could finish scanning the object and, before
+				 * the cleaning of the card takes place, another thread
+				 * could dirty the object, mark the mod_union card only for
+				 * us to clean it back, without scanning the object again.
+				 */
+				mono_memory_write_barrier ();
+			}
+		}
 
 		/*
 		 * If the card we're looking at starts at or in the block header, we
@@ -2286,10 +2313,10 @@ scan_card_table_for_block (MSBlockInfo *block, gboolean mod_union, ScanCopyConte
 
 			if (small_objects) {
 				HEAVY_STAT (++scanned_objects);
-				scan_func (object, sgen_obj_get_descriptor (object), queue);
+				scan_func (object, sgen_obj_get_descriptor (object), queue, last_ptr_mod_marked);
 			} else {
 				size_t offset = sgen_card_table_get_card_offset (obj, block_start);
-				sgen_cardtable_scan_object (object, block_obj_size, card_base + offset, mod_union, ctx);
+				sgen_cardtable_scan_object (object, block_obj_size, card_base + offset, mod_union, last_ptr_mod_marked, ctx);
 			}
 		next_object:
 			obj += block_obj_size;
@@ -2307,7 +2334,7 @@ scan_card_table_for_block (MSBlockInfo *block, gboolean mod_union, ScanCopyConte
 }
 
 static void
-major_scan_card_table (gboolean mod_union, ScanCopyContext ctx)
+major_scan_card_table (gboolean mod_union, gboolean pre_clean, ScanCopyContext ctx)
 {
 	MSBlockInfo *block;
 	gboolean has_references;
@@ -2334,7 +2361,7 @@ major_scan_card_table (gboolean mod_union, ScanCopyContext ctx)
 		if (!has_references)
 			continue;
 
-		scan_card_table_for_block (block, mod_union, ctx);
+		scan_card_table_for_block (block, mod_union, pre_clean, ctx);
 	} END_FOREACH_BLOCK_NO_LOCK;
 	binary_protocol_major_card_table_scan_end (sgen_timestamp (), mod_union);
 }
@@ -2494,6 +2521,9 @@ sgen_marksweep_init_internal (SgenMajorCollector *collector, gboolean is_concurr
 	if (is_concurrent) {
 		collector->major_ops_concurrent_start.copy_or_mark_object = major_copy_or_mark_object_concurrent_canonical;
 		collector->major_ops_concurrent_start.scan_object = major_scan_object_concurrent_with_evacuation;
+		/* We scan the cardtable in the precleaning phase */
+		collector->major_ops_concurrent_start.scan_vtype = major_scan_vtype_concurrent_with_evacuation;
+		collector->major_ops_concurrent_start.scan_ptr_field = major_scan_ptr_field_concurrent_with_evacuation;
 		collector->major_ops_concurrent_start.drain_gray_stack = drain_gray_stack_concurrent;
 
 		collector->major_ops_concurrent_finish.copy_or_mark_object = major_copy_or_mark_object_concurrent_finish_canonical;
