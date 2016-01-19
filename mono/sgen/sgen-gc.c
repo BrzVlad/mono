@@ -1647,6 +1647,14 @@ collect_nursery (SgenGrayQueue *unpin_queue, gboolean finish_up_concurrent_mark)
 	return needs_major;
 }
 
+extern volatile int block_alloc;
+static void
+finish_concurrent_mark_callback (void)
+{
+	block_alloc = TRUE;
+	g_assert (concurrent_collection_in_progress);
+}
+
 typedef enum {
 	COPY_OR_MARK_FROM_ROOTS_SERIAL,
 	COPY_OR_MARK_FROM_ROOTS_START_CONCURRENT,
@@ -1780,11 +1788,11 @@ major_copy_or_mark_from_roots (size_t *old_next_pin_slot, CopyOrMarkFromRootsMod
 	 */
 	if (mode == COPY_OR_MARK_FROM_ROOTS_START_CONCURRENT) {
 		SGEN_ASSERT (0, sgen_workers_all_done (), "Why are the workers not done when we start or finish a major collection?");
-		sgen_workers_start_all_workers (object_ops);
+		sgen_workers_start_all_workers (object_ops, finish_concurrent_mark_callback);
 		gray_queue_enable_redirect (WORKERS_DISTRIBUTE_GRAY_QUEUE);
 	} else if (mode == COPY_OR_MARK_FROM_ROOTS_FINISH_CONCURRENT) {
 		if (sgen_workers_have_idle_work ()) {
-			sgen_workers_start_all_workers (object_ops);
+			sgen_workers_start_all_workers (object_ops, NULL);
 			sgen_workers_join ();
 		}
 	}
@@ -2227,6 +2235,7 @@ sgen_perform_collection (size_t requested_size, int generation_to_collect, const
 		gboolean finish = major_should_finish_concurrent_collection () || generation_to_collect == GENERATION_OLD;
 
 		if (finish) {
+			block_alloc = FALSE;
 			major_finish_concurrent_collection (wait_to_finish);
 			oldest_generation_collected = GENERATION_OLD;
 		} else {

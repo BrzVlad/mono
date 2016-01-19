@@ -28,9 +28,11 @@ struct _WorkerData {
 	SgenGrayQueue private_gray_queue; /* only read/written by worker thread */
 };
 
+typedef void (*FinishWorkCallbackFunc) (void);
+
 void sgen_workers_init (int num_workers);
 void sgen_workers_stop_all_workers (void);
-void sgen_workers_start_all_workers (SgenObjectOperations *object_ops);
+void sgen_workers_start_all_workers (SgenObjectOperations *object_ops, FinishWorkCallbackFunc callback);
 void sgen_workers_ensure_awake (void);
 void sgen_workers_init_distribute_gray_queue (void);
 void sgen_workers_enqueue_job (SgenThreadPoolJob *job, gboolean enqueue);
@@ -42,5 +44,7 @@ gboolean sgen_workers_have_idle_work (void);
 gboolean sgen_workers_all_done (void);
 gboolean sgen_workers_are_working (void);
 SgenSectionGrayQueue* sgen_workers_get_distribute_section_gray_queue (void);
+
+
 
 #endif
