@@ -2193,8 +2193,8 @@ scan_card_table_for_block (MSBlockInfo *block, gboolean mod_union, ScanCopyConte
 	if (mod_union) {
 		card_data = card_base = block->cardtable_mod_union;
 		/*
-		 * This happens when the nursery collection that precedes finishing
-		 * the concurrent collection allocates new major blocks.
+		 * This could happen for blocks allocated during the finishing pause,
+		 * either from promotion or evacuation.
 		 */
 		if (!card_data)
 			return;
