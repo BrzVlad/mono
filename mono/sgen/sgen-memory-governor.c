@@ -124,18 +124,21 @@ sgen_need_major_collection (mword space_needed)
 	size_t heap_size;
 
 	if (sgen_concurrent_collection_in_progress ()) {
+		size_t allowance;
+
 		heap_size = get_heap_size ();
 
 		if (heap_size <= major_collection_trigger_size)
 			return FALSE; 
 
-		/* We allow the heap to grow an additional third of the allowance during a concurrent collection */
-		if ((heap_size - major_collection_trigger_size) >
-				(major_collection_trigger_size
-				* (SGEN_DEFAULT_ALLOWANCE_HEAP_SIZE_RATIO / (SGEN_DEFAULT_ALLOWANCE_HEAP_SIZE_RATIO + 1))
-				* SGEN_DEFAULT_CONCURRENT_HEAP_ALLOWANCE_RATIO)) {
+		/* Obtain the standard allowance used for this collection */
+		allowance = MAX (major_collection_trigger_size * (SGEN_DEFAULT_ALLOWANCE_HEAP_SIZE_RATIO / (SGEN_DEFAULT_ALLOWANCE_HEAP_SIZE_RATIO + 1)), MIN_MINOR_COLLECTION_ALLOWANCE);
+
+		/* During a concurrent collection, we limit heap growth to a certain point, relative to the standard allowance. */
+		allowance = allowance * SGEN_DEFAULT_CONCURRENT_HEAP_ALLOWANCE_RATIO;
+
+		if ((heap_size - major_collection_trigger_size) > allowance)
 			return TRUE;
-		}
 		return FALSE;
 	}
 
