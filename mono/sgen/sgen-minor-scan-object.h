@@ -46,7 +46,7 @@ extern guint64 stat_scan_object_called_nursery;
 	} while (0)
 
 static void
-SERIAL_SCAN_OBJECT (GCObject *full_object, SgenDescriptor desc, SgenGrayQueue *queue)
+SERIAL_SCAN_OBJECT (GCObject *full_object, SgenDescriptor desc, SgenGrayQueue *queue, gpointer *last_ptr_mod_marked)
 {
 	char *start = (char*)full_object;
 
@@ -66,7 +66,7 @@ SERIAL_SCAN_OBJECT (GCObject *full_object, SgenDescriptor desc, SgenGrayQueue *q
 }
 
 static void
-SERIAL_SCAN_VTYPE (GCObject *full_object, char *start, SgenDescriptor desc, SgenGrayQueue *queue BINARY_PROTOCOL_ARG (size_t size))
+SERIAL_SCAN_VTYPE (GCObject *full_object, char *start, SgenDescriptor desc, SgenGrayQueue *queue, gpointer *last_ptr_mod_marked BINARY_PROTOCOL_ARG (size_t size))
 {
 	SGEN_OBJECT_LAYOUT_STATISTICS_DECLARE_BITMAP;
 
@@ -81,7 +81,7 @@ SERIAL_SCAN_VTYPE (GCObject *full_object, char *start, SgenDescriptor desc, Sgen
 }
 
 static void
-SERIAL_SCAN_PTR_FIELD (GCObject *full_object, GCObject **ptr, SgenGrayQueue *queue)
+SERIAL_SCAN_PTR_FIELD (GCObject *full_object, GCObject **ptr, SgenGrayQueue *queue, gpointer *last_ptr_mod_marked)
 {
 	HANDLE_PTR (ptr, NULL);
 }

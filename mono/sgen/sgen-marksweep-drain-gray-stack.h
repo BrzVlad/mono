@@ -203,7 +203,7 @@ COPY_OR_MARK_FUNCTION_NAME (GCObject **ptr, GCObject *obj, SgenGrayQueue *queue)
 }
 
 static void
-SCAN_OBJECT_FUNCTION_NAME (GCObject *full_object, SgenDescriptor desc, SgenGrayQueue *queue)
+SCAN_OBJECT_FUNCTION_NAME (GCObject *full_object, SgenDescriptor desc, SgenGrayQueue *queue, gpointer *last_ptr_mod_marked)
 {
 	char *start = (char*)full_object;
 
@@ -228,14 +228,14 @@ SCAN_OBJECT_FUNCTION_NAME (GCObject *full_object, SgenDescriptor desc, SgenGrayQ
 			if (G_UNLIKELY (!sgen_ptr_in_nursery (ptr) &&	\
 					sgen_safe_object_is_small (__old, sgen_obj_get_descriptor (__old) & DESC_TYPE_MASK) && \
 					major_block_is_evacuating (MS_BLOCK_FOR_OBJ (__old)))) { \
-				mark_mod_union_card ((full_object), (void**)(ptr), __old); \
+				mark_mod_union_card ((full_object), (void**)(ptr), __old, last_ptr_mod_marked); \
 			} else {					\
 				PREFETCH_READ (__old);			\
 				COPY_OR_MARK_FUNCTION_NAME ((ptr), __old, queue); \
 			}						\
 		} else {                                                \
 			if (G_UNLIKELY (sgen_ptr_in_nursery (__old) && !sgen_ptr_in_nursery ((ptr)))) \
-				mark_mod_union_card ((full_object), (void**)(ptr), __old); \
+				mark_mod_union_card ((full_object), (void**)(ptr), __old, last_ptr_mod_marked); \
 			}						\
 		} while (0)
 #elif defined(COPY_OR_MARK_CONCURRENT)
@@ -247,7 +247,7 @@ SCAN_OBJECT_FUNCTION_NAME (GCObject *full_object, SgenDescriptor desc, SgenGrayQ
 			COPY_OR_MARK_FUNCTION_NAME ((ptr), __old, queue); \
 		} else {                                                \
 			if (G_UNLIKELY (sgen_ptr_in_nursery (__old) && !sgen_ptr_in_nursery ((ptr)))) \
-				mark_mod_union_card ((full_object), (void**)(ptr), __old); \
+				mark_mod_union_card ((full_object), (void**)(ptr), __old, last_ptr_mod_marked); \
 			}						\
 		} while (0)
 #else
@@ -270,7 +270,7 @@ SCAN_OBJECT_FUNCTION_NAME (GCObject *full_object, SgenDescriptor desc, SgenGrayQ
 
 #ifdef SCAN_VTYPE_FUNCTION_NAME 
 static void
-SCAN_VTYPE_FUNCTION_NAME (GCObject *full_object, char *start, SgenDescriptor desc, SgenGrayQueue *queue BINARY_PROTOCOL_ARG (size_t size))
+SCAN_VTYPE_FUNCTION_NAME (GCObject *full_object, char *start, SgenDescriptor desc, SgenGrayQueue *queue, gpointer *last_ptr_mod_marked BINARY_PROTOCOL_ARG (size_t size))
 {
 	SGEN_OBJECT_LAYOUT_STATISTICS_DECLARE_BITMAP;
 
@@ -293,7 +293,7 @@ SCAN_VTYPE_FUNCTION_NAME (GCObject *full_object, char *start, SgenDescriptor des
 
 #ifdef SCAN_PTR_FIELD_FUNCTION_NAME
 static void
-SCAN_PTR_FIELD_FUNCTION_NAME (GCObject *full_object, GCObject **ptr, SgenGrayQueue *queue)
+SCAN_PTR_FIELD_FUNCTION_NAME (GCObject *full_object, GCObject **ptr, SgenGrayQueue *queue, gpointer *last_ptr_mod_marked)
 {
 	HANDLE_PTR (ptr, NULL);
 }
@@ -317,7 +317,7 @@ DRAIN_GRAY_STACK_FUNCTION_NAME (SgenGrayQueue *queue)
 		if (!obj)
 			return TRUE;
 
-		SCAN_OBJECT_FUNCTION_NAME (obj, desc, queue);
+		SCAN_OBJECT_FUNCTION_NAME (obj, desc, queue, NULL);
 	}
 	return FALSE;
 }

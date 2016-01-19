@@ -622,18 +622,19 @@ get_cardtable_mod_union_for_object (LOSObject *obj)
 }
 
 void
-sgen_los_scan_card_table (gboolean mod_union, ScanCopyContext ctx)
+sgen_los_scan_card_table (CardTableScanType scan_type, ScanCopyContext ctx)
 {
 	LOSObject *obj;
 
-	binary_protocol_los_card_table_scan_start (sgen_timestamp (), mod_union);
+	binary_protocol_los_card_table_scan_start (sgen_timestamp (), scan_type & CARDTABLE_SCAN_MOD_UNION);
 	for (obj = los_object_list; obj; obj = obj->next) {
+		gpointer last_ptr_mod_marked = NULL;
 		guint8 *cards;
 
 		if (!SGEN_OBJECT_HAS_REFERENCES (obj->data))
 			continue;
 
-		if (mod_union) {
+		if (scan_type & CARDTABLE_SCAN_MOD_UNION) {
 			if (!sgen_los_object_is_pinned (obj->data))
 				continue;
 
@@ -643,9 +644,9 @@ sgen_los_scan_card_table (gboolean mod_union, ScanCopyContext ctx)
 			cards = NULL;
 		}
 
-		sgen_cardtable_scan_object (obj->data, sgen_los_object_size (obj), cards, mod_union, ctx);
+		sgen_cardtable_scan_object (obj->data, sgen_los_object_size (obj), cards, scan_type, &last_ptr_mod_marked, ctx);
 	}
-	binary_protocol_los_card_table_scan_end (sgen_timestamp (), mod_union);
+	binary_protocol_los_card_table_scan_end (sgen_timestamp (), scan_type & CARDTABLE_SCAN_MOD_UNION);
 }
 
 void
