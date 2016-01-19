@@ -32,7 +32,7 @@ typedef void (*FinishWorkCallbackFunc) (void);
 
 void sgen_workers_init (int num_workers);
 void sgen_workers_stop_all_workers (void);
-void sgen_workers_start_all_workers (SgenObjectOperations *object_ops, FinishWorkCallbackFunc callback);
+void sgen_workers_start_all_workers (SgenObjectOperations *object_ops, SgenThreadPoolJob *finish_job, FinishWorkCallbackFunc callback);
 void sgen_workers_ensure_awake (void);
 void sgen_workers_init_distribute_gray_queue (void);
 void sgen_workers_enqueue_job (SgenThreadPoolJob *job, gboolean enqueue);

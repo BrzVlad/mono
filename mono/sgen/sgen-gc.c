@@ -357,6 +357,7 @@ MonoCoopMutex sgen_interruption_mutex;
 
 int current_collection_generation = -1;
 static volatile gboolean concurrent_collection_in_progress = FALSE;
+static volatile gboolean mod_union_precleaning_in_progress = FALSE;
 
 /* objects that are ready to be finalized */
 static SgenPointerQueue fin_ready_queue = SGEN_POINTER_QUEUE_INIT (INTERNAL_MEM_FINALIZE_READY);
@@ -1405,6 +1406,28 @@ job_scan_los_mod_union_card_table (void *worker_data_untyped, SgenThreadPoolJob 
 }
 
 static void
+job_mod_union_preclean (void *worker_data_untyped, SgenThreadPoolJob *job)
+{
+	WorkerData *worker_data = (WorkerData *)worker_data_untyped;
+	ScanJob *job_data = (ScanJob*)job;
+	ScanCopyContext ctx = CONTEXT_FROM_OBJECT_OPERATIONS (job_data->ops, sgen_workers_get_job_gray_queue (worker_data));
+
+	g_assert (concurrent_collection_in_progress);
+	LOCK_GC;
+	mod_union_precleaning_in_progress = TRUE;
+	UNLOCK_GC;
+
+	/*
+	 * From this point the GC no longer dirties mod_union cards.
+	 * New entries will be recorded in the shadow card table, which
+	 * will be scanned in the finishing pause.
+	 */
+
+	major_collector.scan_card_table (TRUE, ctx);
+	sgen_los_scan_card_table (TRUE, ctx);
+}
+
+static void
 init_gray_queue (gboolean use_workers)
 {
 	if (use_workers)
@@ -1787,12 +1810,17 @@ major_copy_or_mark_from_roots (size_t *old_next_pin_slot, CopyOrMarkFromRootsMod
 	 * collector we start the workers after pinning.
 	 */
 	if (mode == COPY_OR_MARK_FROM_ROOTS_START_CONCURRENT) {
+		ScanJob *sj;
 		SGEN_ASSERT (0, sgen_workers_all_done (), "Why are the workers not done when we start or finish a major collection?");
-		sgen_workers_start_all_workers (object_ops, finish_concurrent_mark_callback);
+		/* Mod union preclean job */
+		sj = (ScanJob*)sgen_thread_pool_job_alloc ("preclean mod union cardtable", job_mod_union_preclean, sizeof (ScanJob));
+		sj->ops = object_ops;
+		/* FIXME These object ops should mark the shadow card table */
+		sgen_workers_start_all_workers (object_ops, sj, finish_concurrent_mark_callback);
 		gray_queue_enable_redirect (WORKERS_DISTRIBUTE_GRAY_QUEUE);
 	} else if (mode == COPY_OR_MARK_FROM_ROOTS_FINISH_CONCURRENT) {
 		if (sgen_workers_have_idle_work ()) {
-			sgen_workers_start_all_workers (object_ops, NULL);
+			sgen_workers_start_all_workers (object_ops, NULL, NULL);
 			sgen_workers_join ();
 		}
 	}

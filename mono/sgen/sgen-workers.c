@@ -64,6 +64,7 @@ typedef gint32 State;
 static volatile State workers_state;
 
 static SgenObjectOperations * volatile idle_func_object_ops;
+static SgenThreadPoolJob * volatile preclean_job;
 static volatile FinishWorkCallbackFunc finish_callback;
 
 static guint64 stat_workers_num_finished;
@@ -232,7 +233,13 @@ marker_idle_func (void *data_untyped)
 
 		sgen_drain_gray_stack (ctx);
 	} else {
-		worker_try_finish ();
+		SgenThreadPoolJob *job = preclean_job;
+		if (job) {
+			sgen_thread_pool_job_enqueue (job);
+			preclean_job = NULL;
+		} else {
+			worker_try_finish ();
+		}
 	}
 }
 
@@ -290,6 +297,7 @@ void
 sgen_workers_stop_all_workers (void)
 {
 	finish_callback = NULL;
+	preclean_job = NULL;
 	mono_memory_write_barrier ();
 	forced_stop = TRUE;
 
@@ -298,12 +306,14 @@ sgen_workers_stop_all_workers (void)
 	SGEN_ASSERT (0, workers_state == STATE_NOT_WORKING, "Can only signal enqueue work when in no work state");
 }
 
+/* FIXME add preclean object ops */
 void
-sgen_workers_start_all_workers (SgenObjectOperations *object_ops, FinishWorkCallbackFunc callback)
+sgen_workers_start_all_workers (SgenObjectOperations *object_ops, SgenThreadPoolJob *job, FinishWorkCallbackFunc callback)
 {
 	forced_stop = FALSE;
 	idle_func_object_ops = object_ops;
 	finish_callback = callback;
+	preclean_job = job;
 	mono_memory_write_barrier ();
 
 	sgen_workers_ensure_awake ();
