@@ -64,6 +64,7 @@ typedef gint32 State;
 static volatile State workers_state;
 
 static SgenObjectOperations * volatile idle_func_object_ops;
+static volatile FinishWorkCallbackFunc finish_callback;
 
 static guint64 stat_workers_num_finished;
 
@@ -118,11 +119,14 @@ worker_try_finish (void)
 
 		SGEN_ASSERT (0, old_state != STATE_NOT_WORKING, "How did we get from doing idle work to NOT WORKING without setting it ourselves?");
 		if (old_state == STATE_WORK_ENQUEUED)
-			return;
+			break;
 		SGEN_ASSERT (0, old_state == STATE_WORKING, "What other possibility is there?");
 
 		/* We are the last thread to go to sleep. */
 	} while (!set_state (old_state, STATE_NOT_WORKING));
+
+	if (finish_callback)
+		finish_callback ();
 }
 
 void
@@ -285,6 +289,8 @@ sgen_workers_init (int num_workers)
 void
 sgen_workers_stop_all_workers (void)
 {
+	finish_callback = NULL;
+	mono_memory_write_barrier ();
 	forced_stop = TRUE;
 
 	sgen_thread_pool_wait_for_all_jobs ();
@@ -293,10 +299,11 @@ sgen_workers_stop_all_workers (void)
 }
 
 void
-sgen_workers_start_all_workers (SgenObjectOperations *object_ops)
+sgen_workers_start_all_workers (SgenObjectOperations *object_ops, FinishWorkCallbackFunc callback)
 {
 	forced_stop = FALSE;
 	idle_func_object_ops = object_ops;
+	finish_callback = callback;
 	mono_memory_write_barrier ();
 
 	sgen_workers_ensure_awake ();

@@ -93,6 +93,8 @@ static __thread char **tlab_next_addr MONO_ATTR_USED;
 #define TLAB_REAL_END	(__thread_info__->tlab_real_end)
 #endif
 
+volatile int block_alloc = FALSE;
+
 static GCObject*
 alloc_degraded (GCVTable vtable, size_t size, gboolean for_mature)
 {
@@ -452,6 +454,9 @@ sgen_alloc_obj (GCVTable vtable, size_t size)
 	EXIT_CRITICAL_REGION;
 
 	LOCK_GC;
+	if (G_UNLIKELY (block_alloc)) {
+		sgen_perform_collection (0, GENERATION_NURSERY, "finish-concurrent-collection", TRUE);
+	}
 	res = sgen_alloc_obj_nolock (vtable, size);
 	UNLOCK_GC;
 	return res;
