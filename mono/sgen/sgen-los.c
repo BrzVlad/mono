@@ -623,30 +623,51 @@ get_cardtable_mod_union_for_object (LOSObject *obj)
 }
 
 void
-sgen_los_scan_card_table (gboolean mod_union, ScanCopyContext ctx)
+sgen_los_scan_card_table (CardTableScanType scan_type, ScanCopyContext ctx)
 {
 	LOSObject *obj;
 
-	binary_protocol_los_card_table_scan_start (sgen_timestamp (), mod_union);
+	binary_protocol_los_card_table_scan_start (sgen_timestamp (), scan_type & CARDTABLE_SCAN_MOD_UNION);
 	for (obj = los_object_list; obj; obj = obj->next) {
+		mword num_cards = 0;
 		guint8 *cards;
 
 		if (!SGEN_OBJECT_HAS_REFERENCES (obj->data))
 			continue;
 
-		if (mod_union) {
+		if (scan_type & CARDTABLE_SCAN_MOD_UNION) {
 			if (!sgen_los_object_is_pinned (obj->data))
 				continue;
 
 			cards = get_cardtable_mod_union_for_object (obj);
 			g_assert (cards);
+			if (scan_type == CARDTABLE_SCAN_MOD_UNION_PRECLEAN) {
+				int i;
+				guint8 *cards_preclean;
+				mword obj_size = sgen_los_object_size (obj);
+				num_cards = sgen_card_table_number_of_cards_in_range ((mword) obj->data, obj_size);
+				cards_preclean = (guint8 *)sgen_alloc_internal_dynamic (num_cards, INTERNAL_MEM_CARDTABLE_MOD_UNION, TRUE);
+
+				memcpy (cards_preclean, cards, num_cards);
+				for (i = 0; i < num_cards; i++) {
+					if (cards_preclean [i]) {
+						cards [i] = 0;
+					}
+				}
+				cards = cards_preclean;
+				/* See comment in scan_card_table_for_block */
+				mono_memory_barrier ();
+			}
 		} else {
 			cards = NULL;
 		}
 
-		sgen_cardtable_scan_object (obj->data, sgen_los_object_size (obj), cards, mod_union, ctx);
+		sgen_cardtable_scan_object (obj->data, sgen_los_object_size (obj), cards, ctx);
+
+		if (scan_type == CARDTABLE_SCAN_MOD_UNION_PRECLEAN)
+			sgen_free_internal_dynamic (cards, num_cards, INTERNAL_MEM_CARDTABLE_MOD_UNION);
 	}
-	binary_protocol_los_card_table_scan_end (sgen_timestamp (), mod_union);
+	binary_protocol_los_card_table_scan_end (sgen_timestamp (), scan_type & CARDTABLE_SCAN_MOD_UNION);
 }
 
 void
