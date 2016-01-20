@@ -48,6 +48,7 @@
 #include <sys/types.h>
 
 guint8 *sgen_cardtable;
+guint8 *sgen_shadow_cardtable;
 
 static gboolean need_mod_union;
 
@@ -149,14 +150,8 @@ sgen_card_table_wbarrier_generic_nostore (gpointer ptr)
 	sgen_card_table_mark_address ((mword)ptr);	
 }
 
-#ifdef SGEN_HAVE_OVERLAPPING_CARDS
-
-guint8 *sgen_shadow_cardtable;
-
-#define SGEN_CARDTABLE_END (sgen_cardtable + CARD_COUNT_IN_BYTES)
-
 static gboolean
-sgen_card_table_region_begin_scanning (mword start, mword size)
+sgen_shadow_card_table_region_begin_scanning (mword start, mword size)
 {
 	mword end = start + size;
 	/*XXX this can be improved to work on words and have a single loop induction var */
@@ -168,15 +163,12 @@ sgen_card_table_region_begin_scanning (mword start, mword size)
 	return FALSE;
 }
 
-#else
-
 static gboolean
 sgen_card_table_region_begin_scanning (mword start, mword size)
 {
 	gboolean res = FALSE;
 	guint8 *card = sgen_card_table_get_card_address (start);
 	guint8 *end = card + sgen_card_table_number_of_cards_in_range (start, size);
-
 	/*XXX this can be improved to work on words and have a branchless body */
 	while (card != end) {
 		if (*card++) {
@@ -189,8 +181,6 @@ sgen_card_table_region_begin_scanning (mword start, mword size)
 
 	return res;
 }
-
-#endif
 
 /*FIXME this assumes that major blocks are multiple of 4K which is pretty reasonable */
 gboolean

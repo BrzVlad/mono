@@ -63,65 +63,30 @@ void sgen_card_table_init (SgenRememberedSet *remset);
 #endif
 
 extern guint8 *sgen_cardtable;
-
-
-#ifdef SGEN_HAVE_OVERLAPPING_CARDS
-
-static inline guint8*
-sgen_card_table_get_card_address (mword address)
-{
-	return sgen_cardtable + ((address >> CARD_BITS) & CARD_MASK);
-}
-
 extern guint8 *sgen_shadow_cardtable;
 
+#define SGEN_CARDTABLE_END (sgen_cardtable + CARD_COUNT_IN_BYTES)
 #define SGEN_SHADOW_CARDTABLE_END (sgen_shadow_cardtable + CARD_COUNT_IN_BYTES)
 
 static inline guint8*
-sgen_card_table_get_shadow_card_address (mword address)
-{
-	return sgen_shadow_cardtable + ((address >> CARD_BITS) & CARD_MASK);
-}
-
-static inline gboolean
-sgen_card_table_card_begin_scanning (mword address)
-{
-	return *sgen_card_table_get_shadow_card_address (address) != 0;
-}
-
-static inline void
-sgen_card_table_prepare_card_for_scanning (guint8 *card)
-{
-}
-
-#define sgen_card_table_get_card_scan_address sgen_card_table_get_shadow_card_address
-
-#else
-
-static inline guint8*
 sgen_card_table_get_card_address (mword address)
 {
+#ifdef SGEN_HAVE_OVERLAPPING_CARDS
+	return sgen_cardtable + ((address >> CARD_BITS) & CARD_MASK);
+#else
 	return sgen_cardtable + (address >> CARD_BITS);
-}
-
-static inline gboolean
-sgen_card_table_card_begin_scanning (mword address)
-{
-	guint8 *card = sgen_card_table_get_card_address (address);
-	gboolean res = *card;
-	*card = 0;
-	return res;
-}
-
-static inline void
-sgen_card_table_prepare_card_for_scanning (guint8 *card)
-{
-	*card = 0;
-}
-
-#define sgen_card_table_get_card_scan_address sgen_card_table_get_card_address
-
 #endif
+}
+
+static inline guint8*
+sgen_shadow_card_table_get_card_address (mword address)
+{
+#ifdef SGEN_HAVE_OVERLAPPING_CARDS
+	return sgen_shadow_cardtable + ((address >> CARD_BITS) & CARD_MASK);
+#else
+	return sgen_shadow_cardtable + (address >> CARD_BITS);
+#endif
+}
 
 static inline gboolean
 sgen_card_table_address_is_marked (mword address)
@@ -129,10 +94,22 @@ sgen_card_table_address_is_marked (mword address)
 	return *sgen_card_table_get_card_address (address) != 0;
 }
 
+static inline gboolean
+sgen_shadow_card_table_address_is_marked (mword address)
+{
+	return *sgen_shadow_card_table_get_card_address (address) != 0;
+}
+
 static inline void
 sgen_card_table_mark_address (mword address)
 {
 	*sgen_card_table_get_card_address (address) = 1;
+}
+
+static inline void
+sgen_shadow_card_table_mark_address (mword address)
+{
+	*sgen_shadow_card_table_get_card_address (address) = 1;
 }
 
 static inline size_t
