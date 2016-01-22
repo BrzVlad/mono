@@ -55,6 +55,7 @@ monosgen_sources = \
 	sgen-pinning.h \
 	sgen-pointer-queue.c \
 	sgen-pointer-queue.h \
+	sgen-array-list.h \
 	sgen-protocol-def.h \
 	sgen-protocol.c \
 	sgen-protocol.h \
