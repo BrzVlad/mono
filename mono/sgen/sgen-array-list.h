@@ -120,4 +120,8 @@ sgen_array_list_get_slot_address (SgenArrayList *array, size_t index)
 
 #define SGEN_ARRAY_LIST_END_FOREACH_ENTRY_RANGE	} }
 
+void sgen_array_list_add (SgenArrayList *array, gpointer ptr);
+size_t sgen_array_list_find (SgenArrayList *array, gpointer ptr);
+void sgen_array_list_remove_nulls (SgenArrayList *array);
+
 #endif
