@@ -148,7 +148,7 @@ sgen_need_major_collection (mword space_needed)
 		 * If the heap grows so much that we would need to have a negative allowance,
 		 * we force the finishing of the collection, to avoid increased memory usage.
 		 */
-		if ((heap_size - major_start_heap_size) > major_start_heap_size * SGEN_DEFAULT_ALLOWANCE_HEAP_SIZE_RATIO)
+		if ((heap_size - major_start_heap_size) > major_start_heap_size * SGEN_DEFAULT_ALLOWANCE_HEAP_SIZE_RATIO * 1.5)
 			return TRUE;
 		return FALSE;
 	}
