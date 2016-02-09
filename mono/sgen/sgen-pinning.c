@@ -256,6 +256,22 @@ sgen_cement_force_pinned (void)
 	mono_coop_mutex_unlock (&pin_queue_mutex);
 }
 
+void
+sgen_cement_scan_forced (ScanCopyContext ctx)
+{
+	ScanObjectFunc scan_func = ctx.ops->scan_object;
+	int i;
+
+	if (!forced_cement_enabled)
+		return;
+
+	for (i = 0; i < SGEN_CEMENT_HASH_SIZE; ++i) {
+		if (!cement_hash [i].forced)
+			continue;
+		scan_func (cement_hash [i].obj, sgen_obj_get_descriptor_safe (cement_hash [i].obj), ctx.queue, NULL);
+	}
+}
+
 gboolean
 sgen_cement_is_forced (GCObject *obj)
 {

@@ -58,6 +58,7 @@ void sgen_cement_init (gboolean enabled, gboolean forced_enabled);
 void sgen_cement_reset (void);
 void sgen_cement_force_pinned (void);
 gboolean sgen_cement_is_forced (GCObject *obj);
+void sgen_cement_scan_forced (ScanCopyContext ctx);
 gboolean sgen_cement_lookup (GCObject *obj);
 gboolean sgen_cement_lookup_or_register (GCObject *obj);
 void sgen_pin_cemented_objects (void);

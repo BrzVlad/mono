@@ -1419,6 +1419,8 @@ job_mod_union_preclean (void *worker_data_untyped, SgenThreadPoolJob *job)
 
 	major_collector.scan_card_table (TRUE, TRUE, ctx);
 	sgen_los_scan_card_table (TRUE, TRUE, ctx);
+
+	sgen_cement_scan_forced (ctx);
 }
 
 static void
