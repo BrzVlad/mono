@@ -32,22 +32,28 @@
 
 static SgenPointerQueue pin_queue;
 static size_t last_num_pinned = 0;
+static MonoCoopMutex pin_queue_mutex;
+static gboolean forced_cement_enabled = TRUE;
 
 #define PIN_HASH_SIZE 1024
 static void *pin_hash_filter [PIN_HASH_SIZE];
 
 void
-sgen_init_pinning (void)
+sgen_init_pinning (int generation)
 {
+	if (forced_cement_enabled && generation == GENERATION_NURSERY)
+		mono_coop_mutex_lock (&pin_queue_mutex);
 	memset (pin_hash_filter, 0, sizeof (pin_hash_filter));
 	pin_queue.mem_type = INTERNAL_MEM_PIN_QUEUE;
 }
 
 void
-sgen_finish_pinning (void)
+sgen_finish_pinning (int generation)
 {
 	last_num_pinned = pin_queue.next_slot;
 	sgen_pointer_queue_clear (&pin_queue);
+	if (forced_cement_enabled && generation == GENERATION_NURSERY)
+		mono_coop_mutex_unlock (&pin_queue_mutex);
 }
 
 void
@@ -182,6 +188,7 @@ typedef struct _CementHashEntry CementHashEntry;
 struct _CementHashEntry {
 	GCObject *obj;
 	unsigned int count;
+	gboolean forced;
 };
 
 static CementHashEntry cement_hash [SGEN_CEMENT_HASH_SIZE];
@@ -189,16 +196,83 @@ static CementHashEntry cement_hash [SGEN_CEMENT_HASH_SIZE];
 static gboolean cement_enabled = TRUE;
 
 void
-sgen_cement_init (gboolean enabled)
+sgen_cement_init (gboolean enabled, gboolean forced_enabled)
 {
 	cement_enabled = enabled;
+	if (!cement_enabled)
+		forced_cement_enabled = FALSE;
+	else
+		forced_cement_enabled = forced_enabled;
+
+	if (forced_cement_enabled)
+		mono_coop_mutex_init (&pin_queue_mutex);
 }
 
 void
 sgen_cement_reset (void)
 {
-	memset (cement_hash, 0, sizeof (cement_hash));
+	int i;
+	for (i = 0; i < SGEN_CEMENT_HASH_SIZE; i++) {
+		if (cement_hash [i].forced) {
+			cement_hash [i].forced = FALSE;
+		} else {
+			cement_hash [i].obj = NULL;
+			cement_hash [i].count = 0;
+		}
+	}
 	binary_protocol_cement_reset ();
+}
+
+
+/*
+ * Objects that were pinned at the time of the last collection and present
+ * in the cement hash will be marked as forced. This means they will remain
+ * cemented even after we reset the hash, losing the forced flag. The pin
+ * queue is not allowed to change while we call this function.
+ */
+void
+sgen_cement_force_pinned (void)
+{
+	int i;
+
+	if (!forced_cement_enabled)
+		return;
+
+	/* If we don't lock on the pin queue we can miss some pinned objects */
+	mono_coop_mutex_lock (&pin_queue_mutex);
+	for (i = 0; i < last_num_pinned; ++i) {
+		GCObject *obj = (GCObject *)pin_queue.data [i];
+		guint hv = sgen_aligned_addr_hash (obj);
+		int k = SGEN_CEMENT_HASH (hv);
+
+		if (!cement_hash [k].obj)
+			continue;
+		if (cement_hash [k].obj != obj)
+			continue;
+		if (cement_hash [k].count < SGEN_CEMENT_THRESHOLD)
+			continue;
+		cement_hash [k].forced = TRUE;
+	}
+	mono_coop_mutex_unlock (&pin_queue_mutex);
+}
+
+gboolean
+sgen_cement_is_forced (GCObject *obj)
+{
+	guint hv = sgen_aligned_addr_hash (obj);
+	int i = SGEN_CEMENT_HASH (hv);
+
+	SGEN_ASSERT (5, sgen_ptr_in_nursery (obj), "Looking up cementing for non-nursery objects makes no sense");
+
+	if (!forced_cement_enabled)
+		return FALSE;
+
+	if (!cement_hash [i].obj)
+		return FALSE;
+	if (cement_hash [i].obj != obj)
+		return FALSE;
+
+	return cement_hash [i].forced;
 }
 
 gboolean

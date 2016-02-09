@@ -31,8 +31,8 @@ enum {
 
 void sgen_pin_stage_ptr (void *ptr);
 void sgen_optimize_pin_queue (void);
-void sgen_init_pinning (void);
-void sgen_finish_pinning (void);
+void sgen_init_pinning (int generation);
+void sgen_finish_pinning (int generation);
 void sgen_pin_queue_clear_discarded_entries (GCMemSection *section, size_t max_pin_slot);
 size_t sgen_get_pinned_count (void);
 void sgen_pinning_setup_section (GCMemSection *section);
@@ -54,8 +54,10 @@ void sgen_pin_stats_reset (void);
 
 /* Perpetual pinning, aka cementing */
 
-void sgen_cement_init (gboolean enabled);
+void sgen_cement_init (gboolean enabled, gboolean forced_enabled);
 void sgen_cement_reset (void);
+void sgen_cement_force_pinned (void);
+gboolean sgen_cement_is_forced (GCObject *obj);
 gboolean sgen_cement_lookup (GCObject *obj);
 gboolean sgen_cement_lookup_or_register (GCObject *obj);
 void sgen_pin_cemented_objects (void);

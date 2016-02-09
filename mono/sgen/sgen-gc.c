@@ -1415,6 +1415,8 @@ job_mod_union_preclean (void *worker_data_untyped, SgenThreadPoolJob *job)
 
 	g_assert (concurrent_collection_in_progress);
 
+	sgen_cement_force_pinned ();
+
 	major_collector.scan_card_table (TRUE, TRUE, ctx);
 	sgen_los_scan_card_table (TRUE, TRUE, ctx);
 }
@@ -1545,7 +1547,7 @@ collect_nursery (SgenGrayQueue *unpin_queue, gboolean finish_up_concurrent_mark)
 	sgen_process_fin_stage_entries ();
 
 	/* pin from pinned handles */
-	sgen_init_pinning ();
+	sgen_init_pinning (GENERATION_NURSERY);
 	sgen_client_binary_protocol_mark_start (GENERATION_NURSERY);
 	pin_from_roots (sgen_get_nursery_start (), nursery_next, ctx);
 	/* pin cemented objects */
@@ -1625,7 +1627,7 @@ collect_nursery (SgenGrayQueue *unpin_queue, gboolean finish_up_concurrent_mark)
 	sgen_debug_dump_heap ("minor", gc_stats.minor_gc_count - 1, NULL);
 
 	/* prepare the pin queue for the next collection */
-	sgen_finish_pinning ();
+	sgen_finish_pinning (GENERATION_NURSERY);
 	if (sgen_have_pending_finalizers ()) {
 		SGEN_LOG (4, "Finalizer-thread wakeup");
 		sgen_client_finalize_notify ();
@@ -1721,7 +1723,11 @@ major_copy_or_mark_from_roots (size_t *old_next_pin_slot, CopyOrMarkFromRootsMod
 	sgen_process_fin_stage_entries ();
 
 	TV_GETTIME (atv);
-	sgen_init_pinning ();
+	sgen_init_pinning (GENERATION_OLD);
+	if (mode == COPY_OR_MARK_FROM_ROOTS_FINISH_CONCURRENT) {
+		/* Pin cemented objects that were forced */
+		sgen_pin_cemented_objects ();
+	}
 	SGEN_LOG (6, "Collecting pinned addresses");
 	pin_from_roots ((void*)lowest_heap_address, (void*)highest_heap_address, ctx);
 
@@ -1847,7 +1853,7 @@ static void
 major_finish_copy_or_mark (CopyOrMarkFromRootsMode mode)
 {
 	if (mode == COPY_OR_MARK_FROM_ROOTS_START_CONCURRENT) {
-		sgen_finish_pinning ();
+		sgen_finish_pinning (GENERATION_OLD);
 
 		sgen_pin_stats_reset ();
 
@@ -1971,7 +1977,7 @@ major_finish_collection (const char *reason, size_t old_next_pin_slot, gboolean 
 		sgen_debug_check_nursery_is_clean ();
 
 	/* prepare the pin queue for the next collection */
-	sgen_finish_pinning ();
+	sgen_finish_pinning (GENERATION_OLD);
 
 	/* Clear TLABs for all threads */
 	sgen_clear_tlabs ();
@@ -2991,7 +2997,7 @@ sgen_gc_init (void)
 
 	alloc_nursery ();
 
-	sgen_cement_init (cement_enabled);
+	sgen_cement_init (cement_enabled, TRUE);
 
 	if ((env = g_getenv (MONO_GC_DEBUG_NAME))) {
 		gboolean usage_printed = FALSE;
