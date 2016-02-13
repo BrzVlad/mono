@@ -706,6 +706,8 @@ pin_objects_from_nursery_pin_queue (gboolean do_scan_objects, ScanCopyContext ct
 			definitely_pinned [count] = obj_to_pin;
 			count++;
 		}
+		if (concurrent_collection_in_progress)
+			sgen_pinning_register_pinned_in_nursery (obj_to_pin);
 
 	next_pin_queue_entry:
 		last = addr;
@@ -1421,6 +1423,9 @@ job_mod_union_preclean (void *worker_data_untyped, SgenThreadPoolJob *job)
 	sgen_los_scan_card_table (TRUE, TRUE, ctx);
 
 	sgen_cement_scan_forced (ctx);
+
+	sgen_pinning_force_pinned ();
+	sgen_pinning_scan_forced (ctx);
 }
 
 static void

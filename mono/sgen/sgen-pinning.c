@@ -30,10 +30,11 @@
 #include "mono/sgen/sgen-pointer-queue.h"
 #include "mono/sgen/sgen-client.h"
 
-static SgenPointerQueue pin_queue;
+static SgenPointerQueue pin_queue, forced_pin_queue;
 static size_t last_num_pinned = 0;
 static MonoCoopMutex pin_queue_mutex;
 static gboolean forced_cement_enabled = TRUE;
+static gboolean forced_pin = FALSE;
 
 #define PIN_HASH_SIZE 1024
 static void *pin_hash_filter [PIN_HASH_SIZE];
@@ -45,6 +46,10 @@ sgen_init_pinning (int generation)
 		mono_coop_mutex_lock (&pin_queue_mutex);
 	memset (pin_hash_filter, 0, sizeof (pin_hash_filter));
 	pin_queue.mem_type = INTERNAL_MEM_PIN_QUEUE;
+	if (forced_pin)
+		sgen_pointer_queue_addq (&pin_queue, &forced_pin_queue);
+	else
+		sgen_pointer_queue_clear (&forced_pin_queue);
 }
 
 void
@@ -52,6 +57,10 @@ sgen_finish_pinning (int generation)
 {
 	last_num_pinned = pin_queue.next_slot;
 	sgen_pointer_queue_clear (&pin_queue);
+	if (generation == GENERATION_OLD && forced_pin) {
+		sgen_pointer_queue_clear (&forced_pin_queue);
+		forced_pin = FALSE;
+	}
 	if (forced_cement_enabled && generation == GENERATION_NURSERY)
 		mono_coop_mutex_unlock (&pin_queue_mutex);
 }
@@ -112,6 +121,43 @@ sgen_pinning_trim_queue_to_section (GCMemSection *section)
 {
 	SGEN_ASSERT (0, section->pin_queue_first_entry == 0, "Pin queue trimming assumes the whole pin queue is used by the nursery");
 	pin_queue.next_slot = section->pin_queue_last_entry;
+}
+
+
+/*
+ * We freeze the force_pinned queue and all the objects in the queue will
+ * remain pinned untile the end of the next major collection. This is used
+ * with concurrent collections.
+ */
+void
+sgen_pinning_force_pinned (void)
+{
+	mono_coop_mutex_lock (&pin_queue_mutex);
+	forced_pin = TRUE;
+	mono_coop_mutex_unlock (&pin_queue_mutex);
+}
+
+void
+sgen_pinning_register_pinned_in_nursery (GCObject *obj)
+{
+	if (!forced_pin)
+		sgen_pointer_queue_add (&forced_pin_queue, obj);
+}
+
+void
+sgen_pinning_scan_forced (ScanCopyContext ctx)
+{
+	ScanObjectFunc scan_func = ctx.ops->scan_object;
+	int i;
+
+	SGEN_ASSERT (0, forced_pin, "The set of forced pinned objects must be freezed before scanning");
+
+	mono_coop_mutex_lock (&pin_queue_mutex);
+	for (i = 0; i < forced_pin_queue.next_slot; ++i) {
+		GCObject *obj = (GCObject *)forced_pin_queue.data [i];
+		scan_func (obj, sgen_obj_get_descriptor_safe (obj), ctx.queue, NULL);
+	}
+	mono_coop_mutex_unlock (&pin_queue_mutex);
 }
 
 /*

@@ -38,6 +38,10 @@ size_t sgen_get_pinned_count (void);
 void sgen_pinning_setup_section (GCMemSection *section);
 void sgen_pinning_trim_queue_to_section (GCMemSection *section);
 
+void sgen_pinning_force_pinned (void);
+void sgen_pinning_register_pinned_in_nursery (GCObject *obj);
+void sgen_pinning_scan_forced (ScanCopyContext ctx);
+
 void sgen_dump_pin_queue (void);
 
 gboolean sgen_find_optimized_pin_queue_area (void *start, void *end, size_t *first_out, size_t *last_out);

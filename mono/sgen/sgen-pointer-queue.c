@@ -67,6 +67,14 @@ sgen_pointer_queue_add (SgenPointerQueue *queue, void *ptr)
 	queue->data [queue->next_slot++] = ptr;
 }
 
+void
+sgen_pointer_queue_addq (SgenPointerQueue *dest, SgenPointerQueue *src)
+{
+	size_t i;
+	for (i = 0; i < src->next_slot; i++)
+		sgen_pointer_queue_add (dest, src->data [i]);
+}
+
 void*
 sgen_pointer_queue_pop (SgenPointerQueue *queue)
 {
