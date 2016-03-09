@@ -688,6 +688,16 @@ sgen_client_binary_protocol_concurrent_sweep_end (long long timestamp)
 }
 
 static void G_GNUC_UNUSED
+sgen_client_binary_protocol_custom_event_start (long long timestamp)
+{
+}
+
+static void G_GNUC_UNUSED
+sgen_client_binary_protocol_custom_event_end (long long timestamp)
+{
+}
+
+static void G_GNUC_UNUSED
 sgen_client_binary_protocol_header (long long check, int version, int ptr_size, gboolean little_endian)
 {
 }
