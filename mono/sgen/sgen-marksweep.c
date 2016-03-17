@@ -109,6 +109,7 @@ struct _MSBlockInfo {
 	guint16 obj_size_index;
 	/* FIXME: Reduce this - it only needs a byte. */
 	volatile gint32 state;
+	guint16 nused; /* objects live in block at sweep end */
 	unsigned int pinned : 1;
 	unsigned int has_references : 1;
 	unsigned int has_pinned : 1;	/* means cannot evacuate */
@@ -1526,6 +1527,7 @@ ensure_block_is_checked_for_sweeping (int block_index, gboolean wait, gboolean *
 	for (i = 0; i < MS_NUM_MARK_WORDS; ++i)
 		nused += bitcount (block->mark_words [i]);
 
+	block->nused = nused;
 	if (nused)
 		have_live = TRUE;
 	if (nused < count)
@@ -1578,7 +1580,6 @@ ensure_block_is_checked_for_sweeping (int block_index, gboolean wait, gboolean *
 		ms_free_block (block);
 
 		SGEN_ATOMIC_ADD_P (num_major_sections, -1);
-
 		tagged_block = NULL;
 	}
 
@@ -1636,6 +1637,71 @@ sweep_job_func (void *thread_data_untyped, SgenThreadPoolJob *job)
 	sweep_job = NULL;
 }
 
+static int
+block_usage_comparer (const void *bl1, const void *bl2)
+{
+	const guint16 nused1 = ((MSBlockInfo*)bl1)->nused;
+	const guint16 nused2 = ((MSBlockInfo*)bl2)->nused;
+
+	if (nused1 < nused2)
+		return 1;
+	else if (nused1 == nused2)
+		return 0;
+	else
+		return -1;
+}
+
+static void
+sgen_evacuate_block_size (int size_index)
+{
+	gpointer *evacuated_blocks;
+	size_t index = 0, count, num_blocks;
+	guint32 block_index;
+	evacuate_block_obj_sizes [size_index] = TRUE;
+
+	/*
+	g_print ("slot size %d - %d of %d used\n",
+			block_obj_sizes [i], slots_used [i], slots_available [i]);
+	*/
+
+
+	/*
+	 * We want to evacuate as few objects as possible while still obtaining maximum
+	 * compaction (which means putting sweep_slots_used in as few blocks as possible).
+	 * This means evacuating the blocks with fewer live objects and reusing blocks
+	 * with many live objects, without doing any evacuation inside that block.
+	 *
+	 * In order to achieve this we sort all blocks that will be evacuated relative
+	 * to the number of live objects. We repeatedly mark the blocks with highest usage
+	 * as to_space to avoid evacuation inside them, until we selected the minimum
+	 * number of blocks that can hold all slots. The rest will be evacuated from.
+	 */
+	evacuated_blocks = (gpointer*)sgen_alloc_internal_dynamic (sizeof (void*) * sweep_num_blocks [size_index], INTERNAL_MEM_TEMPORARY, TRUE);
+
+	for (block_index = 0; block_index < allocated_blocks.next_slot; ++block_index) {
+		MSBlockInfo *block = BLOCK_UNTAG (allocated_blocks.data [block_index]);
+		if (block->obj_size_index != size_index || block->has_pinned || !block->nused)
+			continue;
+		evacuated_blocks [index++] = block;
+	}
+	/*
+	 * num_blocks might be slightly larger than sweep_num_blocks [size_index] because
+	 * the latter is updated without atomic semantics. The same applies for sweep_slots_used.
+	 * The effects are negligible.
+	 */
+	num_blocks = index;
+
+	qsort (evacuated_blocks, num_blocks, sizeof (gpointer), block_usage_comparer); 
+
+	count = MS_BLOCK_FREE / block_obj_sizes [size_index];
+	for (index = 0; index < (sweep_slots_used [size_index] + count - 1) / count; index++) {
+		SGEN_ASSERT (0, index < sweep_num_blocks [size_index], "Why do we have more used slots than blocks for them ?");
+		((MSBlockInfo*)evacuated_blocks [index])->is_to_space = TRUE;
+	}
+
+	sgen_free_internal_dynamic (evacuated_blocks, sizeof (void*) * sweep_num_blocks [size_index], INTERNAL_MEM_TEMPORARY);
+}
+
 static void
 sweep_finish (void)
 {
@@ -1644,11 +1710,7 @@ sweep_finish (void)
 	for (i = 0; i < num_block_obj_sizes; ++i) {
 		float usage = (float)sweep_slots_used [i] / (float)sweep_slots_available [i];
 		if (sweep_num_blocks [i] > 5 && usage < evacuation_threshold) {
-			evacuate_block_obj_sizes [i] = TRUE;
-			/*
-			g_print ("slot size %d - %d of %d used\n",
-					block_obj_sizes [i], slots_used [i], slots_available [i]);
-			*/
+			sgen_evacuate_block_size (i);
 		} else {
 			evacuate_block_obj_sizes [i] = FALSE;
 		}
