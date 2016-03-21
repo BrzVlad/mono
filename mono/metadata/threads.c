@@ -4329,7 +4329,7 @@ mono_thread_execute_interruption (void)
 		mono_thread_info_clear_self_interrupt ();
 	}
 
-	if ((thread->state & ThreadState_AbortRequested) != 0) {
+	if ((thread->state & ThreadState_AbortRequested) != 0 && !thread->inside_abort_critical_region) {
 		UNLOCK_THREAD (thread);
 		if (thread->abort_exc == NULL) {
 			/* 
@@ -4358,10 +4358,9 @@ mono_thread_execute_interruption (void)
 		exc = sys_thread->pending_exception;
 		sys_thread->pending_exception = NULL;
 
-        UNLOCK_THREAD (thread);
-        return exc;
-	} else if (thread->thread_interrupt_requested) {
-
+		UNLOCK_THREAD (thread);
+		return exc;
+	} else if (thread->thread_interrupt_requested && !thread->inside_abort_critical_region) {
 		thread->thread_interrupt_requested = FALSE;
 		UNLOCK_THREAD (thread);
 		
@@ -4700,6 +4699,13 @@ async_abort_critical (MonoThreadInfo *info, gpointer ud)
 	MonoJitInfo *ji = NULL;
 	gboolean protected_wrapper;
 	gboolean running_managed;
+
+	/*
+	 * If we can't abort, don't do anything. At end of the critical region we will
+	 * check explicitly if we have a pending abort.
+	 */
+	if (thread->inside_abort_critical_region)
+		return MonoResumeThread;
 
 	if (mono_get_eh_callbacks ()->mono_install_handler_block_guard (mono_thread_info_get_suspend_state (info)))
 		return MonoResumeThread;

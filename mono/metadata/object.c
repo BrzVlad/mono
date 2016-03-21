@@ -306,6 +306,23 @@ mono_runtime_class_init (MonoVTable *vtable)
 	mono_error_assert_ok (&error);
 }
 
+static void mono_enter_abort_critical_region_r (MonoInternalThread *info)
+{
+	if (info->inside_abort_critical_region)
+		info->inside_abort_critical_region++;
+	else
+		mono_atomic_store_acquire (&info->inside_abort_critical_region, 1);
+}
+
+static void mono_exit_abort_critical_region_r (MonoInternalThread *info)
+{
+	g_assert (info->inside_abort_critical_region > 0);
+	if (info->inside_abort_critical_region > 1)
+		info->inside_abort_critical_region--;
+	else
+		mono_atomic_store_release (&info->inside_abort_critical_region, 0);
+}
+
 /**
  * mono_runtime_class_init_full:
  * @vtable that neeeds to be initialized
@@ -327,11 +344,15 @@ mono_runtime_class_init_full (MonoVTable *vtable, MonoError *error)
 	MonoNativeThreadId tid;
 	int do_initialization = 0;
 	MonoDomain *last_domain = NULL;
+	MonoInternalThread *info = mono_thread_internal_current ();
+	gboolean ret;
 
 	mono_error_init (error);
 
 	if (vtable->initialized)
 		return TRUE;
+
+	mono_enter_abort_critical_region_r (info);
 
 	klass = vtable->klass;
 
@@ -343,20 +364,26 @@ mono_runtime_class_init_full (MonoVTable *vtable, MonoError *error)
 
 			module_klass = mono_class_get_checked (klass->image, MONO_TOKEN_TYPE_DEF | 1, error);
 			if (!module_klass) {
-				return FALSE;
+				ret = FALSE;
+				goto DONE;
 			}
 				
 			module_vtable = mono_class_vtable_full (vtable->domain, module_klass, error);
-			if (!module_vtable)
-				return FALSE;
-			if (!mono_runtime_class_init_full (module_vtable, error))
-				return FALSE;
+			if (!module_vtable) {
+				ret = FALSE;
+				goto DONE;
+			}
+			if (!mono_runtime_class_init_full (module_vtable, error)) {
+				ret = FALSE;
+				goto DONE;
+			}
 		}
 	}
 	method = mono_class_get_cctor (klass);
 	if (!method) {
 		vtable->initialized = 1;
-		return TRUE;
+		ret = TRUE;
+		goto DONE;
 	}
 
 	tid = mono_native_thread_id_get ();
@@ -365,14 +392,16 @@ mono_runtime_class_init_full (MonoVTable *vtable, MonoError *error)
 	/* double check... */
 	if (vtable->initialized) {
 		mono_type_initialization_unlock ();
-		return TRUE;
+		ret = TRUE;
+		goto DONE;
 	}
 	if (vtable->init_failed) {
 		mono_type_initialization_unlock ();
 
 		/* The type initialization already failed once, rethrow the same exception */
 		mono_error_set_exception_instance (error, get_type_init_exception_for_vtable (vtable));
-		return FALSE;
+		ret = FALSE;
+		goto DONE;
 	}
 	lock = (TypeInitializationLock *)g_hash_table_lookup (type_initialization_hash, vtable);
 	if (lock == NULL) {
@@ -384,7 +413,8 @@ mono_runtime_class_init_full (MonoVTable *vtable, MonoError *error)
 				vtable->initialized = 1;
 				mono_type_initialization_unlock ();
 				mono_error_set_exception_instance (error, mono_get_exception_appdomain_unloaded ());
-				return FALSE;
+				ret = FALSE;
+				goto DONE;
 			}
 		}
 		lock = (TypeInitializationLock *)g_malloc (sizeof (TypeInitializationLock));
@@ -403,7 +433,8 @@ mono_runtime_class_init_full (MonoVTable *vtable, MonoError *error)
 
 		if (mono_native_thread_id_equals (lock->initializing_tid, tid) || lock->done) {
 			mono_type_initialization_unlock ();
-			return TRUE;
+			ret = TRUE;
+			goto DONE;
 		}
 		/* see if the thread doing the initialization is already blocked on this thread */
 		blocked = GUINT_TO_POINTER (MONO_NATIVE_THREAD_ID_TO_UINT (lock->initializing_tid));
@@ -411,7 +442,8 @@ mono_runtime_class_init_full (MonoVTable *vtable, MonoError *error)
 			if (mono_native_thread_id_equals (pending_lock->initializing_tid, tid)) {
 				if (!pending_lock->done) {
 					mono_type_initialization_unlock ();
-					return TRUE;
+					ret = TRUE;
+					goto DONE;
 				} else {
 					/* the thread doing the initialization is blocked on this thread,
 					   but on a lock that has already been freed. It just hasn't got
@@ -495,9 +527,20 @@ mono_runtime_class_init_full (MonoVTable *vtable, MonoError *error)
 	if (vtable->init_failed) {
 		/* Either we were the initializing thread or we waited for the initialization */
 		mono_error_set_exception_instance (error, get_type_init_exception_for_vtable (vtable));
-		return FALSE;
+		ret = FALSE;
+		goto DONE;
 	}
-	return TRUE;
+	ret = TRUE;
+DONE:
+	mono_exit_abort_critical_region_r (info);
+
+	if (info->inside_abort_critical_region == 0) {
+		MonoException *exc = mono_thread_request_interruption (TRUE);
+		if (exc)
+			mono_set_pending_exception (exc);
+	}
+
+	return ret;
 }
 
 static

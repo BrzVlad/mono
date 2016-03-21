@@ -401,6 +401,12 @@ struct _MonoInternalThread {
 	guint32	    name_len;
 	guint32	    state;
 	MonoException *abort_exc;
+	/*
+	 * If not 0, this thread is in a critical region of code relative to abort. Abort and Interrupt
+	 * requests will not be handled in this case.
+	 */
+	guint32 inside_abort_critical_region;
+
 	int abort_state_handle;
 	guint64 tid;	/* This is accessed as a gsize in the code (so it can hold a 64bit pointer on systems that need it), but needs to reserve 64 bits of space on all machines as it corresponds to a field in managed code */
 	HANDLE	    start_notify;
