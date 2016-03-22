@@ -1848,6 +1848,12 @@ major_start_major_collection (void)
 			sweep_block (block);
 		SGEN_ASSERT (0, block->state == BLOCK_STATE_SWEPT, "All blocks must be swept when we're pinning.");
 		set_block_state (block, BLOCK_STATE_MARKING, BLOCK_STATE_SWEPT);
+		/*
+		 * Blocks that are not on the free_list (they dont have next_free set), are full.
+		 * Evacuating them is pointless.
+		 */
+		if (evacuate_block_obj_sizes [block->obj_size_index] && !block->free_list)
+			block->is_to_space = TRUE;
 	} END_FOREACH_BLOCK_NO_LOCK;
 	if (lazy_sweep && !concurrent_sweep)
 		binary_protocol_sweep_end (GENERATION_OLD, TRUE);
