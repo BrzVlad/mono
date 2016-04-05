@@ -46,3 +46,6 @@
 [submodule "external/corefx"]
 	path = external/corefx
 	url = git://github.com/mono/corefx.git
+[submodule "external/roslyn-binaries"]
+	path = external/roslyn-binaries
+	url = git://github.com/mono/roslyn-binaries.git

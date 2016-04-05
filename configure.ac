@@ -4072,6 +4072,9 @@ else
 fi
 AC_SUBST(mono_cfg_dir)
 
+CSC=$mono_build_root/external/roslyn-binaries/Microsoft.Net.Compilers/Microsoft.Net.Compilers.1.3.2/tools/csc.exe
+AC_SUBST(CSC)
+
 AC_CONFIG_FILES([po/mcs/Makefile.in])
 
 AC_CONFIG_FILES([runtime/mono-wrapper],[chmod +x runtime/mono-wrapper])
@@ -4402,6 +4405,8 @@ fi
     if test "x$test_bcl_opt" = "xyes"; then    
       echo "BCL_OPTIMIZE = 1" >> $srcdir/$mcsdir/build/config.make
     fi
+
+    echo "CSC_LOCATION = $CSC" >> $srcdir/$mcsdir/build/config.make
 
     if test "x$AOT_BUILD_FLAGS" != "x" ; then
       echo "AOT_RUN_FLAGS=$AOT_RUN_FLAGS" >> $srcdir/$mcsdir/build/config.make

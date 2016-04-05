@@ -67,9 +67,9 @@ namespace System {
 					Mono = "mono";
 
 				var mscorlibPath = new Uri (typeof (object).Assembly.CodeBase).LocalPath;
-				CSharpCompiler = Path.GetFullPath (Path.Combine (mscorlibPath, "..", "..", "..", "..", "bin", "mcs"));
+				CSharpCompiler = Path.GetFullPath (Path.Combine (mscorlibPath, "..", "..", "..", "..", "bin", "csc"));
 				if (!File.Exists (CSharpCompiler))
-					CSharpCompiler = "mcs";
+					CSharpCompiler = "csc";
 
 				VBCompiler = Path.GetFullPath (Path.Combine (mscorlibPath, "..", "..", "..", "..", "bin", "vbnc"));
 				if (!File.Exists (VBCompiler))
