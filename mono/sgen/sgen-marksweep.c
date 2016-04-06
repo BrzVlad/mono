@@ -2506,10 +2506,17 @@ update_cardtable_mod_union (void)
 	MSBlockInfo *block;
 
 	FOREACH_BLOCK_NO_LOCK (block) {
-		size_t num_cards;
-		guint8 *mod_union = get_cardtable_mod_union_for_block (block, TRUE);
-		sgen_card_table_update_mod_union (mod_union, MS_BLOCK_FOR_BLOCK_INFO (block), MS_BLOCK_SIZE, &num_cards);
-		SGEN_ASSERT (6, num_cards == CARDS_PER_BLOCK, "Number of cards calculation is wrong");
+		int i;
+		gpointer *card_start = (gpointer*) sgen_card_table_get_card_address ((mword)MS_BLOCK_FOR_BLOCK_INFO (block));
+		for (i = 0; i < CARDS_PER_BLOCK / sizeof(gpointer); i++) {
+			if (card_start [i]) {
+				size_t num_cards;
+				guint8 *mod_union = get_cardtable_mod_union_for_block (block, TRUE);
+				sgen_card_table_update_mod_union (mod_union, MS_BLOCK_FOR_BLOCK_INFO (block), MS_BLOCK_SIZE, &num_cards);
+				SGEN_ASSERT (6, num_cards == CARDS_PER_BLOCK, "Number of cards calculation is wrong");
+				break;
+			}
+		}
 	} END_FOREACH_BLOCK_NO_LOCK;
 }
 
