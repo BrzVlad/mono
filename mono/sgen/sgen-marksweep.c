@@ -2223,6 +2223,18 @@ major_print_gc_param_usage (void)
  * This callback is used to clear cards, move cards to the shadow table and do counting.
  */
 static void
+major_iterate_block_ranges (sgen_cardtable_block_callback callback)
+{
+	MSBlockInfo *block;
+	gboolean has_references;
+
+	FOREACH_BLOCK_HAS_REFERENCES_NO_LOCK (block, has_references) {
+		if (has_references)
+			callback ((mword)MS_BLOCK_FOR_BLOCK_INFO (block), MS_BLOCK_SIZE);
+	} END_FOREACH_BLOCK_NO_LOCK;
+}
+
+static void
 major_iterate_live_block_ranges (sgen_cardtable_block_callback callback)
 {
 	MSBlockInfo *block;
@@ -2442,7 +2454,9 @@ major_scan_card_table (CardTableScanType scan_type, ScanCopyContext ctx)
 	if (!concurrent_mark)
 		g_assert (scan_type == CARDTABLE_SCAN_GLOBAL);
 
-	major_finish_sweep_checking ();
+	if (scan_type != CARDTABLE_SCAN_GLOBAL)
+		SGEN_ASSERT (0, !sweep_in_progress (), "Sweep should be finished when we scan mod union card table");
+
 	binary_protocol_major_card_table_scan_start (sgen_timestamp (), scan_type & CARDTABLE_SCAN_MOD_UNION);
 	FOREACH_BLOCK_HAS_REFERENCES_NO_LOCK (block, has_references) {
 #ifdef PREFETCH_CARDS
@@ -2461,7 +2475,22 @@ major_scan_card_table (CardTableScanType scan_type, ScanCopyContext ctx)
 		if (!has_references)
 			continue;
 
-		scan_card_table_for_block (block, scan_type, ctx);
+		if (scan_type == CARDTABLE_SCAN_GLOBAL) {
+			gpointer *card_start = (gpointer*) sgen_card_table_get_card_scan_address ((mword)MS_BLOCK_FOR_BLOCK_INFO (block));
+			int i;
+			for (i = 0; i < CARDS_PER_BLOCK / sizeof(gpointer); i++) {
+				if (card_start [i]) {
+					gboolean is_live = TRUE;
+					if (sweep_in_progress ())
+						is_live = ensure_block_is_checked_for_sweeping (__index, TRUE, NULL);
+					if (is_live)
+						scan_card_table_for_block (block, scan_type, ctx);
+					break;
+				}
+			}
+		} else {
+			scan_card_table_for_block (block, scan_type, ctx);
+		}
 	} END_FOREACH_BLOCK_NO_LOCK;
 	binary_protocol_major_card_table_scan_end (sgen_timestamp (), scan_type & CARDTABLE_SCAN_MOD_UNION);
 }
@@ -2594,6 +2623,7 @@ sgen_marksweep_init_internal (SgenMajorCollector *collector, gboolean is_concurr
 	collector->pin_major_object = pin_major_object;
 	collector->scan_card_table = major_scan_card_table;
 	collector->iterate_live_block_ranges = major_iterate_live_block_ranges;
+	collector->iterate_block_ranges = major_iterate_block_ranges;
 	if (is_concurrent) {
 		collector->update_cardtable_mod_union = update_cardtable_mod_union;
 		collector->get_cardtable_mod_union_for_reference = major_get_cardtable_mod_union_for_reference;
