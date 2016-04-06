@@ -205,16 +205,23 @@ static SgenArrayList allocated_blocks = SGEN_ARRAY_LIST_INIT (NULL, NULL, NULL, 
 static void *empty_blocks = NULL;
 static size_t num_empty_blocks = 0;
 
+/*
+ * We can iterate the block list also while sweep is in progress but we
+ * need to account for blocks that will be freed. In order to avoid the
+ * case of the block's memory being freed, we need to take the GC_LOCK.
+ */
 #define FOREACH_BLOCK_NO_LOCK(bl) {					\
 	volatile gpointer *slot;						\
-	SGEN_ASSERT (0, !sweep_in_progress (), "Can't iterate blocks while sweep is in progress."); \
 	SGEN_ARRAY_LIST_FOREACH_SLOT (&allocated_blocks, slot) {	\
-		(bl) = BLOCK_UNTAG (*slot);
+		(bl) = BLOCK_UNTAG (*slot);				\
+		if (!(bl))						\
+			continue;
 #define FOREACH_BLOCK_HAS_REFERENCES_NO_LOCK(bl,hr) {			\
 	volatile gpointer *slot;						\
-	SGEN_ASSERT (0, !sweep_in_progress (), "Can't iterate blocks while sweep is in progress."); \
 	SGEN_ARRAY_LIST_FOREACH_SLOT (&allocated_blocks, slot) {	\
 		(bl) = (MSBlockInfo *) (*slot);			\
+		if (!(bl))						\
+			continue;					\
 		(hr) = BLOCK_IS_TAGGED_HAS_REFERENCES ((bl));		\
 		(bl) = BLOCK_UNTAG ((bl));
 #define END_FOREACH_BLOCK_NO_LOCK	} SGEN_ARRAY_LIST_END_FOREACH_SLOT; }
