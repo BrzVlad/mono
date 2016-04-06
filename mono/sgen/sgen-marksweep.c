@@ -557,16 +557,6 @@ ms_alloc_block (int size_index, gboolean pinned, gboolean has_references)
 
 	add_free_block (free_blocks, size_index, info);
 
-	/*
-	 * Adding to the allocated_blocks array is racy with the removal of nulls when
-	 * sweeping. We wait for sweep to finish to avoid that.
-	 *
-	 * The memory barrier here and in `sweep_job_func()` are required because we need
-	 * `allocated_blocks` synchronized between this and the sweep thread.
-	 */
-	major_finish_sweep_checking ();
-	mono_memory_barrier ();
-
 	sgen_array_list_add (&allocated_blocks, BLOCK_TAG (info), 0, FALSE);
 
 	SGEN_ATOMIC_ADD_P (num_major_sections, 1);
@@ -1438,6 +1428,8 @@ sweep_start (void)
 		for (j = 0; j < num_block_obj_sizes; ++j)
 			free_blocks [j] = NULL;
 	}
+
+	sgen_array_list_remove_nulls (&allocated_blocks);
 }
 
 static void sweep_finish (void);
@@ -1640,8 +1632,6 @@ sweep_job_func (void *thread_data_untyped, SgenThreadPoolJob *job)
 			SGEN_ASSERT (6, block && block->state == BLOCK_STATE_SWEPT, "How did a new block to be swept get added while swept?");
 		}
 	}
-
-	sgen_array_list_remove_nulls (&allocated_blocks);
 
 	sweep_finish ();
 
