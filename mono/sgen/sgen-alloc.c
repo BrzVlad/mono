@@ -82,10 +82,15 @@ static __thread char **tlab_next_addr MONO_ATTR_USED;
 #define TLAB_REAL_END	(__thread_info__->tlab_real_end)
 #endif
 
+static int degraded_allocs = 0;
+
 static GCObject*
 alloc_degraded (GCVTable vtable, size_t size, gboolean for_mature)
 {
 	GCObject *p;
+	InterlockedIncrement (&degraded_allocs);
+	if (degraded_allocs % 1000000 == 0)
+		printf ("Allocated degraded %d degraded_allocs\n", degraded_allocs);
 
 	if (!for_mature) {
 		sgen_client_degraded_allocation (size);
@@ -374,6 +379,10 @@ sgen_try_alloc_obj_nolock (GCVTable vtable, size_t size)
 				return NULL;
 
 			zero_tlab_if_necessary (p, size);
+		} else if (degraded_mode && degraded_mode < DEFAULT_NURSERY_SIZE) {
+			p = (void **)alloc_degraded (vtable, size, FALSE);
+			if (!p)
+				return NULL;
 		} else {
 			size_t alloc_size = 0;
 
@@ -399,7 +408,7 @@ sgen_try_alloc_obj_nolock (GCVTable vtable, size_t size)
 	CANARIFY_ALLOC(p,real_size);
 	SGEN_LOG (6, "Allocated object %p, vtable: %p (%s), size: %zd", p, vtable, sgen_client_vtable_get_name (vtable), size);
 	binary_protocol_alloc (p, vtable, size, sgen_client_get_provenance ());
-	g_assert (*p == NULL); /* FIXME disable this in non debug builds */
+//	g_assert (*p == NULL); /* FIXME disable this in non debug builds */
 
 	mono_atomic_store_seq (p, vtable);
 

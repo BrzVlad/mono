@@ -383,6 +383,8 @@ struct _SgenThreadInfo {
 	char **tlab_temp_end_addr;
 	char **tlab_real_end_addr;
 
+	gint64 lock_gc_100ns;
+	gint64 alloc_100ns; 
 #ifndef HAVE_KW_THREAD
 	char *tlab_start;
 	char *tlab_next;

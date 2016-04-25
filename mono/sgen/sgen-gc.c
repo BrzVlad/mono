@@ -369,6 +369,8 @@ static mword roots_size = 0; /* amount of memory in the root set */
  * FIXME: Tune this.
  * FIXME: Make this self-tuning for each thread.
  */
+//guint32 tlab_size = 16;
+//guint32 tlab_size = (1024 * 64);
 guint32 tlab_size = (1024 * 4);
 
 #define MAX_SMALL_OBJ_SIZE	SGEN_MAX_SMALL_OBJ_SIZE
@@ -2570,7 +2572,8 @@ sgen_thread_register (SgenThreadInfo* info, void *stack_bottom_fallback)
 #ifndef HAVE_KW_THREAD
 	info->tlab_start = info->tlab_next = info->tlab_temp_end = info->tlab_real_end = NULL;
 #endif
-
+	info->lock_gc_100ns = 0;
+	info->alloc_100ns = 0;
 	sgen_init_tlab_info (info);
 
 	sgen_client_thread_register (info, stack_bottom_fallback);
@@ -2578,9 +2581,17 @@ sgen_thread_register (SgenThreadInfo* info, void *stack_bottom_fallback)
 	return info;
 }
 
+int total_lock_gc_ms = 0;
+int total_alloc_ms = 0;
+int total_threads = 0;
+
 void
 sgen_thread_unregister (SgenThreadInfo *p)
 {
+	printf ("%s Thread %d, lock_gc %d ms, alloc %d ms\n", p->lock_gc_100ns > 150000000 ? "---" : "", p->client_info.info.small_id, (int)(p->lock_gc_100ns / 10000), (int)(p->alloc_100ns / 10000));
+	total_lock_gc_ms += (int)(p->lock_gc_100ns / 10000);
+	total_alloc_ms += (int)(p->alloc_100ns / 10000);
+	total_threads++;
 	sgen_client_thread_unregister (p);
 }
 
@@ -3178,7 +3189,11 @@ sgen_get_nursery_clear_policy (void)
 void
 sgen_gc_lock (void)
 {
+	gint64 start, end;
+	start = sgen_timestamp ();
 	mono_coop_mutex_lock (&gc_mutex);
+	end = sgen_timestamp ();
+	mono_thread_info_current ()->lock_gc_100ns += end - start;
 }
 
 void

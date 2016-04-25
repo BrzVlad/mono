@@ -921,11 +921,21 @@ mono_gc_enable_alloc_events (void)
 	alloc_events = TRUE;
 }
 
+int normal_allocs = 0;
+gint64 alloc_100ns = 0;
 void*
 mono_gc_alloc_obj (MonoVTable *vtable, size_t size)
 {
-	MonoObject *obj = sgen_alloc_obj (vtable, size);
+	gint64 start, end;
+	MonoObject *obj;
 
+	start = sgen_timestamp ();
+	obj = sgen_alloc_obj (vtable, size);
+	end = sgen_timestamp ();
+	mono_thread_info_current ()->alloc_100ns += end - start;
+	InterlockedIncrement (&normal_allocs);
+	if (normal_allocs % 1000000 == 0)
+		printf ("Alloc normal %d\n", normal_allocs);
 	if (G_UNLIKELY (alloc_events)) {
 		if (obj)
 			mono_profiler_allocation (obj);
@@ -2316,6 +2326,7 @@ sgen_client_scan_thread_data (void *start_nursery, void *end_nursery, gboolean p
 {
 	scan_area_arg_start = start_nursery;
 	scan_area_arg_end = end_nursery;
+	int num_threads = 0;
 
 	FOREACH_THREAD (info) {
 		int skip_reason = 0;
@@ -2336,7 +2347,7 @@ sgen_client_scan_thread_data (void *start_nursery, void *end_nursery, gboolean p
 
 		if (skip_reason)
 			continue;
-
+		num_threads++;
 		g_assert (info->client_info.suspend_done);
 		SGEN_LOG (3, "Scanning thread %p, range: %p-%p, size: %zd, pinned=%zd", info, info->client_info.stack_start, info->client_info.stack_end, (char*)info->client_info.stack_end - (char*)info->client_info.stack_start, sgen_get_pinned_count ());
 		if (mono_gc_get_gc_callbacks ()->thread_mark_func && !conservative_stack_mark) {
@@ -2368,6 +2379,8 @@ sgen_client_scan_thread_data (void *start_nursery, void *end_nursery, gboolean p
 			}
 		}
 	} FOREACH_THREAD_END
+	if (current_collection_generation == GENERATION_OLD)
+		printf ("%d scanned threads\n", num_threads);
 }
 
 /*

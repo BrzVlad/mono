@@ -310,6 +310,7 @@ initialize (void)
 	threadpool->limit_worker_max = threadpool->limit_io_max = CLAMP (threads_count * 100, MIN (threads_count, 200), MAX (threads_count, 200));
 #else
 	threadpool->limit_worker_max = threadpool->limit_io_max = threads_count * 100;
+	printf ("Thread Count %d\n\n", threads_count);
 #endif
 
 	threadpool->counters._.max_working = threadpool->limit_worker_min;
