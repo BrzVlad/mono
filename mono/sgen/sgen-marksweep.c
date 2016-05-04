@@ -228,6 +228,7 @@ static volatile size_t num_major_sections = 0;
  * thread only ever adds blocks to the free list, so the ABA problem can't occur.
  */
 static MSBlockInfo * volatile *free_block_lists [MS_BLOCK_TYPE_MAX];
+static __thread MSBlockInfo * volatile free_block_lists_local [MS_BLOCK_TYPE_MAX][40];
 
 static guint64 stat_major_blocks_alloced = 0;
 static guint64 stat_major_blocks_freed = 0;
@@ -279,6 +280,7 @@ ms_find_block_obj_size_index (size_t size)
 
 #define FREE_BLOCKS_FROM(lists,p,r)	(lists [((p) ? MS_BLOCK_FLAG_PINNED : 0) | ((r) ? MS_BLOCK_FLAG_REFS : 0)])
 #define FREE_BLOCKS(p,r)		(FREE_BLOCKS_FROM (free_block_lists, (p), (r)))
+#define FREE_BLOCKS_LOCAL(p,r)		(FREE_BLOCKS_FROM (free_block_lists_local, (p), (r)))
 
 #define MS_BLOCK_OBJ_SIZE_INDEX(s)				\
 	(((s)+7)>>3 < MS_NUM_FAST_BLOCK_OBJ_SIZE_INDEXES ?	\
@@ -493,6 +495,7 @@ add_free_block (MSBlockInfo * volatile *free_blocks, int size_index, MSBlockInfo
 	do {
 		block->next_free = old = free_blocks [size_index];
 	} while (SGEN_CAS_PTR ((volatile gpointer *)&free_blocks [size_index], block, old) != old);
+	fprintf (stderr, "Add free block %p\n", block);
 }
 
 static void major_finish_sweep_checking (void);
@@ -548,9 +551,8 @@ ms_alloc_block (int size_index, gboolean pinned, gboolean has_references)
 	*(void**)obj_start = NULL;
 
 	add_free_block (free_blocks, size_index, info);
-
-	/*
-	 * Adding to the allocated_blocks array is racy with the removal of nulls when
+	fprintf (stderr, "Allocated block %p\n", info);
+	/* Adding to the allocated_blocks array is racy with the removal of nulls when
 	 * sweeping. We wait for sweep to finish to avoid that.
 	 *
 	 * The memory barrier here and in `sweep_job_func()` are required because we need
@@ -629,6 +631,7 @@ unlink_slot_from_free_list_uncontested (MSBlockInfo * volatile *free_blocks, int
 	if (SGEN_CAS_PTR ((volatile gpointer *)&free_blocks [size_index], next_free_block, block) != block)
 		goto retry;
 
+	fprintf (stderr, "%d Empty block %p, next %p\n", mono_thread_info_current ()->client_info.info.small_id, block, next_free_block);
 	block->free_list = NULL;
 	block->next_free = NULL;
 
@@ -640,15 +643,32 @@ alloc_obj (GCVTable vtable, size_t size, gboolean pinned, gboolean has_reference
 {
 	int size_index = MS_BLOCK_OBJ_SIZE_INDEX (size);
 	MSBlockInfo * volatile * free_blocks = FREE_BLOCKS (pinned, has_references);
+	MSBlockInfo * volatile * free_blocks_local = FREE_BLOCKS_LOCAL (pinned, has_references);
 	void *obj;
 
-	if (!free_blocks [size_index]) {
-		if (G_UNLIKELY (!ms_alloc_block (size_index, pinned, has_references)))
-			return NULL;
+	if (free_blocks_local [size_index]) {
+	get_slot:
+		obj = unlink_slot_from_free_list_uncontested (free_blocks_local, size_index);
+	} else {
+		MSBlockInfo *block;
+	get_block:
+		block = free_blocks [size_index];
+		if (!block) {
+			if (G_UNLIKELY (!ms_alloc_block (size_index, pinned, has_references)))
+				return NULL;
+			goto get_block;
+		} else {
+			MSBlockInfo *next_free = block->next_free;
+			if (SGEN_CAS_PTR ((volatile gpointer *)&free_blocks [size_index], next_free, block) != block)
+				goto get_block;
+			fprintf (stderr, "%d Unlinked to local %p, head %p\n", mono_thread_info_current ()->client_info.info.small_id, block, free_blocks [size_index]);
+			g_assert (block->free_list);
+			block->next_free = free_blocks_local [size_index];
+			free_blocks_local [size_index] = block;
+
+			goto get_slot;
+		}
 	}
-
-	obj = unlink_slot_from_free_list_uncontested (free_blocks, size_index);
-
 	/* FIXME: assumes object layout */
 	*(GCVTable*)obj = vtable;
 

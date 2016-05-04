@@ -345,6 +345,10 @@ sgen_try_alloc_obj_nolock (GCVTable vtable, size_t size)
 
 		/*FIXME we should use weak memory ops here. Should help specially on x86. */
 		zero_tlab_if_necessary (p, size);
+	} else if (degraded_mode && degraded_mode < DEFAULT_NURSERY_SIZE) {
+		p = (void **)alloc_degraded (vtable, size, FALSE);
+		if (!p)
+			return NULL;
 	} else {
 		int available_in_tlab;
 		char *real_end;
