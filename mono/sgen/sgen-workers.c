@@ -433,4 +433,10 @@ sgen_workers_get_idle_func_object_ops (void)
 	return idle_func_object_ops;
 }
 
+int
+sgen_workers_get_num_workers (void)
+{
+	return workers_num;
+}
+
 #endif
