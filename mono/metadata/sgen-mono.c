@@ -1603,7 +1603,7 @@ find_next_card (guint8 *card_data, guint8 *end)
 #define ARRAY_OBJ_INDEX(ptr,array,elem_size) (((char*)(ptr) - ((char*)(array) + G_STRUCT_OFFSET (MonoArray, vector))) / (elem_size))
 
 gboolean
-sgen_client_cardtable_scan_object (GCObject *obj, guint8 *cards, ScanCopyContext ctx)
+sgen_client_cardtable_scan_object (GCObject *obj, guint8 *cards, size_t card_offset, size_t num_cards, ScanCopyContext ctx)
 {
 	MonoVTable *vt = SGEN_LOAD_VTABLE (obj);
 	MonoClass *klass = vt->klass;
@@ -1636,15 +1636,19 @@ sgen_client_cardtable_scan_object (GCObject *obj, guint8 *cards, ScanCopyContext
 			sgen_object_layout_scanned_ref_array ();
 #endif
 
-		if (cards)
+		if (cards) {
 			card_data = cards;
-		else
+		} else {
 			card_data = sgen_card_table_get_card_scan_address ((mword)obj);
+			SGEN_ASSERT (0, !num_cards && !card_offset, "We don't support partial global cardtable scanning");
+		}
 
 		card_base = card_data;
-		card_count = sgen_card_table_number_of_cards_in_range ((mword)obj, obj_size);
+		if (num_cards)
+			card_count = num_cards;
+		else
+			card_count = sgen_card_table_number_of_cards_in_range ((mword)obj, obj_size);
 		card_data_end = card_data + card_count;
-
 
 #ifdef SGEN_HAVE_OVERLAPPING_CARDS
 		/*Check for overflow and if so, setup to scan in two steps*/
@@ -1659,7 +1663,7 @@ LOOP_HEAD:
 		card_data = find_next_card (card_data, card_data_end);
 		for (; card_data < card_data_end; card_data = find_next_card (card_data + 1, card_data_end)) {
 			size_t index;
-			size_t idx = (card_data - card_base) + extra_idx;
+			size_t idx = (card_data - card_base) + extra_idx + card_offset;
 			char *start = (char*)(obj_start + idx * CARD_SIZE_IN_BYTES);
 			char *card_end = start + CARD_SIZE_IN_BYTES;
 			char *first_elem, *elem;

@@ -2371,7 +2371,7 @@ scan_card_table_for_block (MSBlockInfo *block, CardTableScanType scan_type, Scan
 			return;
 
 		if (scan_type == CARDTABLE_SCAN_MOD_UNION_PRECLEAN) {
-			sgen_card_table_preclean_mod_union (card_data, cards_preclean, CARDS_PER_BLOCK);
+			sgen_card_table_preclean_mod_union (card_data, cards_preclean, 0, CARDS_PER_BLOCK);
 			card_data = card_base = cards_preclean;
 		}
 	} else {
@@ -2447,7 +2447,7 @@ scan_card_table_for_block (MSBlockInfo *block, CardTableScanType scan_type, Scan
 				scan_func (object, sgen_obj_get_descriptor (object), queue);
 			} else {
 				size_t offset = sgen_card_table_get_card_offset (obj, block_start);
-				sgen_cardtable_scan_object (object, block_obj_size, card_base + offset, ctx);
+				sgen_cardtable_scan_object (object, block_obj_size, card_base + offset, 0, 0, ctx);
 			}
 		next_object:
 			obj += block_obj_size;

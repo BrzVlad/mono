@@ -49,6 +49,8 @@
 
 #define LOS_NUM_FAST_SIZES		32
 
+#define LOS_MIN_CARDS_SCAN		32
+
 typedef struct _LOSFreeChunks LOSFreeChunks;
 struct _LOSFreeChunks {
 	LOSFreeChunks *next_size;
@@ -624,13 +626,13 @@ get_cardtable_mod_union_for_object (LOSObject *obj)
 }
 
 void
-sgen_los_scan_card_table (CardTableScanType scan_type, ScanCopyContext ctx)
+sgen_los_scan_card_table (CardTableScanType scan_type, ScanCopyContext ctx, int worker_index, int worker_num)
 {
 	LOSObject *obj;
 
 	binary_protocol_los_card_table_scan_start (sgen_timestamp (), scan_type & CARDTABLE_SCAN_MOD_UNION);
 	for (obj = los_object_list; obj; obj = obj->next) {
-		mword num_cards = 0;
+		mword num_cards = 0, card_offset = 0;
 		guint8 *cards;
 
 		if (!SGEN_OBJECT_HAS_REFERENCES (obj->data))
@@ -645,10 +647,22 @@ sgen_los_scan_card_table (CardTableScanType scan_type, ScanCopyContext ctx)
 			if (scan_type == CARDTABLE_SCAN_MOD_UNION_PRECLEAN) {
 				guint8 *cards_preclean;
 				mword obj_size = sgen_los_object_size (obj);
-				num_cards = sgen_card_table_number_of_cards_in_range ((mword) obj->data, obj_size);
+				mword total_cards = sgen_card_table_number_of_cards_in_range ((mword) obj->data, obj_size);
+
+				if (total_cards <= LOS_MIN_CARDS_SCAN) {
+					num_cards = total_cards;
+				} else {
+					num_cards = total_cards / worker_num;
+					num_cards = MAX (LOS_MIN_CARDS_SCAN, num_cards);
+				}
+				card_offset = num_cards * worker_index;
+				if (card_offset >= total_cards)
+					continue;
+				num_cards = MIN (num_cards, total_cards - card_offset);
+
 				cards_preclean = (guint8 *)sgen_alloc_internal_dynamic (num_cards, INTERNAL_MEM_CARDTABLE_MOD_UNION, TRUE);
 
-				sgen_card_table_preclean_mod_union (cards, cards_preclean, num_cards);
+				sgen_card_table_preclean_mod_union (cards, cards_preclean, card_offset, num_cards);
 
 				cards = cards_preclean;
 			}
@@ -656,7 +670,7 @@ sgen_los_scan_card_table (CardTableScanType scan_type, ScanCopyContext ctx)
 			cards = NULL;
 		}
 
-		sgen_cardtable_scan_object (obj->data, sgen_los_object_size (obj), cards, ctx);
+		sgen_cardtable_scan_object (obj->data, sgen_los_object_size (obj), cards, card_offset, num_cards, ctx);
 
 		if (scan_type == CARDTABLE_SCAN_MOD_UNION_PRECLEAN)
 			sgen_free_internal_dynamic (cards, num_cards, INTERNAL_MEM_CARDTABLE_MOD_UNION);

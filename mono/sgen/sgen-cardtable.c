@@ -333,14 +333,14 @@ sgen_card_table_update_mod_union (guint8 *dest, char *obj, mword obj_size, size_
 
 /* Preclean cards and saves the cards that need to be scanned afterwards in cards_preclean */
 void
-sgen_card_table_preclean_mod_union (guint8 *cards, guint8 *cards_preclean, size_t num_cards)
+sgen_card_table_preclean_mod_union (guint8 *cards, guint8 *cards_preclean, size_t card_offset, size_t num_cards)
 {
 	size_t i;
 
 	memcpy (cards_preclean, cards, num_cards);
 	for (i = 0; i < num_cards; i++) {
 		if (cards_preclean [i]) {
-			cards [i] = 0;
+			cards [i + card_offset] = 0;
 		}
 	}
 	/*
@@ -442,7 +442,7 @@ sgen_card_table_scan_remsets (ScanCopyContext ctx)
 	SGEN_TV_GETTIME (btv);
 	last_major_scan_time = SGEN_TV_ELAPSED (atv, btv); 
 	major_card_scan_time += last_major_scan_time;
-	sgen_los_scan_card_table (CARDTABLE_SCAN_GLOBAL, ctx);
+	sgen_los_scan_card_table (CARDTABLE_SCAN_GLOBAL, ctx, 0, 1);
 	SGEN_TV_GETTIME (atv);
 	last_los_scan_time = SGEN_TV_ELAPSED (btv, atv);
 	los_card_scan_time += last_los_scan_time;
@@ -489,11 +489,11 @@ sgen_card_table_dump_obj_card (GCObject *object, size_t size, void *dummy)
 #endif
 
 void
-sgen_cardtable_scan_object (GCObject *obj, mword block_obj_size, guint8 *cards, ScanCopyContext ctx)
+sgen_cardtable_scan_object (GCObject *obj, mword block_obj_size, guint8 *cards, size_t card_offset, size_t num_cards, ScanCopyContext ctx)
 {
 	HEAVY_STAT (++large_objects);
 
-	if (sgen_client_cardtable_scan_object (obj, cards, ctx))
+	if (sgen_client_cardtable_scan_object (obj, cards, card_offset, num_cards, ctx))
 		return;
 
 	HEAVY_STAT (++bloby_objects);
