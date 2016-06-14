@@ -476,16 +476,13 @@ mono_lock_free_free (gpointer ptr, size_t block_size)
 	if (new_anchor.data.state == STATE_EMPTY) {
 		g_assert (old_anchor.data.state != STATE_EMPTY);
 
-		if (InterlockedCompareExchangePointer ((gpointer * volatile)&heap->active, NULL, desc) == desc) {
-			/* We own it, so we free it. */
-			desc_retire (desc);
-		} else {
-			/*
-			 * Somebody else must free it, so we do some
-			 * freeing for others.
-			 */
+		/*
+		 * Try to free the descriptor if it is not the active one (which means it resides
+		 * on the partial list). If it is the active one, we leave the free-ing at the
+		 * time of the next allocation, where we free the active descriptor if it's empty
+		 */
+		if (heap->active != desc)
 			list_remove_empty_desc (heap->sc);
-		}
 	} else if (old_anchor.data.state == STATE_FULL) {
 		/*
 		 * Nobody owned it, now we do, so we need to give it
