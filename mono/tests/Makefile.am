@@ -6,8 +6,7 @@ else
 FEATUREFUL_RUNTIME_TEST = test-appdomain-unload
 endif
 
-check-local: assemblyresolve/test/asm.dll testjit test-generic-sharing test-type-load test-cattr-type-load test-reflection-load-with-context test_platform	\
-		 test-console-output test-messages test-env-options test-unhandled-exception-2 $(FEATUREFUL_RUNTIME_TEST) test-process-stress rm-empty-logs
+check-local: assemblyresolve/test/asm.dll testjit test-generic-sharing test-type-load test-cattr-type-load test-reflection-load-with-context test_platform
 check-full: test-sgen check-local
 check-parallel: compile-tests check-full
 
@@ -999,8 +998,6 @@ runtest: $(TESTSI_CS) $(TESTSI_IL) $(TESTBS) libtest.la $(PREREQSI_IL) $(PREREQS
 	fi
 
 runtest-managed: test-runner.exe $(TESTSI_CS) $(TESTSI_IL) $(TESTBS) libtest.la $(PREREQSI_IL) $(PREREQSI_CS)
-	@if [ "x$$CI" = "x1" ]; then disabled_tests="$(DISABLED_TESTS_WRENCH)"; else disabled_tests="$(DISABLED_TESTS)"; fi; \
-	$(RUNTIME) --debug $(TEST_RUNNER) $(TEST_RUNNER_ARGS) -j a --testsuite-name "runtime" --timeout 300 --disabled "$${disabled_tests}" $(TESTSI_CS) $(TESTBS) $(TESTSI_IL)
 
 runtest-managed-serial: test-runner.exe $(TESTSI_CS) $(TESTSI_IL) $(TESTBS) libtest.la $(PREREQSI_IL) $(PREREQSI_CS)
 	@if [ "x$$CI" = "x1" ]; then disabled_tests="$(DISABLED_TESTS_WRENCH)"; else disabled_tests="$(DISABLED_TESTS)"; fi; \
@@ -1134,21 +1131,13 @@ sgen-regular-tests: $(SGEN_REGULAR_TESTS)
 	$(MAKE) sgen-regular-tests-ms-split-clear-at-gc
 
 sgen-regular-tests-plain: $(SGEN_REGULAR_TESTS) test-runner.exe
-	MONO_ENV_OPTIONS="--gc=sgen" MONO_GC_DEBUG="" MONO_GC_PARAMS="" $(RUNTIME) $(TEST_RUNNER) $(TEST_RUNNER_ARGS) --testsuite-name $@ --timeout 900 $(SGEN_REGULAR_TESTS)
 sgen-regular-tests-ms-conc: $(SGEN_REGULAR_TESTS) test-runner.exe
-	MONO_ENV_OPTIONS="--gc=sgen" MONO_GC_DEBUG="" MONO_GC_PARAMS="major=marksweep-conc" $(RUNTIME) $(TEST_RUNNER) $(TEST_RUNNER_ARGS) --testsuite-name $@ --timeout 900 $(SGEN_REGULAR_TESTS)
 sgen-regular-tests-ms-conc-split: $(SGEN_REGULAR_TESTS) test-runner.exe
-	MONO_ENV_OPTIONS="--gc=sgen" MONO_GC_DEBUG="" MONO_GC_PARAMS="major=marksweep-conc,minor=split" $(RUNTIME) $(TEST_RUNNER) $(TEST_RUNNER_ARGS) --testsuite-name $@ --timeout 900 $(SGEN_REGULAR_TESTS)
 sgen-regular-tests-ms-split: $(SGEN_REGULAR_TESTS) test-runner.exe
-	MONO_ENV_OPTIONS="--gc=sgen" MONO_GC_DEBUG="" MONO_GC_PARAMS="minor=split" $(RUNTIME) $(TEST_RUNNER) $(TEST_RUNNER_ARGS) --testsuite-name $@ --timeout 900 $(SGEN_REGULAR_TESTS)
 sgen-regular-tests-ms-split-95: $(SGEN_REGULAR_TESTS) test-runner.exe
-	MONO_ENV_OPTIONS="--gc=sgen" MONO_GC_DEBUG="" MONO_GC_PARAMS="minor=split,alloc-ratio=95" $(RUNTIME) $(TEST_RUNNER) $(TEST_RUNNER_ARGS) --testsuite-name $@ --timeout 900 $(SGEN_REGULAR_TESTS)
 sgen-regular-tests-plain-clear-at-gc: $(SGEN_REGULAR_TESTS) test-runner.exe
-	MONO_ENV_OPTIONS="--gc=sgen" MONO_GC_DEBUG="clear-at-gc" MONO_GC_PARAMS="" $(RUNTIME) $(TEST_RUNNER) $(TEST_RUNNER_ARGS) --testsuite-name $@ --timeout 900 $(SGEN_REGULAR_TESTS)
 sgen-regular-tests-ms-conc-clear-at-gc: $(SGEN_REGULAR_TESTS) test-runner.exe
-	MONO_ENV_OPTIONS="--gc=sgen" MONO_GC_DEBUG="clear-at-gc" MONO_GC_PARAMS="major=marksweep-conc" $(RUNTIME) $(TEST_RUNNER) $(TEST_RUNNER_ARGS) --testsuite-name $@ --timeout 900 $(SGEN_REGULAR_TESTS)
 sgen-regular-tests-ms-split-clear-at-gc: $(SGEN_REGULAR_TESTS) test-runner.exe
-	MONO_ENV_OPTIONS="--gc=sgen" MONO_GC_DEBUG="clear-at-gc" MONO_GC_PARAMS="minor=split" $(RUNTIME) $(TEST_RUNNER) $(TEST_RUNNER_ARGS) --testsuite-name $@ --timeout 900 $(SGEN_REGULAR_TESTS)
 
 SGEN_TOGGLEREF_TESTS=	\
 	sgen-toggleref.exe
@@ -1164,21 +1153,13 @@ sgen-toggleref-tests: $(SGEN_TOGGLEREF_TESTS)
 	$(MAKE) sgen-toggleref-tests-ms-split-clear-at-gc
 
 sgen-toggleref-tests-plain: $(SGEN_TOGGLEREF_TESTS) test-runner.exe
-	MONO_ENV_OPTIONS="--gc=sgen" MONO_GC_DEBUG="" MONO_GC_PARAMS="toggleref-test" $(RUNTIME) $(TEST_RUNNER) $(TEST_RUNNER_ARGS) --testsuite-name $@ --timeout 900 $(SGEN_TOGGLEREF_TESTS)
 sgen-toggleref-tests-ms-conc: $(SGEN_TOGGLEREF_TESTS) test-runner.exe
-	MONO_ENV_OPTIONS="--gc=sgen" MONO_GC_DEBUG="" MONO_GC_PARAMS="toggleref-test,major=marksweep-conc" $(RUNTIME) $(TEST_RUNNER) $(TEST_RUNNER_ARGS) --testsuite-name $@ --timeout 900 $(SGEN_TOGGLEREF_TESTS)
 sgen-toggleref-tests-ms-conc-split: $(SGEN_TOGGLEREF_TESTS) test-runner.exe
-	MONO_ENV_OPTIONS="--gc=sgen" MONO_GC_DEBUG="" MONO_GC_PARAMS="toggleref-test,major=marksweep-conc,minor=split" $(RUNTIME) $(TEST_RUNNER) $(TEST_RUNNER_ARGS) --testsuite-name $@ --timeout 900 $(SGEN_TOGGLEREF_TESTS)
 sgen-toggleref-tests-ms-split: $(SGEN_TOGGLEREF_TESTS) test-runner.exe
-	MONO_ENV_OPTIONS="--gc=sgen" MONO_GC_DEBUG="" MONO_GC_PARAMS="toggleref-test,minor=split" $(RUNTIME) $(TEST_RUNNER) $(TEST_RUNNER_ARGS) --testsuite-name $@ --timeout 900 $(SGEN_TOGGLEREF_TESTS)
 sgen-toggleref-tests-ms-split-95: $(SGEN_TOGGLEREF_TESTS) test-runner.exe
-	MONO_ENV_OPTIONS="--gc=sgen" MONO_GC_DEBUG="" MONO_GC_PARAMS="toggleref-test,minor=split,alloc-ratio=95" $(RUNTIME) $(TEST_RUNNER) $(TEST_RUNNER_ARGS) --testsuite-name $@ --timeout 900 $(SGEN_TOGGLEREF_TESTS)
 sgen-toggleref-tests-plain-clear-at-gc: $(SGEN_TOGGLEREF_TESTS) test-runner.exe
-	MONO_ENV_OPTIONS="--gc=sgen" MONO_GC_DEBUG="clear-at-gc" MONO_GC_PARAMS="toggleref-test" $(RUNTIME) $(TEST_RUNNER) $(TEST_RUNNER_ARGS) --testsuite-name $@ --timeout 900 $(SGEN_TOGGLEREF_TESTS)
 sgen-toggleref-tests-ms-conc-clear-at-gc: $(SGEN_TOGGLEREF_TESTS) test-runner.exe
-	MONO_ENV_OPTIONS="--gc=sgen" MONO_GC_DEBUG="clear-at-gc" MONO_GC_PARAMS="toggleref-test,major=marksweep-conc" $(RUNTIME) $(TEST_RUNNER) $(TEST_RUNNER_ARGS) --testsuite-name $@ --timeout 900 $(SGEN_TOGGLEREF_TESTS)
 sgen-toggleref-tests-ms-split-clear-at-gc: $(SGEN_TOGGLEREF_TESTS) test-runner.exe
-	MONO_ENV_OPTIONS="--gc=sgen" MONO_GC_DEBUG="clear-at-gc" MONO_GC_PARAMS="toggleref-test,minor=split" $(RUNTIME) $(TEST_RUNNER) $(TEST_RUNNER_ARGS) --testsuite-name $@ --timeout 900 $(SGEN_TOGGLEREF_TESTS)
 
 SGEN_BRIDGE_TESTS=	\
 	sgen-bridge.exe	\
@@ -1195,21 +1176,13 @@ sgen-bridge-tests: $(SGEN_BRIDGE_TESTS)
 	$(MAKE) sgen-bridge-tests-ms-split-tarjan-bridge
 
 sgen-bridge-tests-plain: $(SGEN_BRIDGE_TESTS) test-runner.exe
-	MONO_ENV_OPTIONS="--gc=sgen" MONO_GC_DEBUG="bridge=Bridge" MONO_GC_PARAMS="" $(RUNTIME) $(TEST_RUNNER) $(TEST_RUNNER_ARGS) --testsuite-name $@ --timeout 900 $(SGEN_BRIDGE_TESTS)
 sgen-bridge-tests-ms-conc: $(SGEN_BRIDGE_TESTS) test-runner.exe
-	MONO_ENV_OPTIONS="--gc=sgen" MONO_GC_DEBUG="bridge=Bridge" MONO_GC_PARAMS="major=marksweep-conc" $(RUNTIME) $(TEST_RUNNER) $(TEST_RUNNER_ARGS) --testsuite-name $@ --timeout 900 $(SGEN_BRIDGE_TESTS)
 sgen-bridge-tests-ms-split: $(SGEN_BRIDGE_TESTS) test-runner.exe
-	MONO_ENV_OPTIONS="--gc=sgen" MONO_GC_DEBUG="bridge=Bridge" MONO_GC_PARAMS="minor=split" $(RUNTIME) $(TEST_RUNNER) $(TEST_RUNNER_ARGS) --testsuite-name $@ --timeout 900 $(SGEN_BRIDGE_TESTS)
 sgen-bridge-tests-plain-new-bridge: $(SGEN_BRIDGE_TESTS) test-runner.exe
-	MONO_ENV_OPTIONS="--gc=sgen" MONO_GC_DEBUG="bridge=Bridge" MONO_GC_PARAMS="bridge-implementation=new" $(RUNTIME) $(TEST_RUNNER) $(TEST_RUNNER_ARGS) --testsuite-name $@ --timeout 900 $(SGEN_BRIDGE_TESTS)
 sgen-bridge-tests-ms-conc-new-bridge: $(SGEN_BRIDGE_TESTS) test-runner.exe
-	MONO_ENV_OPTIONS="--gc=sgen" MONO_GC_DEBUG="bridge=Bridge" MONO_GC_PARAMS="bridge-implementation=new,major=marksweep-conc" $(RUNTIME) $(TEST_RUNNER) $(TEST_RUNNER_ARGS) --testsuite-name $@ --timeout 900 $(SGEN_BRIDGE_TESTS)
 sgen-bridge-tests-ms-split-new-bridge: $(SGEN_BRIDGE_TESTS) test-runner.exe
-	MONO_ENV_OPTIONS="--gc=sgen" MONO_GC_DEBUG="bridge=Bridge" MONO_GC_PARAMS="bridge-implementation=new,minor=split" $(RUNTIME) $(TEST_RUNNER) $(TEST_RUNNER_ARGS) --testsuite-name $@ --timeout 900 $(SGEN_BRIDGE_TESTS)
 sgen-bridge-tests-plain-tarjan-bridge: $(SGEN_BRIDGE_TESTS) test-runner.exe
-	MONO_ENV_OPTIONS="--gc=sgen" MONO_GC_DEBUG="bridge=Bridge" MONO_GC_PARAMS="bridge-implementation=tarjan" $(RUNTIME) $(TEST_RUNNER) $(TEST_RUNNER_ARGS) --testsuite-name $@ --timeout 900 $(SGEN_BRIDGE_TESTS)
 sgen-bridge-tests-ms-split-tarjan-bridge: $(SGEN_BRIDGE_TESTS) test-runner.exe
-	MONO_ENV_OPTIONS="--gc=sgen" MONO_GC_DEBUG="bridge=Bridge" MONO_GC_PARAMS="bridge-implementation=tarjan,minor=split" $(RUNTIME) $(TEST_RUNNER) $(TEST_RUNNER_ARGS) --testsuite-name $@ --timeout 900 $(SGEN_BRIDGE_TESTS)
 
 SGEN_BRIDGE2_TESTS=	\
 	sgen-bridge-xref.exe
@@ -1225,21 +1198,13 @@ sgen-bridge2-tests: $(SGEN_BRIDGE2_TESTS)
 	$(MAKE) sgen-bridge2-tests-ms-split-tarjan-bridge
 
 sgen-bridge2-tests-plain: $(SGEN_BRIDGE2_TESTS) test-runner.exe
-	MONO_ENV_OPTIONS="--gc=sgen" MONO_GC_DEBUG="bridge=2Bridge" MONO_GC_PARAMS="" $(RUNTIME) $(TEST_RUNNER) $(TEST_RUNNER_ARGS) --testsuite-name $@ --timeout 900 $(SGEN_BRIDGE2_TESTS)
 sgen-bridge2-tests-ms-conc: $(SGEN_BRIDGE2_TESTS) test-runner.exe
-	MONO_ENV_OPTIONS="--gc=sgen" MONO_GC_DEBUG="bridge=2Bridge" MONO_GC_PARAMS="major=marksweep-conc" $(RUNTIME) $(TEST_RUNNER) $(TEST_RUNNER_ARGS) --testsuite-name $@ --timeout 900 $(SGEN_BRIDGE2_TESTS)
 sgen-bridge2-tests-ms-split: $(SGEN_BRIDGE2_TESTS) test-runner.exe
-	MONO_ENV_OPTIONS="--gc=sgen" MONO_GC_DEBUG="bridge=2Bridge" MONO_GC_PARAMS="minor=split" $(RUNTIME) $(TEST_RUNNER) $(TEST_RUNNER_ARGS) --testsuite-name $@ --timeout 900 $(SGEN_BRIDGE2_TESTS)
 sgen-bridge2-tests-plain-new-bridge: $(SGEN_BRIDGE2_TESTS) test-runner.exe
-	MONO_ENV_OPTIONS="--gc=sgen" MONO_GC_DEBUG="bridge=2Bridge" MONO_GC_PARAMS="bridge-implementation=new" $(RUNTIME) $(TEST_RUNNER) $(TEST_RUNNER_ARGS) --testsuite-name $@ --timeout 900 $(SGEN_BRIDGE2_TESTS)
 sgen-bridge2-tests-ms-conc-new-bridge: $(SGEN_BRIDGE2_TESTS) test-runner.exe
-	MONO_ENV_OPTIONS="--gc=sgen" MONO_GC_DEBUG="bridge=2Bridge" MONO_GC_PARAMS="bridge-implementation=new,major=marksweep-conc" $(RUNTIME) $(TEST_RUNNER) $(TEST_RUNNER_ARGS) --testsuite-name $@ --timeout 900 $(SGEN_BRIDGE2_TESTS)
 sgen-bridge2-tests-ms-split-new-bridge: $(SGEN_BRIDGE2_TESTS) test-runner.exe
-	MONO_ENV_OPTIONS="--gc=sgen" MONO_GC_DEBUG="bridge=2Bridge" MONO_GC_PARAMS="bridge-implementation=new,minor=split" $(RUNTIME) $(TEST_RUNNER) $(TEST_RUNNER_ARGS) --testsuite-name $@ --timeout 900 $(SGEN_BRIDGE2_TESTS)
 sgen-bridge2-tests-plain-tarjan-bridge: $(SGEN_BRIDGE2_TESTS) test-runner.exe
-	MONO_ENV_OPTIONS="--gc=sgen" MONO_GC_DEBUG="bridge=2Bridge" MONO_GC_PARAMS="bridge-implementation=tarjan" $(RUNTIME) $(TEST_RUNNER) $(TEST_RUNNER_ARGS) --testsuite-name $@ --timeout 900 $(SGEN_BRIDGE2_TESTS)
 sgen-bridge2-tests-ms-split-tarjan-bridge: $(SGEN_BRIDGE2_TESTS) test-runner.exe
-	MONO_ENV_OPTIONS="--gc=sgen" MONO_GC_DEBUG="bridge=2Bridge" MONO_GC_PARAMS="bridge-implementation=tarjan,minor=split" $(RUNTIME) $(TEST_RUNNER) $(TEST_RUNNER_ARGS) --testsuite-name $@ --timeout 900 $(SGEN_BRIDGE2_TESTS)
 
 SGEN_BRIDGE3_TESTS=	\
 	sgen-bridge-gchandle.exe
@@ -1255,22 +1220,13 @@ sgen-bridge3-tests: $(SGEN_BRIDGE3_TESTS)
 	$(MAKE) sgen-bridge3-tests-ms-split-tarjan-bridge
 
 sgen-bridge3-tests-plain: $(SGEN_bridge3_TESTS) test-runner.exe
-	MONO_ENV_OPTIONS="--gc=sgen" MONO_GC_DEBUG="bridge=3Bridge" MONO_GC_PARAMS="" $(RUNTIME) $(TEST_RUNNER) --testsuite-name $@ --timeout 900 $(SGEN_BRIDGE3_TESTS)
 sgen-bridge3-tests-ms-conc: $(SGEN_BRIDGE3_TESTS) test-runner.exe
-	MONO_ENV_OPTIONS="--gc=sgen" MONO_GC_DEBUG="bridge=3Bridge" MONO_GC_PARAMS="major=marksweep-conc" $(RUNTIME) $(TEST_RUNNER) --testsuite-name $@ --timeout 900 $(SGEN_BRIDGE3_TESTS)
 sgen-bridge3-tests-ms-split: $(SGEN_BRIDGE3_TESTS) test-runner.exe
-	MONO_ENV_OPTIONS="--gc=sgen" MONO_GC_DEBUG="bridge=3Bridge" MONO_GC_PARAMS="minor=split" $(RUNTIME) $(TEST_RUNNER) --testsuite-name $@ --timeout 900 $(SGEN_BRIDGE3_TESTS)
 sgen-bridge3-tests-plain-new-bridge: $(SGEN_BRIDGE3_TESTS) test-runner.exe
-	MONO_ENV_OPTIONS="--gc=sgen" MONO_GC_DEBUG="bridge=3Bridge" MONO_GC_PARAMS="bridge-implementation=new" $(RUNTIME) $(TEST_RUNNER) --testsuite-name $@ --timeout 900 $(SGEN_BRIDGE3_TESTS)
 sgen-bridge3-tests-ms-conc-new-bridge: $(SGEN_BRIDGE3_TESTS) test-runner.exe
-	MONO_ENV_OPTIONS="--gc=sgen" MONO_GC_DEBUG="bridge=3Bridge" MONO_GC_PARAMS="bridge-implementation=new,major=marksweep-conc" $(RUNTIME) $(TEST_RUNNER) --testsuite-name $@ --timeout 900 $(SGEN_BRIDGE3_TESTS)
 sgen-bridge3-tests-ms-split-new-bridge: $(SGEN_BRIDGE3_TESTS) test-runner.exe
-	MONO_ENV_OPTIONS="--gc=sgen" MONO_GC_DEBUG="bridge=3Bridge" MONO_GC_PARAMS="bridge-implementation=new,minor=split" $(RUNTIME) $(TEST_RUNNER) --testsuite-name $@ --timeout 900 $(SGEN_BRIDGE3_TESTS)
 sgen-bridge3-tests-plain-tarjan-bridge: $(SGEN_BRIDGE3_TESTS) test-runner.exe
-	MONO_ENV_OPTIONS="--gc=sgen" MONO_GC_DEBUG="bridge=3Bridge" MONO_GC_PARAMS="bridge-implementation=tarjan" $(RUNTIME) $(TEST_RUNNER) --testsuite-name $@ --timeout 900 $(SGEN_BRIDGE3_TESTS)
 sgen-bridge3-tests-ms-split-tarjan-bridge: $(SGEN_BRIDGE3_TESTS) test-runner.exe
-	MONO_ENV_OPTIONS="--gc=sgen" MONO_GC_DEBUG="bridge=3Bridge" MONO_GC_PARAMS="bridge-implementation=tarjan,minor=split" $(RUNTIME) $(TEST_RUNNER) --testsuite-name $@ --timeout 900 $(SGEN_BRIDGE3_TESTS)
-
 
 AOT_CONFIGURATIONS=	\
 	"|regular"	\

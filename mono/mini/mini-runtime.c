@@ -3570,6 +3570,7 @@ mini_init (const char *filename, const char *runtime_version)
 
 	mono_threads_runtime_init (&ticallbacks);
 
+	debug_options.suspend_on_sigsegv = TRUE;
 	if (g_getenv ("MONO_DEBUG") != NULL)
 		mini_parse_debug_options ();
 
