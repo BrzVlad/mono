@@ -361,7 +361,6 @@ sgen_workers_join (void)
 	SGEN_ASSERT (0, sgen_workers_all_done (), "Can only signal enqueue work when in no work state");
 
 	/* At this point all the workers have stopped. */
-
 	SGEN_ASSERT (0, sgen_section_gray_queue_is_empty (&workers_distribute_gray_queue), "Why is there still work left to do?");
 	for (i = 0; i < workers_num; ++i)
 		SGEN_ASSERT (0, sgen_gray_object_queue_is_empty (&workers_data [i].private_gray_queue), "Why is there still work left to do?");
