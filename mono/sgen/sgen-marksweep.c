@@ -1225,6 +1225,8 @@ static guint64 stat_drain_prefetch_fill_failures;
 static guint64 stat_drain_loops;
 #endif
 
+static __thread size_t major_scanned_objects = 0;
+
 #define COPY_OR_MARK_FUNCTION_NAME	major_copy_or_mark_object_no_evacuation
 #define SCAN_OBJECT_FUNCTION_NAME	major_scan_object_no_evacuation
 #define DRAIN_GRAY_STACK_FUNCTION_NAME	drain_gray_stack_no_evacuation
@@ -2017,6 +2019,22 @@ sgen_evacuation_freelist_blocks (MSBlockInfo * volatile *block_list, int size_in
 }
 
 static void
+worker_print_major_scanned_objects (WorkerData *worker)
+{
+	if (!worker->major_scanned_objects)
+		return;
+	fprintf (stderr, "Worker : %ld, total %ld\n", *worker->major_scanned_objects - worker->prev_major_scanned_objects, *worker->major_scanned_objects);
+}
+
+static void
+worker_set_prev_major_scanned_objects (WorkerData *worker)
+{
+	if (!worker->major_scanned_objects)
+		return;
+	worker->prev_major_scanned_objects = *worker->major_scanned_objects;
+}
+
+static void
 major_start_major_collection (void)
 {
 	MSBlockInfo *block;
@@ -2069,6 +2087,8 @@ major_start_major_collection (void)
 		binary_protocol_sweep_end (GENERATION_OLD, TRUE);
 
 	set_sweep_state (SWEEP_STATE_NEED_SWEEPING, SWEEP_STATE_SWEPT);
+
+	sgen_workers_foreach (worker_set_prev_major_scanned_objects);
 }
 
 static void
@@ -2084,6 +2104,9 @@ major_finish_major_collection (ScannedObjectCounts *counts)
 		sgen_pointer_queue_clear (&scanned_objects_list);
 	}
 #endif
+	fprintf (stderr, "End major workers stats\n");
+	sgen_workers_foreach (worker_print_major_scanned_objects);
+	fprintf (stderr, "\n");
 }
 
 static int
@@ -2708,6 +2731,8 @@ sgen_worker_init_callback (gpointer worker_untyped)
 	worker->free_block_lists = worker_free_blocks;
 
 	mono_native_tls_set_value (worker_block_free_list_key, worker_free_blocks);
+
+	worker->major_scanned_objects = &major_scanned_objects;
 }
 
 static void

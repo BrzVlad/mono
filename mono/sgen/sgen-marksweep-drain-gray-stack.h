@@ -218,6 +218,8 @@ SCAN_OBJECT_FUNCTION_NAME (GCObject *full_object, SgenDescriptor desc, SgenGrayQ
 {
 	char *start = (char*)full_object;
 
+	major_scanned_objects ++;
+
 #ifdef HEAVY_STATISTICS
 	++stat_optimized_major_scan;
 	if (!sgen_gc_descr_has_references (desc))

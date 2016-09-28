@@ -23,6 +23,9 @@ struct _WorkerData {
 	 * starts.
 	 */
 	gpointer free_block_lists;
+
+	size_t *major_scanned_objects;
+	size_t prev_major_scanned_objects;
 };
 
 typedef void (*SgenWorkersFinishCallback) (void);
