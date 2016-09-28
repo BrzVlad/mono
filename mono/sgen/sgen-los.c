@@ -639,32 +639,37 @@ sgen_los_scan_card_table (CardTableScanType scan_type, ScanCopyContext ctx, int 
 			continue;
 
 		if (scan_type & CARDTABLE_SCAN_MOD_UNION) {
+			mword obj_size, total_cards;
 			if (!sgen_los_object_is_pinned (obj->data))
 				continue;
 
+			if (!obj->cardtable_mod_union)
+				continue;
+
+			obj_size = sgen_los_object_size (obj);
+			total_cards = sgen_card_table_number_of_cards_in_range ((mword) obj->data, obj_size);
 			cards = get_cardtable_mod_union_for_object (obj);
 			g_assert (cards);
+
+			if (total_cards <= LOS_MIN_CARDS_SCAN) {
+				num_cards = total_cards;
+			} else {
+				num_cards = total_cards / worker_num + 1;
+				num_cards = MAX (LOS_MIN_CARDS_SCAN, num_cards);
+			}
+			card_offset = num_cards * worker_index;
+			if (card_offset >= total_cards)
+				continue;
+			num_cards = MIN (num_cards, total_cards - card_offset);
+
 			if (scan_type == CARDTABLE_SCAN_MOD_UNION_PRECLEAN) {
-				guint8 *cards_preclean;
-				mword obj_size = sgen_los_object_size (obj);
-				mword total_cards = sgen_card_table_number_of_cards_in_range ((mword) obj->data, obj_size);
-
-				if (total_cards <= LOS_MIN_CARDS_SCAN) {
-					num_cards = total_cards;
-				} else {
-					num_cards = total_cards / worker_num;
-					num_cards = MAX (LOS_MIN_CARDS_SCAN, num_cards);
-				}
-				card_offset = num_cards * worker_index;
-				if (card_offset >= total_cards)
-					continue;
-				num_cards = MIN (num_cards, total_cards - card_offset);
-
-				cards_preclean = (guint8 *)sgen_alloc_internal_dynamic (num_cards, INTERNAL_MEM_CARDTABLE_MOD_UNION, TRUE);
+				guint8 *cards_preclean = (guint8 *)sgen_alloc_internal_dynamic (num_cards, INTERNAL_MEM_CARDTABLE_MOD_UNION, TRUE);
 
 				sgen_card_table_preclean_mod_union (cards, cards_preclean, card_offset, num_cards);
 
 				cards = cards_preclean;
+			} else {
+				cards = cards + card_offset;
 			}
 		} else {
 			cards = NULL;
