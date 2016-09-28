@@ -327,11 +327,11 @@ nursery_canaries_enabled (void)
 
 #if defined(HAVE_CONC_GC_AS_DEFAULT)
 /* Use concurrent major on deskstop platforms */
-#define DEFAULT_MAJOR_INIT sgen_marksweep_conc_init
-#define DEFAULT_MAJOR_NAME "marksweep-conc"
+#define DEFAULT_MAJOR_INIT sgen_marksweep_conc_par_init
+#define DEFAULT_MAJOR_NAME "marksweep-conc-par"
 #else
-#define DEFAULT_MAJOR_INIT sgen_marksweep_init
-#define DEFAULT_MAJOR_NAME "marksweep"
+#define DEFAULT_MAJOR_INIT sgen_marksweep_conc_par_init
+#define DEFAULT_MAJOR_NAME "marksweep-conc-par"
 #endif
 
 /*
