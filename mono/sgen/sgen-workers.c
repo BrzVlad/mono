@@ -54,6 +54,7 @@ enum {
 typedef gint32 State;
 
 static SgenObjectOperations * volatile idle_func_object_ops;
+static SgenObjectOperations *idle_func_object_ops_par, *idle_func_object_ops_nopar;
 /*
  * finished_callback is called only when the workers finish work normally (when they
  * are not forced to finish). The callback is used to enqueue preclean jobs.
@@ -87,6 +88,14 @@ sgen_workers_ensure_awake (void)
 {
 	int i;
 	gboolean need_signal = FALSE;
+
+	/*
+	 * All workers are awaken, make sure we reset the parallel context.
+	 * We call this function only when starting the workers so nobody is running,
+	 * or when the last worker is enqueuing preclean work. In both cases we can't
+	 * have a worker working using a nopar context, which means it is safe.
+	 */
+	idle_func_object_ops = (workers_num > 1) ? idle_func_object_ops_par : idle_func_object_ops_nopar;
 
 	for (i = 0; i < workers_num; i++) {
 		State old_state;
@@ -146,6 +155,14 @@ worker_try_finish (WorkerData *data)
 			goto work_available;
 		SGEN_ASSERT (0, old_state == STATE_WORKING, "What other possibility is there?");
 	} while (!set_state (data, old_state, STATE_NOT_WORKING));
+
+	/*
+	 * If we are second to last to finish, we set the scan context to the non-parallel
+	 * version so we can speed up the last worker. This is helps us maintain same level
+	 * of performance as non-parallel mode even if we fail to distribute work properly.
+	 */
+	if (working == 2)
+		idle_func_object_ops = idle_func_object_ops_nopar;
 
 	mono_os_mutex_unlock (&finished_lock);
 
@@ -327,10 +344,11 @@ sgen_workers_stop_all_workers (void)
 }
 
 void
-sgen_workers_start_all_workers (SgenObjectOperations *object_ops, SgenWorkersFinishCallback callback)
+sgen_workers_start_all_workers (SgenObjectOperations *object_ops_nopar, SgenObjectOperations *object_ops_par, SgenWorkersFinishCallback callback)
 {
+	idle_func_object_ops_par = object_ops_par;
+	idle_func_object_ops_nopar = object_ops_nopar;
 	forced_stop = FALSE;
-	idle_func_object_ops = object_ops;
 	finish_callback = callback;
 	mono_memory_write_barrier ();
 
