@@ -49,8 +49,6 @@
 
 #define LOS_NUM_FAST_SIZES		32
 
-#define LOS_MIN_CARDS_SCAN		32
-
 typedef struct _LOSFreeChunks LOSFreeChunks;
 struct _LOSFreeChunks {
 	LOSFreeChunks *next_size;
@@ -629,11 +627,15 @@ void
 sgen_los_scan_card_table (CardTableScanType scan_type, ScanCopyContext ctx, int worker_index, int worker_num)
 {
 	LOSObject *obj;
+	int i = 0;
 
 	binary_protocol_los_card_table_scan_start (sgen_timestamp (), scan_type & CARDTABLE_SCAN_MOD_UNION);
-	for (obj = los_object_list; obj; obj = obj->next) {
+	for (obj = los_object_list; obj; obj = obj->next, i++) {
 		mword num_cards = 0, card_offset = 0;
 		guint8 *cards;
+
+		if (i % worker_num != worker_index)
+			continue;
 
 		if (!SGEN_OBJECT_HAS_REFERENCES (obj->data))
 			continue;
@@ -651,17 +653,7 @@ sgen_los_scan_card_table (CardTableScanType scan_type, ScanCopyContext ctx, int 
 			cards = get_cardtable_mod_union_for_object (obj);
 			g_assert (cards);
 
-			if (total_cards <= LOS_MIN_CARDS_SCAN) {
-				num_cards = total_cards;
-			} else {
-				num_cards = total_cards / worker_num + 1;
-				num_cards = MAX (LOS_MIN_CARDS_SCAN, num_cards);
-			}
-			card_offset = num_cards * worker_index;
-			if (card_offset >= total_cards)
-				continue;
-			num_cards = MIN (num_cards, total_cards - card_offset);
-
+			num_cards = total_cards;
 			if (scan_type == CARDTABLE_SCAN_MOD_UNION_PRECLEAN) {
 				guint8 *cards_preclean = (guint8 *)sgen_alloc_internal_dynamic (num_cards, INTERNAL_MEM_CARDTABLE_MOD_UNION, TRUE);
 
