@@ -169,6 +169,7 @@ worker_try_finish (WorkerData *data)
 	binary_protocol_worker_finish (sgen_timestamp (), forced_stop);
 
 	sgen_gray_object_queue_trim_free_list (&data->private_gray_queue);
+
 	return;
 
 work_available:
@@ -304,20 +305,24 @@ void
 sgen_workers_init (int num_workers, SgenWorkerCallback callback)
 {
 	int i;
-	void **workers_data_ptrs = (void **)alloca(num_workers * sizeof(void *));
+	void **workers_data_ptrs;
+
+	workers_num = num_workers / 2;
+	if (workers_num < 1)
+		workers_num = 1;
+
+	workers_data_ptrs = (void **)alloca(workers_num * sizeof(void *));
 
 	if (!sgen_get_major_collector ()->is_concurrent) {
-		sgen_thread_pool_init (num_workers, thread_pool_init_func, NULL, NULL, NULL);
+		sgen_thread_pool_init (workers_num, thread_pool_init_func, NULL, NULL, NULL);
 		return;
 	}
 
 	mono_os_mutex_init (&finished_lock);
 	//g_print ("initing %d workers\n", num_workers);
 
-	workers_num = num_workers;
-
-	workers_data = (WorkerData *)sgen_alloc_internal_dynamic (sizeof (WorkerData) * num_workers, INTERNAL_MEM_WORKER_DATA, TRUE);
-	memset (workers_data, 0, sizeof (WorkerData) * num_workers);
+	workers_data = (WorkerData *)sgen_alloc_internal_dynamic (sizeof (WorkerData) * workers_num, INTERNAL_MEM_WORKER_DATA, TRUE);
+	memset (workers_data, 0, sizeof (WorkerData) * workers_num);
 
 	init_distribute_gray_queue ();
 
@@ -326,7 +331,7 @@ sgen_workers_init (int num_workers, SgenWorkerCallback callback)
 
 	worker_init_cb = callback;
 
-	sgen_thread_pool_init (num_workers, thread_pool_init_func, marker_idle_func, continue_idle_func, workers_data_ptrs);
+	sgen_thread_pool_init (workers_num, thread_pool_init_func, marker_idle_func, continue_idle_func, workers_data_ptrs);
 
 	mono_counters_register ("# workers finished", MONO_COUNTER_GC | MONO_COUNTER_ULONG, &stat_workers_num_finished);
 }
@@ -341,6 +346,7 @@ sgen_workers_stop_all_workers (void)
 	sgen_thread_pool_wait_for_all_jobs ();
 	sgen_thread_pool_idle_wait ();
 	SGEN_ASSERT (0, sgen_workers_all_done (), "Can only signal enqueue work when in no work state");
+
 }
 
 void
@@ -439,7 +445,7 @@ sgen_workers_get_idle_func_object_ops (void)
 int
 sgen_workers_get_num_workers (void)
 {
-	return workers_num;
+	return (workers_num > 1) ? workers_num * 8 : 1;
 }
 
 void
