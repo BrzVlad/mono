@@ -24,7 +24,10 @@ static volatile gboolean forced_stop;
 static WorkerData *workers_data;
 static SgenWorkerCallback worker_init_cb;
 
+static mword start_timestamp;
 static mono_mutex_t finished_lock;
+static volatile gboolean workers_finished;
+static int worker_awakenings;
 
 static SgenSectionGrayQueue workers_distribute_gray_queue;
 static gboolean workers_distribute_gray_queue_inited;
@@ -96,6 +99,7 @@ sgen_workers_ensure_awake (void)
 	 * have a worker working using a nopar context, which means it is safe.
 	 */
 	idle_func_object_ops = (workers_num > 1) ? idle_func_object_ops_par : idle_func_object_ops_nopar;
+	workers_finished = 0;
 
 	for (i = 0; i < workers_num; i++) {
 		State old_state;
@@ -140,6 +144,7 @@ worker_try_finish (WorkerData *data)
 		if (callback) {
 			finish_callback = NULL;
 			callback ();
+			worker_awakenings = 0;
 			/* Make sure each worker has a chance of seeing the enqueued jobs */
 			sgen_workers_ensure_awake ();
 			SGEN_ASSERT (0, data->state == STATE_WORK_ENQUEUED, "Why did we fail to set our own state to ENQUEUED");
@@ -166,7 +171,9 @@ worker_try_finish (WorkerData *data)
 
 	mono_os_mutex_unlock (&finished_lock);
 
+	workers_finished = TRUE;
 	binary_protocol_worker_finish (sgen_timestamp (), forced_stop);
+	fprintf (stderr, "Finish worker %d, time %d ms, awakenings %d\n", (int)(data - workers_data), (int)((sgen_timestamp () - start_timestamp) / 10000), worker_awakenings);
 
 	sgen_gray_object_queue_trim_free_list (&data->private_gray_queue);
 
@@ -199,6 +206,39 @@ workers_get_work (WorkerData *data)
 	major = sgen_get_major_collector ();
 	if (major->is_concurrent) {
 		GrayQueueSection *section = sgen_section_gray_queue_dequeue (&workers_distribute_gray_queue);
+		if (section) {
+			sgen_gray_object_enqueue_section (&data->private_gray_queue, section);
+			return TRUE;
+		}
+	}
+
+	/* Nobody to steal from */
+	g_assert (sgen_gray_object_queue_is_empty (&data->private_gray_queue));
+	return FALSE;
+}
+
+static gboolean
+workers_steal_work (WorkerData *data)
+{
+	SgenMajorCollector *major;
+
+	g_assert (sgen_gray_object_queue_is_empty (&data->private_gray_queue));
+
+	/* If we're parallel, steal from other workers' private gray queues  */
+	major = sgen_get_major_collector ();
+	if (major->is_parallel) {
+		GrayQueueSection *section = NULL;
+		int current_worker = (int) (data - workers_data);
+		int i;
+
+		for (i = 1; i < workers_num && !section; i++) {
+			int steal_worker = (current_worker + 1) % workers_num;
+			if (state_is_working_or_enqueued (workers_data [steal_worker].state)) {
+				section = sgen_gray_object_steal_section (&workers_data [steal_worker].private_gray_queue);
+//				total_sections += workers_data [i].private_gray_queue.num_sections;
+			}
+		}
+
 		if (section) {
 			sgen_gray_object_enqueue_section (&data->private_gray_queue, section);
 			return TRUE;
@@ -268,7 +308,7 @@ marker_idle_func (void *data_untyped)
 		SGEN_ASSERT (0, data->state != STATE_NOT_WORKING, "How did we get from WORK ENQUEUED to NOT WORKING?");
 	}
 
-	if (!forced_stop && (!sgen_gray_object_queue_is_empty (&data->private_gray_queue) || workers_get_work (data))) {
+	if (!forced_stop && (!sgen_gray_object_queue_is_empty (&data->private_gray_queue) || workers_get_work (data) || workers_steal_work (data))) {
 		ScanCopyContext ctx = CONTEXT_FROM_OBJECT_OPERATIONS (idle_func_object_ops, &data->private_gray_queue);
 
 		SGEN_ASSERT (0, !sgen_gray_object_queue_is_empty (&data->private_gray_queue), "How is our gray queue empty if we just got work?");
@@ -277,6 +317,11 @@ marker_idle_func (void *data_untyped)
 	} else {
 		worker_try_finish (data);
 	}
+
+	if (data->private_gray_queue.num_sections > 16 && workers_finished > 0 && worker_awakenings < (workers_num * 4)) {
+		worker_awakenings++;
+		sgen_workers_ensure_awake ();
+	} 
 }
 
 static void
@@ -358,6 +403,10 @@ sgen_workers_start_all_workers (SgenObjectOperations *object_ops_nopar, SgenObje
 	finish_callback = callback;
 	mono_memory_write_barrier ();
 
+	fprintf (stderr, "\n\nStart all workers\n");
+	start_timestamp = sgen_timestamp ();
+	worker_awakenings = 0;
+
 	sgen_workers_ensure_awake ();
 }
 
@@ -426,6 +475,8 @@ sgen_workers_assert_gray_queue_is_empty (void)
 void
 sgen_workers_take_from_queue (SgenGrayQueue *queue)
 {
+	sgen_gray_object_spread (queue, workers_num * 8);
+
 	for (;;) {
 		GrayQueueSection *section = sgen_gray_object_dequeue_section (queue);
 		if (!section)
