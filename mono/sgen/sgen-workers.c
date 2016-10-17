@@ -139,6 +139,8 @@ worker_try_finish (WorkerData *data)
 
 	if (working == 1) {
 		SgenWorkersFinishCallback callback = finish_callback;
+
+		SGEN_ASSERT (0, idle_func_object_ops == idle_func_object_ops_nopar, "Why are we finishing with par context");
 		/* We are the last one left. Enqueue preclean job if we have one and awake everybody */
 		SGEN_ASSERT (0, data->state != STATE_NOT_WORKING, "How did we get from doing idle work to NOT WORKING without setting it ourselves?");
 		if (callback) {
@@ -207,7 +209,7 @@ workers_get_work (WorkerData *data)
 	if (major->is_concurrent) {
 		GrayQueueSection *section = sgen_section_gray_queue_dequeue (&workers_distribute_gray_queue);
 		if (section) {
-			sgen_gray_object_enqueue_section (&data->private_gray_queue, section);
+			sgen_gray_object_enqueue_section (&data->private_gray_queue, section, major->is_parallel);
 			return TRUE;
 		}
 	}
@@ -240,7 +242,7 @@ workers_steal_work (WorkerData *data)
 		}
 
 		if (section) {
-			sgen_gray_object_enqueue_section (&data->private_gray_queue, section);
+			sgen_gray_object_enqueue_section (&data->private_gray_queue, section, TRUE);
 			return TRUE;
 		}
 	}
@@ -490,7 +492,7 @@ sgen_workers_take_from_queue (SgenGrayQueue *queue)
 SgenObjectOperations*
 sgen_workers_get_idle_func_object_ops (void)
 {
-	return idle_func_object_ops;
+	return (idle_func_object_ops_par) ? idle_func_object_ops_par : idle_func_object_ops_nopar;
 }
 
 int
