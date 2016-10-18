@@ -1394,7 +1394,7 @@ job_scan_major_mod_union_card_table (void *worker_data_untyped, SgenThreadPoolJo
 	ScanCopyContext ctx = scan_copy_context_for_scan_job (worker_data_untyped, (ScanJob*)job_data);
 
 	g_assert (concurrent_collection_in_progress);
-	major_collector.scan_card_table (CARDTABLE_SCAN_MOD_UNION, ctx, job_data->worker_index, sgen_workers_get_num_workers ());
+	major_collector.scan_card_table (CARDTABLE_SCAN_MOD_UNION, ctx, job_data->worker_index, sgen_workers_get_num_active_workers ());
 }
 
 static void
@@ -1404,7 +1404,7 @@ job_scan_los_mod_union_card_table (void *worker_data_untyped, SgenThreadPoolJob 
 	ScanCopyContext ctx = scan_copy_context_for_scan_job (worker_data_untyped, (ScanJob*)job_data);
 
 	g_assert (concurrent_collection_in_progress);
-	sgen_los_scan_card_table (CARDTABLE_SCAN_MOD_UNION, ctx, job_data->worker_index, sgen_workers_get_num_workers ());
+	sgen_los_scan_card_table (CARDTABLE_SCAN_MOD_UNION, ctx, job_data->worker_index, sgen_workers_get_num_active_workers ());
 }
 
 static void
@@ -1415,7 +1415,7 @@ job_major_mod_union_preclean (void *worker_data_untyped, SgenThreadPoolJob *job)
 
 	g_assert (concurrent_collection_in_progress);
 
-	major_collector.scan_card_table (CARDTABLE_SCAN_MOD_UNION_PRECLEAN, ctx, job_data->worker_index, sgen_workers_get_num_workers ());
+	major_collector.scan_card_table (CARDTABLE_SCAN_MOD_UNION_PRECLEAN, ctx, job_data->worker_index, sgen_workers_get_num_active_workers ());
 }
 
 static void
@@ -1426,7 +1426,7 @@ job_los_mod_union_preclean (void *worker_data_untyped, SgenThreadPoolJob *job)
 
 	g_assert (concurrent_collection_in_progress);
 
-	sgen_los_scan_card_table (CARDTABLE_SCAN_MOD_UNION_PRECLEAN, ctx, job_data->worker_index, sgen_workers_get_num_workers ());
+	sgen_los_scan_card_table (CARDTABLE_SCAN_MOD_UNION_PRECLEAN, ctx, job_data->worker_index, sgen_workers_get_num_active_workers ());
 }
 
 static void
@@ -1445,7 +1445,7 @@ workers_finish_callback (void)
 {
 	ParallelScanJob *psj;
 	ScanJob *sj;
-	int num_workers = sgen_workers_get_num_workers ();
+	int num_workers = sgen_workers_get_num_active_workers ();
 	int i;
 	/* Mod union preclean jobs */
 	for (i = 0; i < num_workers; i++) {
@@ -1867,6 +1867,7 @@ major_copy_or_mark_from_roots (SgenGrayQueue *gc_thread_gray_queue, size_t *old_
 
 	SGEN_ASSERT (0, sgen_workers_all_done (), "Why are the workers not done when we start or finish a major collection?");
 	if (mode == COPY_OR_MARK_FROM_ROOTS_FINISH_CONCURRENT) {
+		sgen_workers_set_num_active_workers (0);
 		if (sgen_workers_have_idle_work ()) {
 			/*
 			 * We force the finish of the worker with the new object ops context
@@ -1900,6 +1901,7 @@ major_copy_or_mark_from_roots (SgenGrayQueue *gc_thread_gray_queue, size_t *old_
 	 * the roots.
 	 */
 	if (mode == COPY_OR_MARK_FROM_ROOTS_START_CONCURRENT) {
+		sgen_workers_set_num_active_workers (1);
 		gray_queue_redirect (gc_thread_gray_queue);
 		if (precleaning_enabled) {
 			sgen_workers_start_all_workers (object_ops_nopar, object_ops_par, workers_finish_callback);
@@ -1909,7 +1911,7 @@ major_copy_or_mark_from_roots (SgenGrayQueue *gc_thread_gray_queue, size_t *old_
 	}
 
 	if (mode == COPY_OR_MARK_FROM_ROOTS_FINISH_CONCURRENT) {
-		int i, workers_num = sgen_workers_get_num_workers ();
+		int i, workers_num = sgen_workers_get_num_active_workers ();
 
 		gray_queue_redirect (gc_thread_gray_queue);
 

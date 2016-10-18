@@ -33,6 +33,7 @@ typedef void (*SgenWorkerCallback) (WorkerData *data);
 
 void sgen_workers_init (int num_workers, SgenWorkerCallback callback);
 void sgen_workers_stop_all_workers (void);
+void sgen_workers_set_num_active_workers (int num_workers);
 void sgen_workers_start_all_workers (SgenObjectOperations *object_ops_nopar, SgenObjectOperations *object_ops_par, SgenWorkersFinishCallback finish_job);
 void sgen_workers_init_distribute_gray_queue (void);
 void sgen_workers_enqueue_job (SgenThreadPoolJob *job, gboolean enqueue);
@@ -45,7 +46,7 @@ gboolean sgen_workers_are_working (void);
 void sgen_workers_assert_gray_queue_is_empty (void);
 void sgen_workers_take_from_queue (SgenGrayQueue *queue);
 SgenObjectOperations* sgen_workers_get_idle_func_object_ops (void);
-int sgen_workers_get_num_workers (void);
+int sgen_workers_get_num_active_workers (void);
 void sgen_workers_foreach (SgenWorkerCallback callback);
 
 #endif
