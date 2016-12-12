@@ -504,4 +504,38 @@ sgen_memgov_init (size_t max_heap, size_t soft_limit, gboolean debug_allowance, 
 		save_target_ratio = save_target;
 }
 
+
+extern int num_degraded;
+
+/* Only unix */
+void MONO_API
+sgen_memgov_log_info (int fd)
+{
+	guint64 major_size, major_size_in_use, los_size, los_size_in_use;
+	guint64 minor_gc_time, major_gc_time, major_gc_time_concurrent;
+	int minor_gc_count, major_gc_count;
+	char line [4096];
+
+	major_size = major_collector.get_num_major_sections () * major_collector.section_size;
+	major_size_in_use = last_used_slots_size + total_allocated_major - total_allocated_major_end;
+	los_size = los_memory_usage_total;
+	los_size_in_use = los_memory_usage;
+
+	minor_gc_time = gc_stats.minor_gc_time;
+	major_gc_time = gc_stats.major_gc_time;
+	major_gc_time_concurrent = gc_stats.major_gc_time_concurrent;
+	minor_gc_count = gc_stats.minor_gc_count;
+	major_gc_count = gc_stats.major_gc_count;
+
+	sprintf (line, "Timestamp %ld\n", sgen_timestamp ());
+	write (fd, line, strlen (line));
+	sprintf (line, "Minors : %d, Majors : %d, Degraded : %d\n", minor_gc_count, major_gc_count, num_degraded);
+	write (fd, line, strlen (line));
+	sprintf (line, "Minor time : %ld ms, Major time : %ld ms, Major time conc : %ld ms\n", minor_gc_time, major_gc_time, major_gc_time_concurrent);
+	write (fd, line, strlen (line));
+	sprintf (line, "Major Size in use : %ld KB, Major Size : %ld KB\n", major_size_in_use / 1024, major_size / 1024);
+	write (fd, line, strlen (line));
+	sprintf (line, "LOS Size in use : %ld KB, LOS Size : %ld KB\n\n", los_size_in_use / 1024, los_size / 1024);
+	write (fd, line, strlen (line));
+}
 #endif

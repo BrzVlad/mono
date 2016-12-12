@@ -2739,6 +2739,7 @@ mono_gc_add_memory_pressure (gint64 value)
 	/* FIXME: Implement at some point? */
 }
 
+int num_degraded = 0;
 /*
  * Logging
  */
@@ -2747,7 +2748,6 @@ void
 sgen_client_degraded_allocation (size_t size)
 {
 	static int last_major_gc_warned = -1;
-	static int num_degraded = 0;
 
 	if (last_major_gc_warned < (int)gc_stats.major_gc_count) {
 		++num_degraded;
