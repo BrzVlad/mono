@@ -1626,6 +1626,7 @@
     <Compile Include="System\MonoAsyncCall.cs" />
     <Compile Include="System\MonoCQItem.cs" />
     <Compile Include="System\MonoCustomAttrs.cs" />
+    <Compile Include="System\MonoGHashTableHelpers.cs" />
     <Compile Include="System\MonoListItem.cs" />
     <Compile Include="System\MonoTouchAOTHelper.cs" />
     <Compile Include="System\MonoType.cs" />

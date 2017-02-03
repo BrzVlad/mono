@@ -114,6 +114,7 @@ System/MarshalByRefObject.cs
 System/MonoAsyncCall.cs
 System/MonoCQItem.cs
 System/MonoCustomAttrs.cs
+System/MonoGHashTableHelpers.cs
 System/MonoListItem.cs
 System/MonoType.cs
 System/MonoTouchAOTHelper.cs

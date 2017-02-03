@@ -761,6 +761,15 @@ mono_init_internal (const char *filename, const char *exe_filename, const char *
 	mono_defaults.threadpool_wait_callback_class = mono_class_load_from_name (
 		mono_defaults.corlib, "System.Threading", "_ThreadPoolWaitCallback");
 
+	mono_defaults.hash_table_slot_nogc = mono_class_load_from_name (
+		mono_defaults.corlib, "System", "MonoGHashTableSlotNoGC");
+	mono_defaults.hash_table_slot_k = mono_class_load_from_name (
+		mono_defaults.corlib, "System", "MonoGHashTableSlotK");
+	mono_defaults.hash_table_slot_v = mono_class_load_from_name (
+		mono_defaults.corlib, "System", "MonoGHashTableSlotV");
+	mono_defaults.hash_table_slot_kv = mono_class_load_from_name (
+		mono_defaults.corlib, "System", "MonoGHashTableSlotKV");
+
 	mono_defaults.threadpool_perform_wait_callback_method = mono_class_get_method_from_name (
 		mono_defaults.threadpool_wait_callback_class, "PerformWaitCallback", 0);
 

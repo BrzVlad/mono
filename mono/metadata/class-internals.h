@@ -1109,6 +1109,10 @@ typedef struct {
 	MonoClass *critical_finalizer_object; /* MAYBE NULL */
 	MonoClass *generic_ireadonlylist_class;
 	MonoClass *threadpool_wait_callback_class;
+	MonoClass *hash_table_slot_nogc;
+	MonoClass *hash_table_slot_k;
+	MonoClass *hash_table_slot_v;
+	MonoClass *hash_table_slot_kv;
 	MonoMethod *threadpool_perform_wait_callback_method;
 } MonoDefaults;
 

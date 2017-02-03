@@ -46,19 +46,23 @@
 
 typedef struct _Slot Slot;
 
+/* Synchronized with MonoGHashTableHelpers.cs */
 struct _Slot {
 	MonoObject *key;
 	MonoObject *value;
 };
 
-static gpointer KEYMARKER_REMOVED = &KEYMARKER_REMOVED;
-
 struct _MonoGHashTable {
 	GHashFunc      hash_func;
 	GEqualFunc     key_equal_func;
 
-	Slot *table;
-	int   table_size;
+	MonoArray *table;
+	/*
+	 * We use this during resizes so we can easily keep both arrays alive.
+	 * It is null otherwise. We could instead allocate a pinned handle.
+	 */
+	MonoArray *old_table;
+
 	int   in_use;
 	GDestroyNotify value_destroy_func, key_destroy_func;
 	MonoGHashGCType gc_type;
@@ -107,14 +111,47 @@ calc_prime (int x)
 #define HASH_TABLE_MAX_LOAD_FACTOR 0.7f
 #define HASH_TABLE_MIN_LOAD_FACTOR 0.05f /* We didn't really do compaction before, keep it lenient for now */
 
+static inline void mono_g_hash_table_key_store (MonoGHashTable *hash, int slot, MonoObject* key)
+{
+	MonoObject **key_addr = &((Slot*)hash->table->vector) [slot].key;
+	if (hash->gc_type & MONO_HASH_KEY_GC)
+		mono_gc_wbarrier_generic_store (key_addr, key);
+	else
+		*key_addr = key;
+}
+
+static inline void mono_g_hash_table_value_store (MonoGHashTable *hash, int slot, MonoObject* value)
+{
+	MonoObject **value_addr = &((Slot*)hash->table->vector) [slot].value;
+	if (hash->gc_type & MONO_HASH_VALUE_GC)
+		mono_gc_wbarrier_generic_store (value_addr, value);
+	else
+		*value_addr = value;
+}
+
+static inline MonoClass* mono_g_hash_table_get_element_class (MonoGHashTable *hash)
+{
+	switch (hash->gc_type) {
+		case MONO_HASH_KEY_GC:
+			return mono_defaults.hash_table_slot_k;
+		case MONO_HASH_VALUE_GC:
+			return mono_defaults.hash_table_slot_v;
+		case MONO_HASH_KEY_VALUE_GC:
+			return mono_defaults.hash_table_slot_kv;
+		default:
+			return mono_defaults.hash_table_slot_nogc;
+	}
+}
+
 /* Returns position of key or of an empty slot for it */
 static inline int mono_g_hash_table_find_slot (MonoGHashTable *hash, const MonoObject *key)
 {
-	guint i = ((*hash->hash_func) (key)) % hash->table_size;
+	guint i = ((*hash->hash_func) (key)) % mono_array_length_fast (hash->table);
 	GEqualFunc equal = hash->key_equal_func;
+	Slot *table = (Slot*) hash->table->vector;
 
-	while (hash->table [i].key && !(*equal) (hash->table [i].key, key))
-		i = (i + 1) % hash->table_size;
+	while (table [i].key && !(*equal) (table [i].key, key))
+		i = (i + 1) % mono_array_length_fast (hash->table);
 	return i;
 }
 
@@ -158,62 +195,36 @@ mono_g_hash_table_new (GHashFunc hash_func, GEqualFunc key_equal_func)
 	hash->hash_func = hash_func;
 	hash->key_equal_func = key_equal_func;
 
-	hash->table_size = g_spaced_primes_closest (1);
-	hash->table = mg_new0 (Slot, hash->table_size);
+	hash->table = mono_array_new (mono_get_root_domain (),
+				mono_g_hash_table_get_element_class (hash),
+				g_spaced_primes_closest (1));
 	
 	return hash;
-}
-
-typedef struct {
-	MonoGHashTable *hash;
-	int new_size;
-	Slot *table;
-} RehashData;
-
-static void*
-do_rehash (void *_data)
-{
-	RehashData *data = (RehashData *)_data;
-	MonoGHashTable *hash = data->hash;
-	int current_size, i;
-	Slot *table;
-
-	current_size = hash->table_size;
-	hash->table_size = data->new_size;
-	table = hash->table;
-	hash->table = data->table;
-
-	for (i = 0; i < current_size; i++) {
-		if (table [i].key) {
-			int slot = mono_g_hash_table_find_slot (hash, table [i].key);
-			hash->table [slot].key = table [i].key;
-			hash->table [slot].value = table [i].value;
-		}
-	}
-	return table;
 }
 
 static void
 rehash (MonoGHashTable *hash)
 {
+	Slot *old_table;
+	int new_size = g_spaced_primes_closest (hash->in_use / HASH_TABLE_MAX_LOAD_FACTOR);
+	int i;
+
 	MONO_REQ_GC_UNSAFE_MODE; //we must run in unsafe mode to make rehash safe
 
-	RehashData data;
-	void *old_table G_GNUC_UNUSED; /* unused on Boehm */
+	hash->old_table = hash->table;
+	hash->table = mono_array_new (mono_get_root_domain (),
+			mono_g_hash_table_get_element_class (hash),
+			new_size);
 
-	data.hash = hash;
-	/* Rehash to a size that can fit the current elements */
-	data.new_size = g_spaced_primes_closest (hash->in_use / HASH_TABLE_MAX_LOAD_FACTOR);
-	data.table = mg_new0 (Slot, data.new_size);
-
-	if (!mono_threads_is_coop_enabled ()) {
-		old_table = mono_gc_invoke_with_gc_lock (do_rehash, &data);
-	} else {
-		/* We cannot be preempted */
-		old_table = do_rehash (&data);
+	old_table = (Slot*)hash->old_table->vector;
+	for (i = 0; i < mono_array_length_fast (hash->old_table); i++) {
+		if (old_table [i].key) {
+			int slot = mono_g_hash_table_find_slot (hash, old_table [i].key);
+			mono_g_hash_table_key_store (hash, slot, old_table [i].key);
+			mono_g_hash_table_value_store (hash, slot, old_table [i].value);
+		}
 	}
-
-	mg_free (old_table);
+	hash->old_table = NULL;
 }
 
 guint
@@ -239,14 +250,16 @@ gboolean
 mono_g_hash_table_lookup_extended (MonoGHashTable *hash, gconstpointer key, gpointer *orig_key, gpointer *value)
 {
 	int slot;
-	
+	Slot *table;
+
 	g_return_val_if_fail (hash != NULL, FALSE);
 
 	slot = mono_g_hash_table_find_slot (hash, key);
 
-	if (hash->table [slot].key) {
-		*orig_key = hash->table [slot].key;
-		*value = hash->table [slot].value;
+	table = (Slot*)hash->table->vector;
+	if (table [slot].key) {
+		*orig_key = table [slot].key;
+		*value = table [slot].value;
 		return TRUE;
 	}
 
@@ -257,13 +270,15 @@ void
 mono_g_hash_table_foreach (MonoGHashTable *hash, GHFunc func, gpointer user_data)
 {
 	int i;
+	Slot *table;
 	
 	g_return_if_fail (hash != NULL);
 	g_return_if_fail (func != NULL);
 
-	for (i = 0; i < hash->table_size; i++){
-		if (hash->table [i].key)
-			(*func)(hash->table [i].key, hash->table [i].value, user_data);
+	table = (Slot*)hash->table->vector;
+	for (i = 0; i < mono_array_length_fast (hash->table); i++){
+		if (table [i].key)
+			(*func)(table [i].key, table [i].value, user_data);
 	}
 }
 
@@ -271,14 +286,15 @@ gpointer
 mono_g_hash_table_find (MonoGHashTable *hash, GHRFunc predicate, gpointer user_data)
 {
 	int i;
+	Slot *table;
 	
 	g_return_val_if_fail (hash != NULL, NULL);
 	g_return_val_if_fail (predicate != NULL, NULL);
 
-	for (i = 0; i < hash->table_size; i++){
-		if (hash->table [i].key)
-			if ((*predicate)(hash->table [i].key, hash->table [i].value, user_data))
-				return hash->table [i].value;
+	table = (Slot*)hash->table->vector;
+	for (i = 0; i < mono_array_length_fast (hash->table); i++){
+		if (table [i].key && (*predicate)(table [i].key, table [i].value, user_data))
+			return table [i].value;
 	}
 	return NULL;
 }
@@ -287,19 +303,21 @@ gboolean
 mono_g_hash_table_remove (MonoGHashTable *hash, gconstpointer key)
 {
 	int slot, last_clear_slot;
+	Slot *table;
 
 	g_return_val_if_fail (hash != NULL, FALSE);
 	slot = mono_g_hash_table_find_slot (hash, key);
 
-	if (!hash->table [slot].key)
+	table = (Slot*)hash->table->vector;
+	if (!table [slot].key)
 		return FALSE;
 
 	if (hash->key_destroy_func)
-		(*hash->key_destroy_func)(hash->table [slot].key);
-	hash->table [slot].key = NULL;
+		(*hash->key_destroy_func)(table [slot].key);
+	table [slot].key = NULL;
 	if (hash->value_destroy_func)
-		(*hash->value_destroy_func)(hash->table [slot].value);
-	hash->table [slot].value = NULL;
+		(*hash->value_destroy_func)(table [slot].value);
+	table [slot].value = NULL;
 	hash->in_use--;
 
 	/*
@@ -313,22 +331,22 @@ mono_g_hash_table_remove (MonoGHashTable *hash, gconstpointer key)
 	 * normal slot, until we reach an empty slot.
 	 */
 	last_clear_slot = slot;
-	slot = (slot + 1) % hash->table_size;
-	while (hash->table [slot].key) {
-		guint hashcode = ((*hash->hash_func)(hash->table [slot].key)) % hash->table_size;
+	slot = (slot + 1) % mono_array_length_fast (hash->table);
+	while (table [slot].key) {
+		guint hashcode = ((*hash->hash_func)(table [slot].key)) % mono_array_length_fast (hash->table);
 		/*
 		 * We try to move the current element to last_clear_slot, but only if
 		 * it brings it closer to its normal position (hashcode)
 		 */
 		if ((last_clear_slot < slot && (hashcode > slot || hashcode <= last_clear_slot)) ||
 				(last_clear_slot > slot && (hashcode > slot && hashcode <= last_clear_slot))) {
-			hash->table [last_clear_slot].key = hash->table [slot].key;
-			hash->table [last_clear_slot].value = hash->table [slot].value;
-			hash->table [slot].key = NULL;
-			hash->table [slot].value = NULL;
+			mono_g_hash_table_key_store (hash, last_clear_slot, table [slot].key);
+			mono_g_hash_table_value_store (hash, last_clear_slot, table [slot].value);
+			table [slot].key = NULL;
+			table [slot].value = NULL;
 			last_clear_slot = slot;
 		}
-		slot = (slot + 1) % hash->table_size;
+		slot = (slot + 1) % mono_array_length_fast (hash->table);
 	}
 	return TRUE;
 }
@@ -338,17 +356,19 @@ mono_g_hash_table_foreach_remove (MonoGHashTable *hash, GHRFunc func, gpointer u
 {
 	int i;
 	int count = 0;
+	Slot *table;
 
 	g_return_val_if_fail (hash != NULL, 0);
 	g_return_val_if_fail (func != NULL, 0);
 
-	for (i = 0; i < hash->table_size; i++){
-		if (hash->table [i].key && (*func)(hash->table [i].key, hash->table [i].value, user_data)) {
-			mono_g_hash_table_remove (hash, hash->table [i].key);
+	table = (Slot*)hash->table->vector;
+	for (i = 0; i < mono_array_length_fast (hash->table); i++){
+		if (table [i].key && (*func)(table [i].key, table [i].value, user_data)) {
+			mono_g_hash_table_remove (hash, table [i].key);
 			count++;
 		}
 	}
-	if (hash->in_use < hash->table_size * HASH_TABLE_MIN_LOAD_FACTOR)
+	if (hash->in_use < mono_array_length_fast (hash->table) * HASH_TABLE_MIN_LOAD_FACTOR)
 		rehash (hash);
 	return count;
 }
@@ -357,22 +377,23 @@ void
 mono_g_hash_table_destroy (MonoGHashTable *hash)
 {
 	int i;
-	
+	Slot *table;
+
 	g_return_if_fail (hash != NULL);
 
 #ifdef HAVE_SGEN_GC
 	mono_gc_deregister_root ((char*)hash);
 #endif
 
-	for (i = 0; i < hash->table_size; i++){
-		if (hash->table [i].key != NULL) {
+	table = (Slot*)hash->table->vector;
+	for (i = 0; i < mono_array_length_fast (hash->table); i++) {
+		if (table [i].key != NULL) {
 			if (hash->key_destroy_func)
-				(*hash->key_destroy_func)(hash->table [i].key);
+				(*hash->key_destroy_func)(table [i].key);
 			if (hash->value_destroy_func)
-				(*hash->value_destroy_func)(hash->table [i].value);
+				(*hash->value_destroy_func)(table [i].value);
 		}
 	}
-	mg_free (hash->table);
 	mg_free (hash);
 }
 
@@ -380,25 +401,27 @@ static void
 mono_g_hash_table_insert_replace (MonoGHashTable *hash, gpointer key, gpointer value, gboolean replace)
 {
 	int slot;
+	Slot *table;
 	g_return_if_fail (hash != NULL);
 
-	if (hash->in_use > (hash->table_size * HASH_TABLE_MAX_LOAD_FACTOR + 1))
+	if (hash->in_use > (mono_array_length_fast (hash->table) * HASH_TABLE_MAX_LOAD_FACTOR + 1))
 		rehash (hash);
 
 	slot = mono_g_hash_table_find_slot (hash, key);
 
-	if (hash->table [slot].key) {
+	table = (Slot*)hash->table->vector;
+	if (table [slot].key) {
 		if (replace) {
 			if (hash->key_destroy_func)
-				(*hash->key_destroy_func)(hash->table [slot].key);
-			hash->table [slot].key = (MonoObject *)key;
+				(*hash->key_destroy_func)(table [slot].key);
+			mono_g_hash_table_key_store (hash, slot, (MonoObject*)key);
 		}
 		if (hash->value_destroy_func)
-			(*hash->value_destroy_func) (hash->table [slot].value);
-		hash->table [slot].value = (MonoObject *)value;
+			(*hash->value_destroy_func) (table [slot].value);
+		mono_g_hash_table_value_store (hash, slot, (MonoObject*)value);
 	} else {
-		hash->table [slot].key = (MonoObject *)key;
-		hash->table [slot].value = (MonoObject *)value;
+		mono_g_hash_table_key_store (hash, slot, (MonoObject*)key);
+		mono_g_hash_table_value_store (hash, slot, (MonoObject*)value);
 		hash->in_use++;
 	}
 }
@@ -416,13 +439,14 @@ mono_g_hash_table_replace(MonoGHashTable *h, gpointer k, gpointer v)
 }
 
 void
-mono_g_hash_table_print_stats (MonoGHashTable *table)
+mono_g_hash_table_print_stats (MonoGHashTable *hash)
 {
 	int i = 0, chain_size = 0, max_chain_size = 0;
 	gboolean wrapped_around = FALSE;
+	Slot *table = (Slot*)hash->table->vector;
 
 	while (TRUE) {
-		if (table->table [i].key) {
+		if (table [i].key) {
 			chain_size++;
 		} else {
 			max_chain_size = MAX(max_chain_size, chain_size);
@@ -431,7 +455,7 @@ mono_g_hash_table_print_stats (MonoGHashTable *table)
 				break;
 		}
 
-		if (i == (table->table_size - 1)) {
+		if (i == (mono_array_length_fast (hash->table) - 1)) {
 			wrapped_around = TRUE;
 			i = 0;
 		} else {
@@ -439,7 +463,7 @@ mono_g_hash_table_print_stats (MonoGHashTable *table)
 		}
 	}
 	/* Rehash to a size that can fit the current elements */
-	printf ("Size: %d Table Size: %d Max Chain Length: %d\n", table->in_use, table->table_size, max_chain_size);
+	printf ("Size: %d Table Size: %d Max Chain Length: %d\n", hash->in_use, mono_array_length_fast (hash->table), max_chain_size);
 }
 
 #ifdef HAVE_SGEN_GC
@@ -449,14 +473,10 @@ static void
 mono_g_hash_mark (void *addr, MonoGCMarkFunc mark_func, void *gc_data)
 {
 	MonoGHashTable *hash = (MonoGHashTable*)addr;
-	int i;
 
-	for (i = 0; i < hash->table_size; i++) {
-		if (hash->gc_type & MONO_HASH_KEY_GC && hash->table [i].key)
-			mark_func (&hash->table [i].key, gc_data);
-		if (hash->gc_type & MONO_HASH_VALUE_GC && hash->table [i].value)
-			mark_func (&hash->table [i].value, gc_data);
-	}
+	mark_func ((MonoObject**)&hash->table, gc_data);
+	if (hash->old_table)
+		mark_func ((MonoObject**)&hash->old_table, gc_data);
 }
-	
+
 #endif
