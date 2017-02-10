@@ -804,6 +804,23 @@ scan_roots_for_specific_ref (GCObject *key, int root_type)
 			}
 			break;
 		}
+		case ROOT_DESC_VECTOR: {
+			int element_size;
+			char bitmap [24];
+			int i;
+			void **p;
+
+			SGEN_ROOT_DESC_VECTOR_READ (desc, element_size, bitmap);
+
+			for (i = 0, p = start_root; p < (void**)root->end_root; i++, p++) {
+				if (i == element_size)
+					i = 0;
+				if (bitmap [i] && *p)
+					check_root_obj_specific_ref (root, key, (GCObject *)*p);
+			}
+			SGEN_ASSERT (0, i == element_size, "Vector root with invalid size or element size");
+			break;
+		}
 		case ROOT_DESC_USER: {
 			SgenUserRootMarkFunc marker = sgen_get_user_descriptor_func (desc);
 			marker (start_root, check_root_obj_specific_ref_from_marker, NULL);
@@ -906,6 +923,23 @@ sgen_scan_for_registered_roots_in_domain (MonoDomain *domain, int root_type)
 				}
 				start_run += GC_BITS_PER_WORD;
 			}
+			break;
+		}
+		case ROOT_DESC_VECTOR: {
+			int element_size;
+			char bitmap [24];
+			int i;
+			void **p;
+
+			SGEN_ROOT_DESC_VECTOR_READ (desc, element_size, bitmap);
+
+			for (i = 0, p = start_root; p < (void**)root->end_root; i++, p++) {
+				if (i == element_size)
+					i = 0;
+				if (bitmap [i] && *p)
+					check_obj_not_in_domain ((MonoObject **)*p);
+			}
+			SGEN_ASSERT (0, i == element_size, "Vector root with invalid size or element size");
 			break;
 		}
 		case ROOT_DESC_USER: {

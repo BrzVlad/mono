@@ -114,10 +114,20 @@ enum {
 	ROOT_DESC_BITMAP,
 	ROOT_DESC_RUN_LEN, 
 	ROOT_DESC_COMPLEX,
+	ROOT_DESC_VECTOR, /* 24 bit elem bmap | 5 bit elem len | 3 bit desc */
 	ROOT_DESC_USER,
 	ROOT_DESC_TYPE_MASK = 0x7,
 	ROOT_DESC_TYPE_SHIFT = 3,
 };
+
+#define SGEN_ROOT_DESC_VECTOR_READ(desc, element_size, bitmap) do { \
+		SgenDescriptor tmp = (desc);			\
+		tmp >>= ROOT_DESC_TYPE_SHIFT;			\
+		element_size = (int)(tmp & 0x1f);		\
+		tmp >>= 5;					\
+		for (i = 0; i < element_size; i++, tmp >>= 1)	\
+			bitmap [i] = (tmp & 1) ? 1 : 0;	\
+	} while (0)
 
 typedef void (*SgenUserMarkFunc)     (GCObject **addr, void *gc_data);
 typedef void (*SgenUserRootMarkFunc) (void *addr, SgenUserMarkFunc mark_func, void *gc_data);
