@@ -525,7 +525,7 @@ mono_runtime_class_init_full (MonoVTable *vtable, MonoError *error)
 
 		//TAEs are blocked around .cctors, they must escape as soon as no cctor is left to run.
 		if (!pending_tae && got_pending_interrupt)
-			pending_tae = mono_thread_try_resume_interruption ();
+			pending_tae = mono_thread_try_execute_interruption ();
 	} else {
 		/* this just blocks until the initializing thread is done */
 		mono_type_init_lock (lock);

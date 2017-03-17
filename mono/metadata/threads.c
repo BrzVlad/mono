@@ -5126,7 +5126,7 @@ mono_threads_detach_coop (gpointer cookie, gpointer *dummy)
 }
 
 MonoException*
-mono_thread_try_resume_interruption (void)
+mono_thread_try_execute_interruption (void)
 {
 	MonoInternalThread *thread;
 
@@ -5136,7 +5136,7 @@ mono_thread_try_resume_interruption (void)
 	if (mono_thread_get_abort_prot_block_count (thread) > 0 || mono_get_eh_callbacks ()->mono_current_thread_has_handle_block_guard ())
 		return NULL;
 
-	return mono_thread_resume_interruption ();
+	return mono_thread_execute_interruption ();
 }
 
 #if 0
