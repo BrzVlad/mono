@@ -288,6 +288,8 @@ static guint64 time_major_fragment_creation = 0;
 
 static guint64 time_max = 0;
 
+static int sgen_max_pause_time = 30; // ms
+
 static SGEN_TV_DECLARE (time_major_conc_collection_start);
 static SGEN_TV_DECLARE (time_major_conc_collection_end);
 
@@ -1612,6 +1614,7 @@ collect_nursery (const char *reason, gboolean is_overflow, SgenGrayQueue *unpin_
 	SgenGrayQueue gc_thread_gray_queue;
 	SgenObjectOperations *object_ops_nopar, *object_ops_par = NULL;
 	ScanCopyContext ctx;
+	int duration;
 	TV_DECLARE (atv);
 	TV_DECLARE (btv);
 	SGEN_TV_DECLARE (last_minor_collection_start_tv);
@@ -1743,7 +1746,13 @@ collect_nursery (const char *reason, gboolean is_overflow, SgenGrayQueue *unpin_
 	if (remset_consistency_checks)
 		sgen_check_remset_consistency ();
 
-	sgen_resize_nursery ();
+
+	TV_GETTIME (btv);
+	duration = (int)(TV_ELAPSED (last_minor_collection_start_tv, btv) / 10000);
+	if (duration < (sgen_max_pause_time / 3))
+		sgen_resize_nursery (FALSE);
+	else if (duration > (sgen_max_pause_time * 2 / 3))
+		sgen_resize_nursery (TRUE);
 
 	/* walk the pin_queue, build up the fragment list of free memory, unmark
 	 * pinned objects as we go, memzero() the empty fragments so they are ready for the
