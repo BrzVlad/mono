@@ -70,8 +70,10 @@ void sgen_thread_pool_job_wait (SgenThreadPool *pool, SgenThreadPoolJob *job);
 
 void sgen_thread_pool_idle_signal (SgenThreadPool *pool);
 void sgen_thread_pool_idle_wait (SgenThreadPool *pool);
+gboolean sgen_thread_pool_idle_timedwait (SgenThreadPool *pool, guint32 timeout_ms);
 
 void sgen_thread_pool_wait_for_all_jobs (SgenThreadPool *pool);
+gboolean sgen_thread_pool_timedwait_for_all_jobs (SgenThreadPool *pool, guint32 timeout_ms);
 
 int sgen_thread_pool_is_thread_pool_thread (SgenThreadPool *pool, MonoNativeThreadId thread);
 

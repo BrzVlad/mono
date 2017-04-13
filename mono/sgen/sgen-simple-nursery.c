@@ -19,6 +19,7 @@
 #include "mono/sgen/sgen-protocol.h"
 #include "mono/sgen/sgen-layout-stats.h"
 #include "mono/sgen/sgen-client.h"
+#include "mono/sgen/sgen-pinning.h"
 #include "mono/utils/mono-memory-model.h"
 
 static inline GCObject*
@@ -88,6 +89,18 @@ fill_serial_ops (SgenObjectOperations *ops)
 	FILL_MINOR_COLLECTOR_SCAN_OBJECT (ops);
 }
 
+#define SGEN_NURSERY_NO_PROMOTION
+#include "sgen-minor-copy-object.h"
+#include "sgen-minor-scan-object.h"
+
+static void
+fill_serial_no_promotion_ops (SgenObjectOperations *ops)
+{
+	ops->copy_or_mark_object = SERIAL_COPY_OBJECT;
+	FILL_MINOR_COLLECTOR_SCAN_OBJECT (ops);
+}
+#undef SGEN_NURSERY_NO_PROMOTION
+
 #define SGEN_SIMPLE_PAR_NURSERY
 
 #include "sgen-minor-copy-object.h"
@@ -99,6 +112,18 @@ fill_parallel_ops (SgenObjectOperations *ops)
 	ops->copy_or_mark_object = SERIAL_COPY_OBJECT;
 	FILL_MINOR_COLLECTOR_SCAN_OBJECT (ops);
 }
+
+#define SGEN_NURSERY_NO_PROMOTION
+#include "sgen-minor-copy-object.h"
+#include "sgen-minor-scan-object.h"
+
+static void
+fill_parallel_no_promotion_ops (SgenObjectOperations *ops)
+{
+	ops->copy_or_mark_object = SERIAL_COPY_OBJECT;
+	FILL_MINOR_COLLECTOR_SCAN_OBJECT (ops);
+}
+#undef SGEN_NURSERY_NO_PROMOTION
 
 #undef SGEN_SIMPLE_PAR_NURSERY
 #define SGEN_CONCURRENT_MAJOR
@@ -117,7 +142,7 @@ void
 sgen_simple_nursery_init (SgenMinorCollector *collector, gboolean parallel)
 {
 	collector->is_split = FALSE;
-	collector->is_parallel = parallel;
+	collector->is_parallel = TRUE;//parallel;
 
 	collector->alloc_for_promotion = alloc_for_promotion;
 
@@ -129,8 +154,10 @@ sgen_simple_nursery_init (SgenMinorCollector *collector, gboolean parallel)
 	collector->init_nursery = init_nursery;
 
 	fill_serial_ops (&collector->serial_ops);
+	fill_serial_no_promotion_ops (&collector->serial_no_promotion_ops);
 	fill_serial_with_concurrent_major_ops (&collector->serial_ops_with_concurrent_major);
 	fill_parallel_ops (&collector->parallel_ops);
+	fill_parallel_no_promotion_ops (&collector->parallel_no_promotion_ops);
 }
 
 

@@ -185,6 +185,7 @@ sgen_aligned_addr_hash (gconstpointer ptr)
 
 extern size_t sgen_nursery_size;
 extern size_t sgen_nursery_max_size;
+extern size_t sgen_nursery_min_size;
 extern int sgen_nursery_bits;
 
 extern char *sgen_nursery_start;
@@ -253,15 +254,23 @@ sgen_get_nursery_end (void)
 #define SGEN_FORWARD_OBJECT(obj,fw_addr) do {				\
 		*(void**)(obj) = SGEN_POINTER_TAG_FORWARDED ((fw_addr));	\
 	} while (0)
+
+#define SGEN_VTABLE_GET_FINAL_ADDR(obj, vtable_word) ((SGEN_VTABLE_IS_PINNED (vtable_word)) ? (obj) : (SGEN_VTABLE_IS_FORWARDED (vtable_word)))
+
+/*
+ * We need to account for the object getting pinned by another thread in case,
+ * during a minor, other workers switch to context that doesn't do promotion
+ * FIXME Cement tag
+ */
 #define SGEN_FORWARD_OBJECT_PAR(obj,fw_addr,final_fw_addr) do {			\
 		gpointer old_vtable_word = *(gpointer*)obj;			\
 		gpointer new_vtable_word;					\
-		final_fw_addr = SGEN_VTABLE_IS_FORWARDED (old_vtable_word);	\
+		final_fw_addr = SGEN_VTABLE_GET_FINAL_ADDR (obj, old_vtable_word); \
 		if (final_fw_addr)						\
 			break;							\
 		new_vtable_word = SGEN_POINTER_TAG_FORWARDED ((fw_addr));	\
 		old_vtable_word = InterlockedCompareExchangePointer ((gpointer*)obj, new_vtable_word, old_vtable_word); \
-		final_fw_addr = SGEN_VTABLE_IS_FORWARDED (old_vtable_word);	\
+		final_fw_addr = SGEN_VTABLE_GET_FINAL_ADDR (obj, old_vtable_word); \
 		if (!final_fw_addr)						\
 			final_fw_addr = (fw_addr);				\
 	} while (0)
@@ -549,8 +558,10 @@ typedef struct {
 	GCObject* (*alloc_for_promotion) (GCVTable vtable, GCObject *obj, size_t objsize, gboolean has_references);
 
 	SgenObjectOperations serial_ops;
+	SgenObjectOperations serial_no_promotion_ops;
 	SgenObjectOperations serial_ops_with_concurrent_major;
 	SgenObjectOperations parallel_ops;
+	SgenObjectOperations parallel_no_promotion_ops;
 
 	void (*prepare_to_space) (char *to_space_bitmap, size_t space_bitmap_size);
 	void (*clear_fragments) (void);

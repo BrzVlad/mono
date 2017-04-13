@@ -16,15 +16,25 @@
 
 #ifdef SGEN_SIMPLE_PAR_NURSERY
 /* Not supported with concurrent major yet */
+#ifdef SGEN_NURSERY_NO_PROMOTION
+#define SERIAL_COPY_OBJECT simple_par_no_promotion_nursery_copy_object
+#define SERIAL_COPY_OBJECT_FROM_OBJ simple_par_no_promotion_nursery_copy_object_from_obj
+#else
 #define SERIAL_COPY_OBJECT simple_par_nursery_copy_object
 #define SERIAL_COPY_OBJECT_FROM_OBJ simple_par_nursery_copy_object_from_obj
+#endif
 #else
 #ifdef SGEN_CONCURRENT_MAJOR
 #define SERIAL_COPY_OBJECT simple_nursery_serial_with_concurrent_major_copy_object
 #define SERIAL_COPY_OBJECT_FROM_OBJ simple_nursery_serial_with_concurrent_major_copy_object_from_obj
 #else
+#ifdef SGEN_NURSERY_NO_PROMOTION
+#define SERIAL_COPY_OBJECT simple_no_promotion_nursery_serial_copy_object
+#define SERIAL_COPY_OBJECT_FROM_OBJ simple_no_promotion_nursery_serial_copy_object_from_obj
+#else
 #define SERIAL_COPY_OBJECT simple_nursery_serial_copy_object
 #define SERIAL_COPY_OBJECT_FROM_OBJ simple_nursery_serial_copy_object_from_obj
+#endif
 #endif
 #endif
 
@@ -112,7 +122,42 @@ SERIAL_COPY_OBJECT (GCObject **obj_slot, SgenGrayQueue *queue)
 	}
 #endif
 
-	HEAVY_STAT (++stat_objects_copied_nursery);
+#ifdef SGEN_NURSERY_NO_PROMOTION
+	/*
+	 * Instead of promoting and enqueueing the copy as done below, we only need to
+	 * enqueue the reference. Since we no longer forward the object, we need to pin
+	 * it instead in order to make sure we are not scanning the object repeatedly.
+	 * We also need to register the newly pinned objects to the pin queue, so the 
+	 * nursery collector can unpin all of them before resuming the world.
+	 */
+#ifdef SGEN_SIMPLE_PAR_NURSERY
+	SGEN_PIN_OBJECT (obj);
+	sgen_pin_stage_ptr (obj);
+	GRAY_OBJECT_ENQUEUE_SERIAL (queue, obj, sgen_obj_get_descriptor_safe (obj));
+	copy = obj;
+#else
+	copy = NULL;
+	while (!copy) {
+		gpointer old_vtable_word = *(gpointer*)obj;
+		if (SGEN_VTABLE_IS_PINNED (old_vtable_word)) {
+			copy = obj;
+		} else if ((copy = SGEN_VTABLE_IS_FORWARDED (old_vtable_word))) {
+			SGEN_UPDATE_REFERENCE (obj_slot, copy);
+		} else {
+			gpointer new_vtable_word = SGEN_POINTER_TAG_PINNED (old_vtable_word);
+			gpointer tmp_vtable_word;
+
+			tmp_vtable_word = InterlockedCompareExchangePointer ((gpointer*)obj, new_vtable_word, old_vtable_word);
+			if (tmp_vtable_word == old_vtable_word) {
+				SGEN_PIN_OBJECT (obj);
+				sgen_pin_stage_ptr (obj);
+				GRAY_OBJECT_ENQUEUE_PARALLEL (queue, obj, sgen_obj_get_descriptor_safe (obj));
+				copy = obj;
+			}
+		}
+	}
+#endif
+#else
 
 #ifdef SGEN_SIMPLE_PAR_NURSERY
 	copy = copy_object_no_checks_par (obj, queue);
@@ -120,6 +165,7 @@ SERIAL_COPY_OBJECT (GCObject **obj_slot, SgenGrayQueue *queue)
 	copy = copy_object_no_checks (obj, queue);
 #endif
 	SGEN_UPDATE_REFERENCE (obj_slot, copy);
+#endif
 }
 
 /*
@@ -222,6 +268,43 @@ SERIAL_COPY_OBJECT_FROM_OBJ (GCObject **obj_slot, SgenGrayQueue *queue)
 	}
 #endif
 
+
+#ifdef SGEN_NURSERY_NO_PROMOTION
+	/*
+	 * Instead of promoting and enqueueing the copy as done below, we only need to
+	 * enqueue the reference. Since we no longer forward the object, we need to pin
+	 * it instead in order to make sure we are not scanning the object repeatedly.
+	 * We also need to register the newly pinned objects to the pin queue, so the 
+	 * nursery collector can unpin all of them before resuming the world.
+	 */
+#ifdef SGEN_SIMPLE_PAR_NURSERY
+	SGEN_PIN_OBJECT (obj);
+	sgen_pin_stage_ptr (obj);
+	GRAY_OBJECT_ENQUEUE_SERIAL (queue, obj, sgen_obj_get_descriptor_safe (obj));
+	copy = obj;
+#else
+	copy = NULL;
+	while (!copy) {
+		gpointer old_vtable_word = *(gpointer*)obj;
+		if (SGEN_VTABLE_IS_PINNED (old_vtable_word)) {
+			copy = obj;
+		} else if ((copy = SGEN_VTABLE_IS_FORWARDED (old_vtable_word))) {
+			SGEN_UPDATE_REFERENCE (obj_slot, copy);
+		} else {
+			gpointer new_vtable_word = SGEN_POINTER_TAG_PINNED (old_vtable_word);
+			gpointer tmp_vtable_word;
+
+			tmp_vtable_word = InterlockedCompareExchangePointer ((gpointer*)obj, new_vtable_word, old_vtable_word);
+			if (tmp_vtable_word == old_vtable_word) {
+				SGEN_PIN_OBJECT (obj);
+				sgen_pin_stage_ptr (obj);
+				GRAY_OBJECT_ENQUEUE_PARALLEL (queue, obj, sgen_obj_get_descriptor_safe (obj));
+				copy = obj;
+			}
+		}
+	}
+#endif
+#else
 	HEAVY_STAT (++stat_objects_copied_nursery);
 
 #ifdef SGEN_SIMPLE_PAR_NURSERY
@@ -240,6 +323,7 @@ SERIAL_COPY_OBJECT_FROM_OBJ (GCObject **obj_slot, SgenGrayQueue *queue)
 	STORE_STORE_FENCE;
 #endif
 	SGEN_UPDATE_REFERENCE (obj_slot, copy);
+#endif
 #ifndef SGEN_SIMPLE_NURSERY
 	if (G_UNLIKELY (sgen_ptr_in_nursery (copy) && !sgen_ptr_in_nursery (obj_slot) && !SGEN_OBJECT_IS_CEMENTED (copy)))
 		sgen_add_to_global_remset (obj_slot, copy);

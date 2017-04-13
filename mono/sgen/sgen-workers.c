@@ -453,13 +453,47 @@ sgen_workers_start_all_workers (SgenObjectOperations *object_ops_nopar, SgenObje
 	mono_os_mutex_unlock (&finished_lock);
 }
 
+/*
+ * Used to change the object ops on the fly. They are normally changed by the
+ * main gc thread when starting the workers or by workers when finishing. We
+ * only can race with other workers finishing so we take the finished lock.
+ * Given the context change is not synchronized (it will be picked up when
+ * doing another idle work iteration), workers running simultaneously old and
+ * new contexts are to be expected.
+ */
 void
-sgen_workers_join (void)
+sgen_workers_change_object_ops (SgenObjectOperations *object_ops_nopar, SgenObjectOperations *object_ops_par)
+{
+	mono_os_mutex_lock (&finished_lock);
+
+	if (idle_func_object_ops == idle_func_object_ops_par)
+		idle_func_object_ops = object_ops_par;
+	else
+		idle_func_object_ops = object_ops_nopar;
+	idle_func_object_ops_par = object_ops_par;
+	idle_func_object_ops_nopar = object_ops_nopar;
+
+	mono_os_mutex_unlock (&finished_lock);
+}
+
+gboolean
+sgen_workers_join (gint32 timeout_ms)
 {
 	int i;
 
-	sgen_thread_pool_wait_for_all_jobs (pool);
-	sgen_thread_pool_idle_wait (pool);
+	if (timeout_ms) {
+		gint64 start = mono_msec_ticks ();
+		if (!sgen_thread_pool_timedwait_for_all_jobs (pool, timeout_ms))
+			return FALSE;
+		timeout_ms -= (mono_msec_ticks () - start);
+		if (timeout_ms <= 0)
+			return FALSE;
+		if (!sgen_thread_pool_idle_timedwait (pool, timeout_ms))
+			return FALSE;
+	} else {
+		sgen_thread_pool_wait_for_all_jobs (pool);
+		sgen_thread_pool_idle_wait (pool);
+	}
 	SGEN_ASSERT (0, sgen_workers_all_done (), "Can only signal enqueue work when in no work state");
 
 	/* At this point all the workers have stopped. */
@@ -469,6 +503,7 @@ sgen_workers_join (void)
 		SGEN_ASSERT (0, sgen_gray_object_queue_is_empty (&workers_data [i].private_gray_queue), "Why is there still work left to do?");
 
 	started = FALSE;
+	return TRUE;
 }
 
 /*

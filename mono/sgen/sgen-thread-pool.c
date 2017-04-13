@@ -261,6 +261,29 @@ sgen_thread_pool_idle_wait (SgenThreadPool *pool)
 	mono_os_mutex_unlock (&pool->lock);
 }
 
+gboolean
+sgen_thread_pool_idle_timedwait (SgenThreadPool *pool, guint32 timeout_ms)
+{
+	gint64 start = mono_msec_ticks ();
+	gboolean ret = TRUE;
+	SGEN_ASSERT (0, pool->idle_job_func, "Why are we waiting for idle without an idle function?");
+
+	mono_os_mutex_lock (&pool->lock);
+
+	while (pool->continue_idle_job_func (NULL)) {
+		gint64 now = mono_msec_ticks ();
+		if ((now - start) >= timeout_ms) {
+			ret = FALSE;
+			break;
+		}
+		mono_os_cond_timedwait (&pool->done_cond, &pool->lock, timeout_ms - (now - start));
+	}
+
+	mono_os_mutex_unlock (&pool->lock);
+
+	return ret;
+}
+
 void
 sgen_thread_pool_wait_for_all_jobs (SgenThreadPool *pool)
 {
@@ -270,6 +293,28 @@ sgen_thread_pool_wait_for_all_jobs (SgenThreadPool *pool)
 		mono_os_cond_wait (&pool->done_cond, &pool->lock);
 
 	mono_os_mutex_unlock (&pool->lock);
+}
+
+gboolean
+sgen_thread_pool_timedwait_for_all_jobs (SgenThreadPool *pool, guint32 timeout_ms)
+{
+	gint64 start = mono_msec_ticks ();
+	gboolean ret = TRUE;
+
+	mono_os_mutex_lock (&pool->lock);
+
+	while (!sgen_pointer_queue_is_empty (&pool->job_queue)) {
+		gint64 now = mono_msec_ticks ();
+		if ((now - start) >= timeout_ms) {
+			ret = FALSE;
+			break;
+		}
+		mono_os_cond_timedwait (&pool->done_cond, &pool->lock, timeout_ms - (now - start));
+	}
+
+	mono_os_mutex_unlock (&pool->lock);
+
+	return ret;
 }
 
 /* Return 0 if is not a thread pool thread or the thread number otherwise */

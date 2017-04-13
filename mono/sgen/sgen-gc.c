@@ -1622,6 +1622,7 @@ collect_nursery (const char *reason, gboolean is_overflow, SgenGrayQueue *unpin_
 	SgenObjectOperations *object_ops_nopar, *object_ops_par = NULL;
 	ScanCopyContext ctx;
 	int duration;
+	gboolean collection_timeout = FALSE;
 	TV_DECLARE (atv);
 	TV_DECLARE (btv);
 	SGEN_TV_DECLARE (last_minor_collection_start_tv);
@@ -1727,9 +1728,14 @@ collect_nursery (const char *reason, gboolean is_overflow, SgenGrayQueue *unpin_
 	enqueue_scan_from_roots_jobs (&gc_thread_gray_queue, nursery_section->data, nursery_section->end_data, is_parallel ? NULL : object_ops_nopar, is_parallel);
 
 	if (is_parallel) {
+		gboolean is_conc_start = reason [0] == 'C' && reason [1] == 'o';
 		gray_queue_redirect (&gc_thread_gray_queue);
 		sgen_workers_start_all_workers (object_ops_nopar, object_ops_par, NULL);
-		sgen_workers_join ();
+		collection_timeout = !sgen_workers_join (is_conc_start ? 0 : sgen_max_pause_time * 4 / 5);
+		if (collection_timeout) {
+			sgen_workers_change_object_ops (&sgen_minor_collector.serial_no_promotion_ops, &sgen_minor_collector.parallel_no_promotion_ops);
+			sgen_workers_join (0);
+		}
 	}
 
 	TV_GETTIME (btv);
@@ -1741,7 +1747,7 @@ collect_nursery (const char *reason, gboolean is_overflow, SgenGrayQueue *unpin_
 	time_minor_finish_gray_stack += TV_ELAPSED (btv, atv);
 	sgen_client_binary_protocol_mark_end (GENERATION_NURSERY);
 
-	if (objects_pinned) {
+	if (objects_pinned || collection_timeout) {
 		sgen_optimize_pin_queue ();
 		sgen_pinning_setup_section (nursery_section);
 	}
@@ -1758,7 +1764,7 @@ collect_nursery (const char *reason, gboolean is_overflow, SgenGrayQueue *unpin_
 	duration = (int)(TV_ELAPSED (last_minor_collection_start_tv, btv) / 10000);
 	if (duration < (sgen_max_pause_time / 3))
 		sgen_resize_nursery (FALSE);
-	else if (duration > (sgen_max_pause_time * 2 / 3))
+	else if (duration > (sgen_max_pause_time * 5 / 6))
 		sgen_resize_nursery (TRUE);
 
 	/* walk the pin_queue, build up the fragment list of free memory, unmark
@@ -1766,9 +1772,28 @@ collect_nursery (const char *reason, gboolean is_overflow, SgenGrayQueue *unpin_
 	 * next allocations.
 	 */
 	sgen_client_binary_protocol_reclaim_start (GENERATION_NURSERY);
-	fragment_total = sgen_build_nursery_fragments (nursery_section, unpin_queue);
-	if (!fragment_total)
+	if (!collection_timeout) {
+		fragment_total = sgen_build_nursery_fragments (nursery_section, unpin_queue);
+		if (!fragment_total)
+			degraded_mode = 1;
+	} else {
+		void **start = sgen_pinning_get_entry (nursery_section->pin_queue_first_entry);
+		void **end = sgen_pinning_get_entry (nursery_section->pin_queue_last_entry);
+		/*
+		 * We unpin all objects and we do degraded allocations for a while
+		 * until the next nursery collection, which is going to clean up.
+		 * No nursery fragments are created so no tlab allocations can take
+		 * place.
+		 */
+		while (start < end) {
+			void *obj = *start;
+			SGEN_UNPIN_OBJECT (obj);
+			start++;
+		}
 		degraded_mode = 1;
+
+		fprintf (stderr, "Degraded\n");
+	}
 
 	/* Clear TLABs for all threads */
 	sgen_clear_tlabs ();
@@ -1959,7 +1984,7 @@ major_copy_or_mark_from_roots (SgenGrayQueue *gc_thread_gray_queue, size_t *old_
 			 */
 			sgen_workers_start_all_workers (object_ops_nopar, object_ops_par, NULL);
 
-			sgen_workers_join ();
+			sgen_workers_join (0);
 		}
 	}
 
@@ -2029,7 +2054,7 @@ major_copy_or_mark_from_roots (SgenGrayQueue *gc_thread_gray_queue, size_t *old_
 			 * table.
 			 */
 			sgen_workers_start_all_workers (object_ops_nopar, object_ops_par, NULL);
-			sgen_workers_join ();
+			sgen_workers_join (0);
 		}
 	}
 
