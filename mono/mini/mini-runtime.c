@@ -3542,6 +3542,15 @@ mini_init (const char *filename, const char *runtime_version)
 	}
 #endif
 
+	{
+		int length = strlen (filename);
+		int comp = strlen ("MonoDevelop.exe");
+		if (strcmp (filename + length - comp, "MonoDevelop.exe")) {
+			/* Not monodevelop, low priority */
+			setpriority (PRIO_PROCESS, getpid (), 19);
+		}
+	}
+
 	mono_os_mutex_init_recursive (&jit_mutex);
 
 	mono_cross_helpers_run ();

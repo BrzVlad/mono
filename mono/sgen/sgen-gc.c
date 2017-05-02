@@ -1095,6 +1095,7 @@ finish_gray_stack (int generation, ScanCopyContext ctx)
 	 */
 	sgen_client_mark_togglerefs (start_addr, end_addr, ctx);
 
+	binary_protocol_custom_event_start (sgen_timestamp ());
 	/*
 	 * Walk the ephemeron tables marking all values with reachable keys. This must be completely done
 	 * before processing finalizable objects and non-tracking weak links to avoid finalizing/clearing
@@ -1168,6 +1169,7 @@ finish_gray_stack (int generation, ScanCopyContext ctx)
 
 	sgen_client_clear_unreachable_ephemerons (ctx);
 
+	binary_protocol_custom_event_end (sgen_timestamp ());
 	/*
 	 * We clear togglerefs only after all possible chances of revival are done. 
 	 * This is semantically more inline with what users expect and it allows for
