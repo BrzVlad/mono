@@ -565,6 +565,13 @@ ms_alloc_block (int size_index, gboolean pinned, gboolean has_references)
 
 	add_free_block (free_blocks, size_index, info);
 
+	{
+		MSBlockInfo *block;
+		FOREACH_BLOCK_NO_LOCK (block) {
+			SGEN_ASSERT (0, block != info, "Block %p already present in allocated_blocks", block);
+		} END_FOREACH_BLOCK_NO_LOCK
+	}
+
 	sgen_array_list_add (&allocated_blocks, BLOCK_TAG (info), 0, FALSE);
 
 	SGEN_ATOMIC_ADD_P (num_major_sections, 1);
@@ -2135,6 +2142,9 @@ major_free_swept_blocks (size_t section_reserve)
 
 		sgen_qsort (empty_block_arr, num_empty_blocks, sizeof (void*), compare_pointers);
 
+		for (i = 1; i < num_empty_blocks; i++)
+			SGEN_ASSERT (0, empty_block_arr [i] != empty_block_arr [i - 1], "Block %p is duplicated in empty block list", empty_block_arr [i]);
+
 		/*
 		 * We iterate over the free blocks, trying to find MS_BLOCK_ALLOC_NUM
 		 * contiguous ones.  If we do, we free them.  If that's not enough to get to
@@ -2152,7 +2162,7 @@ major_free_swept_blocks (size_t section_reserve)
 			for (i = 0; i < arr_length; ++i) {
 				int d = dest;
 				void *block = empty_block_arr [i];
-				SGEN_ASSERT (6, block, "we're not shifting correctly");
+				SGEN_ASSERT (0, block, "we're not shifting correctly");
 				if (i != dest) {
 					empty_block_arr [dest] = block;
 					/*
@@ -2168,7 +2178,7 @@ major_free_swept_blocks (size_t section_reserve)
 					continue;
 				}
 
-				SGEN_ASSERT (6, first >= 0 && d > first, "algorithm is wrong");
+				SGEN_ASSERT (0, first >= 0 && d > first, "algorithm is wrong");
 
 				if ((char*)block != ((char*)empty_block_arr [d-1]) + MS_BLOCK_SIZE) {
 					first = d;
@@ -2201,9 +2211,9 @@ major_free_swept_blocks (size_t section_reserve)
 				}
 			}
 
-			SGEN_ASSERT (6, dest <= i && dest <= arr_length, "array length is off");
+			SGEN_ASSERT (0, dest <= i && dest <= arr_length, "array length is off");
 			arr_length = dest;
-			SGEN_ASSERT (6, arr_length == num_empty_blocks, "array length is off");
+			SGEN_ASSERT (0, arr_length == num_empty_blocks, "array length is off");
 
 			num_blocks >>= 1;
 		}
@@ -2212,7 +2222,7 @@ major_free_swept_blocks (size_t section_reserve)
 		rebuild_next = (void**)&empty_blocks;
 		for (i = 0; i < arr_length; ++i) {
 			void *block = empty_block_arr [i];
-			SGEN_ASSERT (6, block, "we're missing blocks");
+			SGEN_ASSERT (0, block, "we're missing blocks");
 			*rebuild_next = block;
 			rebuild_next = (void**)block;
 		}
