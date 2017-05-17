@@ -2194,6 +2194,7 @@ major_free_swept_blocks (size_t section_reserve)
 					 * we're iterating.
 					 */
 					int j;
+					binary_protocol_block_unmap (empty_block_arr [first], MS_BLOCK_SIZE * num_blocks);
 					sgen_free_os_memory (empty_block_arr [first], MS_BLOCK_SIZE * num_blocks, SGEN_ALLOC_HEAP, MONO_MEM_ACCOUNT_SGEN_MARKSWEEP);
 					for (j = first; j <= d; ++j)
 						empty_block_arr [j] = NULL;
@@ -2244,6 +2245,7 @@ major_free_swept_blocks (size_t section_reserve)
 
 	while (num_empty_blocks > section_reserve) {
 		void *next = *(void**)empty_blocks;
+		binary_protocol_block_unmap (empty_blocks, MS_BLOCK_SIZE);
 		sgen_free_os_memory (empty_blocks, MS_BLOCK_SIZE, SGEN_ALLOC_HEAP, MONO_MEM_ACCOUNT_SGEN_MARKSWEEP);
 		empty_blocks = next;
 		/*
