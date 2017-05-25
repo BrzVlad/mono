@@ -281,6 +281,7 @@ binary_protocol_flush_buffers (gboolean force)
 	BinaryProtocolBuffer *header;
 	BinaryProtocolBuffer *buf;
 	BinaryProtocolBuffer **bufs;
+	size_t alloc_size = 16384;
 
 	if (binary_protocol_file == invalid_file_value)
 		return FALSE;
@@ -291,7 +292,9 @@ binary_protocol_flush_buffers (gboolean force)
 	header = binary_protocol_buffers;
 	for (buf = header; buf != NULL; buf = buf->next)
 		++num_buffers;
-	bufs = (BinaryProtocolBuffer **)sgen_alloc_internal_dynamic (num_buffers * sizeof (BinaryProtocolBuffer*), INTERNAL_MEM_BINARY_PROTOCOL, TRUE);
+	if (num_buffers * sizeof (BinaryProtocolBuffer*) > alloc_size)
+		alloc_size = num_buffers * sizeof (BinaryProtocolBuffer*);
+	bufs = (BinaryProtocolBuffer **)sgen_alloc_internal_dynamic (alloc_size, INTERNAL_MEM_BINARY_PROTOCOL, TRUE);
 	for (buf = header, i = 0; buf != NULL; buf = buf->next, i++)
 		bufs [i] = buf;
 	SGEN_ASSERT (0, i == num_buffers, "Binary protocol buffer count error");
@@ -307,7 +310,7 @@ binary_protocol_flush_buffers (gboolean force)
 		binary_protocol_check_file_overflow ();
 	}
 
-	sgen_free_internal_dynamic (buf, num_buffers * sizeof (BinaryProtocolBuffer*), INTERNAL_MEM_BINARY_PROTOCOL);
+	sgen_free_internal_dynamic (buf, alloc_size, INTERNAL_MEM_BINARY_PROTOCOL);
 
 	if (!force)
 		unlock_exclusive ();

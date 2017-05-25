@@ -388,6 +388,16 @@ sgen_client_binary_protocol_block_unmap (gpointer addr, size_t size)
 }
 
 static void G_GNUC_UNUSED
+sgen_client_binary_protocol_vmem_map (gpointer addr, gpointer hw_addr, size_t size, int provenance)
+{
+}
+
+static void G_GNUC_UNUSED
+sgen_client_binary_protocol_vmem_unmap (gpointer addr, gpointer hw_addr, size_t size, int provenance)
+{
+}
+
+static void G_GNUC_UNUSED
 sgen_client_binary_protocol_block_set_state (gpointer addr, size_t size, int old, int new_)
 {
 }

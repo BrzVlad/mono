@@ -175,7 +175,7 @@ sgen_alloc_internal_dynamic (size_t size, int type, gboolean assert_on_failure)
 	void *p;
 
 	if (size > allocator_sizes [NUM_ALLOCATORS - 1]) {
-		p = sgen_alloc_os_memory (size, (SgenAllocFlags)(SGEN_ALLOC_INTERNAL | SGEN_ALLOC_ACTIVATE), NULL, MONO_MEM_ACCOUNT_SGEN_INTERNAL);
+		p = sgen_alloc_os_memory (size, (SgenAllocFlags)(SGEN_ALLOC_INTERNAL | SGEN_ALLOC_ACTIVATE), NULL, type == INTERNAL_MEM_BINARY_PROTOCOL ? MONO_MEM_ACCOUNT_SGEN_BINARY_PROTOCOL : MONO_MEM_ACCOUNT_SGEN_INTERNAL);
 		if (!p)
 			sgen_assert_memory_alloc (NULL, size, description_for_type (type));
 	} else {
@@ -202,7 +202,7 @@ sgen_free_internal_dynamic (void *addr, size_t size, int type)
 		return;
 
 	if (size > allocator_sizes [NUM_ALLOCATORS - 1])
-		sgen_free_os_memory (addr, size, SGEN_ALLOC_INTERNAL, MONO_MEM_ACCOUNT_SGEN_INTERNAL);
+		sgen_free_os_memory (addr, size, SGEN_ALLOC_INTERNAL, type == INTERNAL_MEM_BINARY_PROTOCOL ? MONO_MEM_ACCOUNT_SGEN_BINARY_PROTOCOL : MONO_MEM_ACCOUNT_SGEN_INTERNAL);
 	else
 		mono_lock_free_free (addr, block_size (size));
 }

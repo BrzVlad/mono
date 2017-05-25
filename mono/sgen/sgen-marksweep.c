@@ -2109,6 +2109,8 @@ compare_pointers (const void *va, const void *vb) {
 static void
 major_free_swept_blocks (size_t section_reserve)
 {
+	section_reserve = 0;
+
 	SGEN_ASSERT (0, sweep_state == SWEEP_STATE_SWEPT, "Sweeping must have finished before freeing blocks");
 
 #ifdef TARGET_WIN32

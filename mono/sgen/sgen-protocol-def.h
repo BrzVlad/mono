@@ -463,6 +463,20 @@ MATCH_INDEX (matches_interval (ptr, entry->addr, entry->size) ? 0 : BINARY_PROTO
 IS_VTABLE_MATCH (FALSE)
 END_PROTOCOL_ENTRY
 
+BEGIN_PROTOCOL_ENTRY4 (binary_protocol_vmem_map, TYPE_POINTER, addr, TYPE_POINTER, hw_addr, TYPE_SIZE, size, TYPE_INT, provenance)
+DEFAULT_PRINT ()
+IS_ALWAYS_MATCH (FALSE)
+MATCH_INDEX (matches_interval (ptr, entry->addr, entry->size) ? 0 : BINARY_PROTOCOL_NO_MATCH)
+IS_VTABLE_MATCH (FALSE)
+END_PROTOCOL_ENTRY
+
+BEGIN_PROTOCOL_ENTRY4 (binary_protocol_vmem_unmap, TYPE_POINTER, addr, TYPE_POINTER, hw_addr, TYPE_SIZE, size, TYPE_INT, provenance)
+DEFAULT_PRINT ()
+IS_ALWAYS_MATCH (FALSE)
+MATCH_INDEX (matches_interval (ptr, entry->addr, entry->size) ? 0 : BINARY_PROTOCOL_NO_MATCH)
+IS_VTABLE_MATCH (FALSE)
+END_PROTOCOL_ENTRY
+
 #undef BEGIN_PROTOCOL_ENTRY0
 #undef BEGIN_PROTOCOL_ENTRY1
 #undef BEGIN_PROTOCOL_ENTRY2
