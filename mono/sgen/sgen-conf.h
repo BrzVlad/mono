@@ -97,7 +97,7 @@ typedef mword SgenDescriptor;
 
 #ifndef SGEN_HEAVY_BINARY_PROTOCOL
 #ifndef HEAVY_STATISTICS
-#define MANAGED_ALLOCATION
+//#define MANAGED_ALLOCATION
 #ifndef XDOMAIN_CHECKS_IN_WBARRIER
 #define MANAGED_WBARRIER
 #endif

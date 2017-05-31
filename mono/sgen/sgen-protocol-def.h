@@ -99,19 +99,19 @@ MATCH_INDEX (BINARY_PROTOCOL_MATCH)
 IS_VTABLE_MATCH (FALSE)
 END_PROTOCOL_ENTRY
 
-BEGIN_PROTOCOL_ENTRY_HEAVY2 (binary_protocol_block_alloc, TYPE_POINTER, addr, TYPE_SIZE, size)
+BEGIN_PROTOCOL_ENTRY2 (binary_protocol_block_alloc, TYPE_POINTER, addr, TYPE_SIZE, size)
 DEFAULT_PRINT ()
 IS_ALWAYS_MATCH (FALSE)
 MATCH_INDEX (matches_interval (ptr, entry->addr, entry->size) ? 0 : BINARY_PROTOCOL_NO_MATCH)
 IS_VTABLE_MATCH (FALSE)
-END_PROTOCOL_ENTRY_HEAVY
+END_PROTOCOL_ENTRY
 
-BEGIN_PROTOCOL_ENTRY_HEAVY2 (binary_protocol_block_free, TYPE_POINTER, addr, TYPE_SIZE, size)
+BEGIN_PROTOCOL_ENTRY2 (binary_protocol_block_free, TYPE_POINTER, addr, TYPE_SIZE, size)
 DEFAULT_PRINT ()
 IS_ALWAYS_MATCH (FALSE)
 MATCH_INDEX (matches_interval (ptr, entry->addr, entry->size) ? 0 : BINARY_PROTOCOL_NO_MATCH)
 IS_VTABLE_MATCH (FALSE)
-END_PROTOCOL_ENTRY_HEAVY
+END_PROTOCOL_ENTRY
 
 BEGIN_PROTOCOL_ENTRY_HEAVY4 (binary_protocol_block_set_state, TYPE_POINTER, addr, TYPE_SIZE, size, TYPE_INT, old, TYPE_INT, new_)
 DEFAULT_PRINT ()
@@ -149,19 +149,19 @@ MATCH_INDEX (BINARY_PROTOCOL_MATCH)
 IS_VTABLE_MATCH (FALSE)
 END_PROTOCOL_ENTRY
 
-BEGIN_PROTOCOL_ENTRY_HEAVY4 (binary_protocol_alloc, TYPE_POINTER, obj, TYPE_POINTER, vtable, TYPE_SIZE, size, TYPE_POINTER, provenance)
+BEGIN_PROTOCOL_ENTRY4 (binary_protocol_alloc, TYPE_POINTER, obj, TYPE_POINTER, vtable, TYPE_SIZE, size, TYPE_POINTER, provenance)
 DEFAULT_PRINT ()
 IS_ALWAYS_MATCH (FALSE)
 MATCH_INDEX (matches_interval (ptr, entry->obj, entry->size) ? 0 : BINARY_PROTOCOL_NO_MATCH)
 IS_VTABLE_MATCH (ptr == entry->vtable)
-END_PROTOCOL_ENTRY_HEAVY
+END_PROTOCOL_ENTRY
 
-BEGIN_PROTOCOL_ENTRY_HEAVY4 (binary_protocol_copy, TYPE_POINTER, from, TYPE_POINTER, to, TYPE_POINTER, vtable, TYPE_SIZE, size)
+BEGIN_PROTOCOL_ENTRY4 (binary_protocol_copy, TYPE_POINTER, from, TYPE_POINTER, to, TYPE_POINTER, vtable, TYPE_SIZE, size)
 DEFAULT_PRINT ()
 IS_ALWAYS_MATCH (FALSE)
 MATCH_INDEX (matches_interval (ptr, entry->from, entry->size) ? 0 : matches_interval (ptr, entry->to, entry->size) ? 1 : BINARY_PROTOCOL_NO_MATCH)
 IS_VTABLE_MATCH (ptr == entry->vtable)
-END_PROTOCOL_ENTRY_HEAVY
+END_PROTOCOL_ENTRY
 
 BEGIN_PROTOCOL_ENTRY_HEAVY2 (binary_protocol_pin_stage, TYPE_POINTER, addr_ptr, TYPE_POINTER, addr)
 DEFAULT_PRINT ()
@@ -170,19 +170,19 @@ MATCH_INDEX (ptr == entry->addr_ptr ? 0 : ptr == entry->addr ? 1 : BINARY_PROTOC
 IS_VTABLE_MATCH (FALSE)
 END_PROTOCOL_ENTRY_HEAVY
 
-BEGIN_PROTOCOL_ENTRY_HEAVY1 (binary_protocol_cement_stage, TYPE_POINTER, addr)
+BEGIN_PROTOCOL_ENTRY1 (binary_protocol_cement_stage, TYPE_POINTER, addr)
 DEFAULT_PRINT ()
 IS_ALWAYS_MATCH (FALSE)
 MATCH_INDEX (ptr == entry->addr ? 0 : BINARY_PROTOCOL_NO_MATCH)
 IS_VTABLE_MATCH (FALSE)
-END_PROTOCOL_ENTRY_HEAVY
+END_PROTOCOL_ENTRY
 
-BEGIN_PROTOCOL_ENTRY_HEAVY3 (binary_protocol_pin, TYPE_POINTER, obj, TYPE_POINTER, vtable, TYPE_SIZE, size)
+BEGIN_PROTOCOL_ENTRY3 (binary_protocol_pin, TYPE_POINTER, obj, TYPE_POINTER, vtable, TYPE_SIZE, size)
 DEFAULT_PRINT ()
 IS_ALWAYS_MATCH (FALSE)
 MATCH_INDEX (matches_interval (ptr, entry->obj, entry->size) ? 0 : BINARY_PROTOCOL_NO_MATCH)
 IS_VTABLE_MATCH (ptr == entry->vtable)
-END_PROTOCOL_ENTRY_HEAVY
+END_PROTOCOL_ENTRY
 
 BEGIN_PROTOCOL_ENTRY_HEAVY3 (binary_protocol_mark, TYPE_POINTER, obj, TYPE_POINTER, vtable, TYPE_SIZE, size)
 DEFAULT_PRINT ()
@@ -205,12 +205,12 @@ MATCH_INDEX (matches_interval (ptr, entry->obj, entry->size) ? 0 : BINARY_PROTOC
 IS_VTABLE_MATCH (FALSE)
 END_PROTOCOL_ENTRY_HEAVY
 
-BEGIN_PROTOCOL_ENTRY_HEAVY3 (binary_protocol_scan_process_reference, TYPE_POINTER, obj, TYPE_POINTER, ptr, TYPE_POINTER, value)
+BEGIN_PROTOCOL_ENTRY3 (binary_protocol_scan_process_reference, TYPE_POINTER, obj, TYPE_POINTER, ptr, TYPE_POINTER, value)
 DEFAULT_PRINT ()
 IS_ALWAYS_MATCH (FALSE)
 MATCH_INDEX (ptr == entry->obj ? 0 : ptr == entry->ptr ? 1 : ptr == entry->value ? 2 : BINARY_PROTOCOL_NO_MATCH)
 IS_VTABLE_MATCH (FALSE)
-END_PROTOCOL_ENTRY_HEAVY
+END_PROTOCOL_ENTRY
 
 BEGIN_PROTOCOL_ENTRY_HEAVY4 (binary_protocol_scan_stack, TYPE_POINTER, thread, TYPE_POINTER, stack_start, TYPE_POINTER, stack_end, TYPE_INT, skip_reason)
 DEFAULT_PRINT ()
@@ -240,19 +240,19 @@ MATCH_INDEX (ptr == entry->ptr ? 0 : matches_interval (ptr, entry->old_value, en
 IS_VTABLE_MATCH (ptr == entry->vtable)
 END_PROTOCOL_ENTRY_HEAVY
 
-BEGIN_PROTOCOL_ENTRY_HEAVY3 (binary_protocol_cleanup, TYPE_POINTER, ptr, TYPE_POINTER, vtable, TYPE_SIZE, size)
+BEGIN_PROTOCOL_ENTRY3 (binary_protocol_cleanup, TYPE_POINTER, ptr, TYPE_POINTER, vtable, TYPE_SIZE, size)
 DEFAULT_PRINT ()
 IS_ALWAYS_MATCH (FALSE)
 MATCH_INDEX (matches_interval (ptr, entry->ptr, entry->size) ? 0 : BINARY_PROTOCOL_NO_MATCH)
 IS_VTABLE_MATCH (ptr == entry->vtable)
-END_PROTOCOL_ENTRY_HEAVY
+END_PROTOCOL_ENTRY
 
-BEGIN_PROTOCOL_ENTRY_HEAVY2 (binary_protocol_empty, TYPE_POINTER, start, TYPE_SIZE, size)
+BEGIN_PROTOCOL_ENTRY2 (binary_protocol_empty, TYPE_POINTER, start, TYPE_SIZE, size)
 DEFAULT_PRINT ()
 IS_ALWAYS_MATCH (FALSE)
 MATCH_INDEX (matches_interval (ptr, entry->start, entry->size) ? 0 : BINARY_PROTOCOL_NO_MATCH)
 IS_VTABLE_MATCH (FALSE)
-END_PROTOCOL_ENTRY_HEAVY
+END_PROTOCOL_ENTRY
 
 BEGIN_PROTOCOL_ENTRY2 (binary_protocol_thread_suspend, TYPE_POINTER, thread, TYPE_POINTER, stopped_ip)
 DEFAULT_PRINT ()
@@ -289,19 +289,19 @@ MATCH_INDEX (ptr == entry->obj ? 0 : ptr == entry->value ? 3 : ptr == entry->obj
 IS_VTABLE_MATCH (ptr == entry->obj_vtable || ptr == entry->value_vtable)
 END_PROTOCOL_ENTRY
 
-BEGIN_PROTOCOL_ENTRY_HEAVY4 (binary_protocol_alloc_pinned, TYPE_POINTER, obj, TYPE_POINTER, vtable, TYPE_SIZE, size, TYPE_POINTER, provenance)
+BEGIN_PROTOCOL_ENTRY4 (binary_protocol_alloc_pinned, TYPE_POINTER, obj, TYPE_POINTER, vtable, TYPE_SIZE, size, TYPE_POINTER, provenance)
 DEFAULT_PRINT ()
 IS_ALWAYS_MATCH (FALSE)
 MATCH_INDEX (matches_interval (ptr, entry->obj, entry->size) ? 0 : BINARY_PROTOCOL_NO_MATCH)
 IS_VTABLE_MATCH (ptr == entry->vtable)
-END_PROTOCOL_ENTRY_HEAVY
+END_PROTOCOL_ENTRY
 
-BEGIN_PROTOCOL_ENTRY_HEAVY4 (binary_protocol_alloc_degraded, TYPE_POINTER, obj, TYPE_POINTER, vtable, TYPE_SIZE, size, TYPE_POINTER, provenance)
+BEGIN_PROTOCOL_ENTRY4 (binary_protocol_alloc_degraded, TYPE_POINTER, obj, TYPE_POINTER, vtable, TYPE_SIZE, size, TYPE_POINTER, provenance)
 DEFAULT_PRINT ()
 IS_ALWAYS_MATCH (FALSE)
 MATCH_INDEX (matches_interval (ptr, entry->obj, entry->size) ? 0 : BINARY_PROTOCOL_NO_MATCH)
 IS_VTABLE_MATCH (ptr == entry->vtable)
-END_PROTOCOL_ENTRY_HEAVY
+END_PROTOCOL_ENTRY
 
 BEGIN_PROTOCOL_ENTRY_HEAVY2 (binary_protocol_card_scan, TYPE_POINTER, start, TYPE_SIZE, size)
 DEFAULT_PRINT ()
@@ -324,26 +324,26 @@ MATCH_INDEX (BINARY_PROTOCOL_MATCH)
 IS_VTABLE_MATCH (FALSE)
 END_PROTOCOL_ENTRY
 
-BEGIN_PROTOCOL_ENTRY_HEAVY3 (binary_protocol_dislink_add, TYPE_POINTER, link, TYPE_POINTER, obj, TYPE_BOOL, track)
+BEGIN_PROTOCOL_ENTRY3 (binary_protocol_dislink_add, TYPE_POINTER, link, TYPE_POINTER, obj, TYPE_BOOL, track)
 DEFAULT_PRINT ()
 IS_ALWAYS_MATCH (FALSE)
 MATCH_INDEX (ptr == entry->link ? 0 : ptr == entry->obj ? 1 : BINARY_PROTOCOL_NO_MATCH)
 IS_VTABLE_MATCH (FALSE)
-END_PROTOCOL_ENTRY_HEAVY
+END_PROTOCOL_ENTRY
 
-BEGIN_PROTOCOL_ENTRY_HEAVY3 (binary_protocol_dislink_update, TYPE_POINTER, link, TYPE_POINTER, obj, TYPE_BOOL, track)
+BEGIN_PROTOCOL_ENTRY3 (binary_protocol_dislink_update, TYPE_POINTER, link, TYPE_POINTER, obj, TYPE_BOOL, track)
 CUSTOM_PRINT(entry->obj ? printf ("link 0x%"MWORD_FORMAT_SPEC_P" obj 0x%"MWORD_FORMAT_SPEC_P" track %d", entry->link, entry->obj, entry->track) : printf ("link 0x%"MWORD_FORMAT_SPEC_P" obj 0x%"MWORD_FORMAT_SPEC_P, entry->link, entry->obj))
 IS_ALWAYS_MATCH (FALSE)
 MATCH_INDEX (ptr == entry->link ? 0 : ptr == entry->obj ? 1 : BINARY_PROTOCOL_NO_MATCH)
 IS_VTABLE_MATCH (FALSE)
-END_PROTOCOL_ENTRY_HEAVY
+END_PROTOCOL_ENTRY
 
-BEGIN_PROTOCOL_ENTRY_HEAVY2 (binary_protocol_dislink_remove, TYPE_POINTER, link, TYPE_BOOL, track)
+BEGIN_PROTOCOL_ENTRY2 (binary_protocol_dislink_remove, TYPE_POINTER, link, TYPE_BOOL, track)
 DEFAULT_PRINT ()
 IS_ALWAYS_MATCH (FALSE)
 MATCH_INDEX (ptr == entry->link ? 0 : BINARY_PROTOCOL_NO_MATCH)
 IS_VTABLE_MATCH (FALSE)
-END_PROTOCOL_ENTRY_HEAVY
+END_PROTOCOL_ENTRY
 
 BEGIN_PROTOCOL_ENTRY1 (binary_protocol_domain_unload_begin, TYPE_POINTER, domain)
 DEFAULT_PRINT ()
