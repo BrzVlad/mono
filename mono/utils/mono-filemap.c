@@ -34,7 +34,7 @@ mono_file_map_open (const char* name)
 	if (wname == NULL)
 		return NULL;
 	result = (MonoFileMap *) _wfopen ((wchar_t *) wname, L"rb");
-	g_free (wname);
+	g_free_vb (wname);
 	return result;
 #else
 	int fd = open (name, O_RDONLY);

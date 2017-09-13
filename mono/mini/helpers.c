@@ -271,7 +271,7 @@ mono_disassemble_code (MonoCompile *cfg, guint8 *code, int size, char *id)
 #ifdef HAVE_SYSTEM
 	cmd = g_strdup_printf (ARCH_PREFIX AS_CMD " %s -o %s", as_file, o_file);
 	unused = system (cmd); 
-	g_free (cmd);
+	g_free_vb (cmd);
 	if (!objdump_args)
 		objdump_args = g_strdup ("");
 
@@ -284,13 +284,13 @@ mono_disassemble_code (MonoCompile *cfg, guint8 *code, int size, char *id)
 	 */
 	cmd = g_strdup_printf (ARCH_PREFIX "strip -x %s", o_file);
 	unused = system (cmd);
-	g_free (cmd);
+	g_free_vb (cmd);
 #endif
 
 	cmd = g_strdup_printf (ARCH_PREFIX DIS_CMD " %s %s", objdump_args, o_file);
 	unused = system (cmd);
-	g_free (cmd);
-	g_free (objdump_args);
+	g_free_vb (cmd);
+	g_free_vb (objdump_args);
 #else
 	g_assert_not_reached ();
 #endif /* HAVE_SYSTEM */
@@ -299,8 +299,8 @@ mono_disassemble_code (MonoCompile *cfg, guint8 *code, int size, char *id)
 	unlink (o_file);
 	unlink (as_file);
 #endif
-	g_free (o_file);
-	g_free (as_file);
+	g_free_vb (o_file);
+	g_free_vb (as_file);
 #endif
 }
 

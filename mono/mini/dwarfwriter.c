@@ -97,7 +97,7 @@ mono_dwarf_writer_create (MonoImageWriter *writer, FILE *il_file, int il_file_st
 void
 mono_dwarf_writer_destroy (MonoDwarfWriter *w)
 {
-	g_free (w);
+	g_free_vb (w);
 }
 
 int
@@ -350,7 +350,7 @@ emit_cie (MonoDwarfWriter *w)
 		guint32 uw_info_len;
 		guint8 *uw_info = mono_unwind_ops_encode (w->cie_program, &uw_info_len);
 		emit_bytes (w, uw_info, uw_info_len);
-		g_free (uw_info);
+		g_free_vb (uw_info);
 	}
 
 	emit_alignment (w, sizeof (gpointer));
@@ -411,7 +411,7 @@ emit_fde (MonoDwarfWriter *w, int fde_index, char *start_symbol, char *end_symbo
 	/* Convert the list of MonoUnwindOps to the format used by DWARF */	
 	uw_info = mono_unwind_ops_encode_full (l, &uw_info_len, FALSE);
 	emit_bytes (w, uw_info, uw_info_len);
-	g_free (uw_info);
+	g_free_vb (uw_info);
 
 	emit_alignment (w, sizeof (mgreg_t));
 	emit_label (w, symbol2);
@@ -615,7 +615,7 @@ mono_dwarf_escape_path (const char *name)
 		int len, i, j;
 
 		len = strlen (name);
-		s = (char *)g_malloc0 ((len + 1) * 2);
+		s = (char *)g_malloc0_vb ((len + 1) * 2);
 		j = 0;
 		for (i = 0; i < len; ++i) {
 			if (name [i] == '\\') {
@@ -681,7 +681,7 @@ emit_all_line_number_info (MonoDwarfWriter *w)
 				dir_index --;
 			}
 
-			g_free (dir);
+			g_free_vb (dir);
 		}
 	}
 
@@ -849,8 +849,8 @@ mono_dwarf_writer_emit_base_info (MonoDwarfWriter *w, const char *cu_name, GSLis
 	build_info = mono_get_runtime_build_info ();
 	s = g_strdup_printf ("Mono AOT Compiler %s", build_info);
 	emit_string (w, s);
-	g_free (build_info);
-	g_free (s);
+	g_free_vb (build_info);
+	g_free_vb (s);
 	emit_string (w, cu_name);
 	emit_string (w, "");
 	emit_byte (w, DW_LANG_C);
@@ -1113,7 +1113,7 @@ emit_class_dwarf_info (MonoDwarfWriter *w, MonoClass *klass, gboolean vtype)
 	emit_uleb128 (w, ABBREV_REFERENCE_TYPE);
 	emit_symbol_diff (w, die, ".Ldebug_info_start", 0);
 
-	g_free (full_name);
+	g_free_vb (full_name);
 
 	if (emit_namespace) {
 		/* Namespace end */
@@ -1334,13 +1334,13 @@ token_handler (MonoDisHelper *dh, MonoMethod *method, guint32 token)
 		}
 		desc = mono_method_full_name (cmethod, TRUE);
 		res = g_strdup_printf ("<%s>", desc);
-		g_free (desc);
+		g_free_vb (desc);
 		break;
 	case CEE_CALLI:
 		if (method->wrapper_type) {
 			desc = mono_signature_get_desc ((MonoMethodSignature *)data, FALSE);
 			res = g_strdup_printf ("<%s>", desc);
-			g_free (desc);
+			g_free_vb (desc);
 		} else {
 			res = g_strdup_printf ("<0x%08x>", token);
 		}
@@ -1357,7 +1357,7 @@ token_handler (MonoDisHelper *dh, MonoMethod *method, guint32 token)
 		}
 		desc = mono_field_full_name (field);
 		res = g_strdup_printf ("<%s>", desc);
-		g_free (desc);
+		g_free_vb (desc);
 		break;
 	default:
 		res = g_strdup_printf ("<0x%08x>", token);
@@ -1547,7 +1547,7 @@ emit_line_number_info (MonoDwarfWriter *w, MonoMethod *method,
 				native_to_il_offset [j] = lne->il_offset;
 		}
 	}
-	g_free (ln_array);
+	g_free_vb (ln_array);
 
 	prev_line = 1;
 	prev_il_offset = -1;
@@ -1610,7 +1610,7 @@ emit_line_number_info (MonoDwarfWriter *w, MonoMethod *method,
 				/* Add an entry to the file table */
 				/* FIXME: Avoid duplicates */
 				file_index = get_line_number_file_name (w, loc->source_file) + 1;
-				g_free (prev_file_name);
+				g_free_vb (prev_file_name);
 				prev_file_name = g_strdup (loc->source_file);
 
 				if (w->cur_file_index != file_index) {
@@ -1637,8 +1637,8 @@ emit_line_number_info (MonoDwarfWriter *w, MonoMethod *method,
 		first = FALSE;
 	}
 
-	g_free (native_to_il_offset);
-	g_free (prev_file_name);
+	g_free_vb (native_to_il_offset);
+	g_free_vb (prev_file_name);
 
 	if (!first) {
 		emit_byte (w, DW_LNS_advance_pc);
@@ -1663,7 +1663,7 @@ emit_line_number_info (MonoDwarfWriter *w, MonoMethod *method,
 		name = mono_method_full_name (method, TRUE);
 		fprintf (w->il_file, "// %s\n", name);
 		w->il_file_line_index ++;
-		g_free (name);
+		g_free_vb (name);
 
 		il_to_line = g_new0 (int, header->code_size);
 
@@ -1682,7 +1682,7 @@ emit_line_number_info (MonoDwarfWriter *w, MonoMethod *method,
 
 			dis = disasm_ins (method, ip, &ip);
 			fprintf (w->il_file, "%s\n", dis);
-			g_free (dis);
+			g_free_vb (dis);
 
 			il_to_line [il_offset] = w->il_file_line_index;
 		}
@@ -1727,7 +1727,7 @@ emit_line_number_info (MonoDwarfWriter *w, MonoMethod *method,
 		emit_byte (w, DW_LNE_end_sequence);
 
 		fflush (w->il_file);
-		g_free (il_to_line);
+		g_free_vb (il_to_line);
 	}
 	mono_metadata_free_mh (header);
 }
@@ -1827,7 +1827,7 @@ mono_dwarf_writer_emit_method (MonoDwarfWriter *w, MonoCompile *cfg, MonoMethod 
 #ifndef TARGET_IOS
 	emit_string (w, name);
 #endif
-	g_free (name);
+	g_free_vb (name);
 	if (start_symbol) {
 		emit_pointer_unaligned (w, start_symbol);
 		emit_pointer_unaligned (w, end_symbol);
@@ -1890,7 +1890,7 @@ mono_dwarf_writer_emit_method (MonoDwarfWriter *w, MonoCompile *cfg, MonoMethod 
 			emit_bytes (w, buf, p - buf);
 		}
 	}		
-	g_free (names);
+	g_free_vb (names);
 
 	/* Locals */
 	locals_info = mono_debug_lookup_locals (method);

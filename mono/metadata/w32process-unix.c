@@ -560,7 +560,7 @@ process_is_alive (pid_t pid)
 #else
 	gchar *dir = g_strdup_printf ("/proc/%d", pid);
 	gboolean result = access (dir, F_OK) == 0;
-	g_free (dir);
+	g_free_vb (dir);
 	return result;
 #endif
 }
@@ -741,7 +741,7 @@ processes_cleanup (void)
 				prev->next = process->next;
 
 			mono_os_sem_destroy (&process->exit_sem);
-			g_free (process);
+			g_free_vb (process);
 		} else {
 			prev = process;
 		}
@@ -763,7 +763,7 @@ process_close (gpointer handle, gpointer data)
 	mono_trace (G_LOG_LEVEL_DEBUG, MONO_TRACE_IO_LAYER, "%s", __func__);
 
 	process_handle = (MonoW32HandleProcess *) data;
-	g_free (process_handle->pname);
+	g_free_vb (process_handle->pname);
 	process_handle->pname = NULL;
 	if (process_handle->process)
 		InterlockedDecrement (&process_handle->process->handle_count);
@@ -808,7 +808,7 @@ process_set_name (MonoW32HandleProcess *process_handle)
 			process_handle->pname = g_strdup (slash+1);
 		else
 			process_handle->pname = g_strdup (utf8_progname);
-		g_free (utf8_progname);
+		g_free_vb (utf8_progname);
 	}
 }
 
@@ -838,7 +838,7 @@ mono_w32process_init (void)
 void
 mono_w32process_cleanup (void)
 {
-	g_free (cli_launcher);
+	g_free_vb (cli_launcher);
 }
 
 static int
@@ -1017,8 +1017,8 @@ match_procname_to_modulename (char *procname, char *modulename)
 		}
 	}
 
-	g_free (pname);
-	g_free (mname);
+	g_free_vb (pname);
+	g_free_vb (mname);
 
 	mono_trace (G_LOG_LEVEL_DEBUG, MONO_TRACE_IO_LAYER, "%s: result is %" G_GINT32_FORMAT, __func__, result);
 	return result;
@@ -1067,7 +1067,7 @@ mono_w32process_try_get_modules (gpointer process, gpointer *modules, guint32 si
 	if (!mods) {
 		modules[0] = NULL;
 		*needed = sizeof(gpointer);
-		g_free (pname);
+		g_free_vb (pname);
 		return TRUE;
 	}
 
@@ -1102,7 +1102,7 @@ mono_w32process_try_get_modules (gpointer process, gpointer *modules, guint32 si
 	*needed = sizeof(gpointer) * (count + 1);
 
 	g_slist_free (mods);
-	g_free (pname);
+	g_free_vb (pname);
 
 	return TRUE;
 }
@@ -1127,7 +1127,7 @@ mono_w32process_module_get_filename (gpointer process, gpointer module, gunichar
 		return 0;
 
 	proc_path = mono_unicode_from_external (path, &bytes);
-	g_free (path);
+	g_free_vb (path);
 
 	if (proc_path == NULL)
 		return 0;
@@ -1145,7 +1145,7 @@ mono_w32process_module_get_filename (gpointer process, gpointer module, gunichar
 		memcpy (basename, proc_path, bytes);
 	}
 
-	g_free (proc_path);
+	g_free_vb (proc_path);
 
 	return len;
 }
@@ -1184,7 +1184,7 @@ mono_w32process_module_get_name (gpointer process, gpointer module, gunichar2 *b
 	mods = mono_w32process_get_modules (pid);
 	if (!mods && module != NULL) {
 		mono_trace (G_LOG_LEVEL_DEBUG, MONO_TRACE_IO_LAYER, "%s: Can't get modules %p", __func__, process);
-		g_free (pname);
+		g_free_vb (pname);
 		return 0;
 	}
 
@@ -1215,7 +1215,7 @@ mono_w32process_module_get_name (gpointer process, gpointer module, gunichar2 *b
 	}
 
 	g_slist_free (mods);
-	g_free (pname);
+	g_free_vb (pname);
 
 	if (procname_ext) {
 		mono_trace (G_LOG_LEVEL_DEBUG, MONO_TRACE_IO_LAYER, "%s: Process name is [%s]", __func__,
@@ -1225,7 +1225,7 @@ mono_w32process_module_get_name (gpointer process, gpointer module, gunichar2 *b
 		if (procname == NULL) {
 			mono_trace (G_LOG_LEVEL_DEBUG, MONO_TRACE_IO_LAYER, "%s: Can't get procname %p", __func__, process);
 			/* bugger */
-			g_free (procname_ext);
+			g_free_vb (procname_ext);
 			return 0;
 		}
 
@@ -1245,8 +1245,8 @@ mono_w32process_module_get_name (gpointer process, gpointer module, gunichar2 *b
 			memcpy (basename, procname, bytes);
 		}
 
-		g_free (procname);
-		g_free (procname_ext);
+		g_free_vb (procname);
+		g_free_vb (procname_ext);
 
 		return len;
 	}
@@ -1283,7 +1283,7 @@ mono_w32process_module_get_information (gpointer process, gpointer module, MODUL
 
 	mods = mono_w32process_get_modules (pid);
 	if (!mods) {
-		g_free (pname);
+		g_free_vb (pname);
 		return FALSE;
 	}
 
@@ -1306,7 +1306,7 @@ mono_w32process_module_get_information (gpointer process, gpointer module, MODUL
 	}
 
 	g_slist_free (mods);
-	g_free (pname);
+	g_free_vb (pname);
 
 	return ret;
 }
@@ -1653,7 +1653,7 @@ process_create (const gunichar2 *appname, const gunichar2 *cmdline,
 			if (!is_readable_or_executable (prog)) {
 				mono_trace (G_LOG_LEVEL_DEBUG, MONO_TRACE_IO_LAYER, "%s: Couldn't find executable %s",
 					   __func__, prog);
-				g_free (unquoted);
+				g_free_vb (unquoted);
 				mono_w32error_set_last (ERROR_FILE_NOT_FOUND);
 				goto free_strings;
 			}
@@ -1664,18 +1664,18 @@ process_create (const gunichar2 *appname, const gunichar2 *cmdline,
 			char *curdir = g_get_current_dir ();
 
 			prog = g_strdup_printf ("%s/%s", curdir, unquoted);
-			g_free (curdir);
+			g_free_vb (curdir);
 
 			/* And make sure it's readable */
 			if (!is_readable_or_executable (prog)) {
 				mono_trace (G_LOG_LEVEL_DEBUG, MONO_TRACE_IO_LAYER, "%s: Couldn't find executable %s",
 					   __func__, prog);
-				g_free (unquoted);
+				g_free_vb (unquoted);
 				mono_w32error_set_last (ERROR_FILE_NOT_FOUND);
 				goto free_strings;
 			}
 		}
-		g_free (unquoted);
+		g_free_vb (unquoted);
 
 		args_after_prog = args;
 	} else {
@@ -1761,7 +1761,7 @@ process_create (const gunichar2 *appname, const gunichar2 *cmdline,
 			if (!is_readable_or_executable (prog)) {
 				mono_trace (G_LOG_LEVEL_DEBUG, MONO_TRACE_IO_LAYER, "%s: Couldn't find executable %s",
 					   __func__, token);
-				g_free (token);
+				g_free_vb (token);
 				mono_w32error_set_last (ERROR_FILE_NOT_FOUND);
 				goto free_strings;
 			}
@@ -1775,7 +1775,7 @@ process_create (const gunichar2 *appname, const gunichar2 *cmdline,
 			 */
 
 			prog = g_strdup_printf ("%s/%s", curdir, token);
-			g_free (curdir);
+			g_free_vb (curdir);
 
 			/* I assume X_OK is the criterion to use,
 			 * rather than F_OK
@@ -1783,19 +1783,19 @@ process_create (const gunichar2 *appname, const gunichar2 *cmdline,
 			 * X_OK is too strict *if* the target is a CLR binary
 			 */
 			if (!is_readable_or_executable (prog)) {
-				g_free (prog);
+				g_free_vb (prog);
 				prog = g_find_program_in_path (token);
 				if (prog == NULL) {
 					mono_trace (G_LOG_LEVEL_DEBUG, MONO_TRACE_IO_LAYER, "%s: Couldn't find executable %s", __func__, token);
 
-					g_free (token);
+					g_free_vb (token);
 					mono_w32error_set_last (ERROR_FILE_NOT_FOUND);
 					goto free_strings;
 				}
 			}
 		}
 
-		g_free (token);
+		g_free_vb (token);
 	}
 
 	mono_trace (G_LOG_LEVEL_DEBUG, MONO_TRACE_IO_LAYER, "%s: Exec prog [%s] args [%s]",
@@ -1815,12 +1815,12 @@ process_create (const gunichar2 *appname, const gunichar2 *cmdline,
 			else
 				newcmd = utf16_concat (utf16_quote, newapp, utf16_quote, utf16_space, cmdline, NULL);
 
-			g_free (newapp);
+			g_free_vb (newapp);
 
 			if (newcmd) {
 				ret = process_create (NULL, newcmd, cwd, startup_handles, process_info);
 
-				g_free (newcmd);
+				g_free_vb (newcmd);
 
 				goto free_strings;
 			}
@@ -1838,7 +1838,7 @@ process_create (const gunichar2 *appname, const gunichar2 *cmdline,
 
 		qprog = g_shell_quote (prog);
 		full_prog = g_strconcat (qprog, " ", args_after_prog, NULL);
-		g_free (qprog);
+		g_free_vb (qprog);
 	} else {
 		full_prog = g_shell_quote (prog);
 	}
@@ -1897,7 +1897,7 @@ process_create (const gunichar2 *appname, const gunichar2 *cmdline,
 			env_strings [i] = mono_unicode_to_external (str);
 		}
 
-		g_free (str);
+		g_free_vb (str);
 	} else {
 		guint32 env_count;
 
@@ -1982,7 +1982,7 @@ process_create (const gunichar2 *appname, const gunichar2 *cmdline,
 		process_set_defaults (&process_handle);
 
 		/* Add our process into the linked list of processes */
-		process = (Process *) g_malloc0 (sizeof (Process));
+		process = (Process *) g_malloc0_vb (sizeof (Process));
 		process->pid = pid;
 		process->handle_count = 1;
 		mono_os_sem_init (&process->exit_sem, 0);
@@ -1994,7 +1994,7 @@ process_create (const gunichar2 *appname, const gunichar2 *cmdline,
 			g_warning ("%s: error creating process handle", __func__);
 
 			mono_os_sem_destroy (&process->exit_sem);
-			g_free (process);
+			g_free_vb (process);
 
 			mono_w32error_set_last (ERROR_OUTOFMEMORY);
 			ret = FALSE;
@@ -2033,15 +2033,15 @@ process_create (const gunichar2 *appname, const gunichar2 *cmdline,
 
 free_strings:
 	if (cmd)
-		g_free (cmd);
+		g_free_vb (cmd);
 	if (full_prog)
-		g_free (full_prog);
+		g_free_vb (full_prog);
 	if (prog)
-		g_free (prog);
+		g_free_vb (prog);
 	if (args)
-		g_free (args);
+		g_free_vb (args);
 	if (dir)
-		g_free (dir);
+		g_free_vb (dir);
 	if (env_strings)
 		g_strfreev (env_strings);
 	if (argv)
@@ -2091,7 +2091,7 @@ ves_icall_System_Diagnostics_Process_ShellExecuteEx_internal (MonoW32ProcessStar
 		goto done;
 	}
 	ret = process_create (NULL, args, lpDirectory, NULL, process_info);
-	g_free (args);
+	g_free_vb (args);
 
 	if (!ret && mono_w32error_get_last () == ERROR_OUTOFMEMORY)
 		goto done;
@@ -2126,13 +2126,13 @@ ves_icall_System_Diagnostics_Process_ShellExecuteEx_internal (MonoW32ProcessStar
 					char *old = handler;
 					handler = g_strconcat (old, " exec",
 							       NULL);
-					g_free (old);
+					g_free_vb (old);
 				}
 			}
 		}
 #endif
 		handler_utf16 = g_utf8_to_utf16 (handler, -1, NULL, NULL, NULL);
-		g_free (handler);
+		g_free_vb (handler);
 
 		/* Put quotes around the filename, in case it's a url
 		 * that contains #'s (process_create() calls
@@ -2148,7 +2148,7 @@ ves_icall_System_Diagnostics_Process_ShellExecuteEx_internal (MonoW32ProcessStar
 			goto done;
 		}
 		ret = process_create (NULL, args, lpDirectory, NULL, process_info);
-		g_free (args);
+		g_free_vb (args);
 		if (!ret) {
 			if (mono_w32error_get_last () != ERROR_OUTOFMEMORY)
 				mono_w32error_set_last (ERROR_INVALID_DATA);
@@ -2187,26 +2187,26 @@ process_get_complete_path (const gunichar2 *appname, gchar **completed)
 
 	if (g_path_is_absolute (utf8app)) {
 		*completed = g_shell_quote (utf8app);
-		g_free (utf8app);
+		g_free_vb (utf8app);
 		return TRUE;
 	}
 
 	if (g_file_test (utf8app, G_FILE_TEST_IS_EXECUTABLE) && !g_file_test (utf8app, G_FILE_TEST_IS_DIR)) {
 		*completed = g_shell_quote (utf8app);
-		g_free (utf8app);
+		g_free_vb (utf8app);
 		return TRUE;
 	}
 	
 	found = g_find_program_in_path (utf8app);
 	if (found == NULL) {
 		*completed = NULL;
-		g_free (utf8app);
+		g_free_vb (utf8app);
 		return FALSE;
 	}
 
 	*completed = g_shell_quote (found);
-	g_free (found);
-	g_free (utf8app);
+	g_free_vb (found);
+	g_free_vb (utf8app);
 	return TRUE;
 }
 
@@ -2219,7 +2219,7 @@ process_get_shell_arguments (MonoW32ProcessStartInfo *proc_start_info, gunichar2
 
 	if (process_get_complete_path (mono_string_chars (proc_start_info->filename), &complete_path)) {
 		*shell_path = g_utf8_to_utf16 (complete_path, -1, NULL, NULL, NULL);
-		g_free (complete_path);
+		g_free_vb (complete_path);
 	}
 
 	return *shell_path != NULL;
@@ -2255,7 +2255,7 @@ ves_icall_System_Diagnostics_Process_CreateProcess_internal (MonoW32ProcessStart
 	ret = process_create (shell_path, args, dir, &startup_handles, process_info);
 
 	if (shell_path != NULL)
-		g_free (shell_path);
+		g_free_vb (shell_path);
 
 	if (!ret)
 		process_info->pid = -mono_w32error_get_last ();
@@ -2279,7 +2279,7 @@ ves_icall_System_Diagnostics_Process_GetProcesses_internal (void)
 	}
 	procs = mono_array_new_checked (mono_domain_get (), mono_get_int32_class (), count, &error);
 	if (mono_error_set_pending_exception (&error)) {
-		g_free (pidarray);
+		g_free_vb (pidarray);
 		return NULL;
 	}
 	if (sizeof (guint32) == sizeof (gpointer)) {
@@ -2288,7 +2288,7 @@ ves_icall_System_Diagnostics_Process_GetProcesses_internal (void)
 		for (i = 0; i < count; ++i)
 			*(mono_array_addr (procs, guint32, i)) = GPOINTER_TO_UINT (pidarray [i]);
 	}
-	g_free (pidarray);
+	g_free_vb (pidarray);
 
 	return procs;
 }
@@ -2296,7 +2296,7 @@ ves_icall_System_Diagnostics_Process_GetProcesses_internal (void)
 void
 mono_w32process_set_cli_launcher (gchar *path)
 {
-	g_free (cli_launcher);
+	g_free_vb (cli_launcher);
 	cli_launcher = g_strdup (path);
 }
 
@@ -2909,7 +2909,7 @@ map_pe_file (gunichar2 *filename, gint32 *map_size, void **handle)
 
 			mono_trace (G_LOG_LEVEL_DEBUG, MONO_TRACE_IO_LAYER, "%s: Error opening file %s (1): %s", __func__, filename_ext, strerror (errno));
 
-			g_free (filename_ext);
+			g_free_vb (filename_ext);
 
 			mono_w32error_set_last (mono_w32error_unix_to_win32 (errno));
 			return NULL;
@@ -2919,21 +2919,21 @@ map_pe_file (gunichar2 *filename, gint32 *map_size, void **handle)
 		if (fd == -1) {
 			mono_trace (G_LOG_LEVEL_DEBUG, MONO_TRACE_IO_LAYER, "%s: Error opening file %s (2): %s", __func__, filename_ext, strerror (errno));
 
-			g_free (filename_ext);
-			g_free (located_filename);
+			g_free_vb (filename_ext);
+			g_free_vb (located_filename);
 
 			mono_w32error_set_last (mono_w32error_unix_to_win32 (errno));
 			return NULL;
 		}
 
-		g_free (located_filename);
+		g_free_vb (located_filename);
 	}
 
 	if (fstat (fd, &statbuf) == -1) {
 		mono_trace (G_LOG_LEVEL_DEBUG, MONO_TRACE_IO_LAYER, "%s: Error stat()ing file %s: %s", __func__, filename_ext, strerror (errno));
 
 		mono_w32error_set_last (mono_w32error_unix_to_win32 (errno));
-		g_free (filename_ext);
+		g_free_vb (filename_ext);
 		close (fd);
 		return(NULL);
 	}
@@ -2944,7 +2944,7 @@ map_pe_file (gunichar2 *filename, gint32 *map_size, void **handle)
 		mono_trace (G_LOG_LEVEL_DEBUG, MONO_TRACE_IO_LAYER, "%s: File %s is too small: %lld", __func__, filename_ext, (long long) statbuf.st_size);
 
 		mono_w32error_set_last (ERROR_BAD_LENGTH);
-		g_free (filename_ext);
+		g_free_vb (filename_ext);
 		close (fd);
 		return(NULL);
 	}
@@ -2954,14 +2954,14 @@ map_pe_file (gunichar2 *filename, gint32 *map_size, void **handle)
 		mono_trace (G_LOG_LEVEL_DEBUG, MONO_TRACE_IO_LAYER, "%s: Error mmap()int file %s: %s", __func__, filename_ext, strerror (errno));
 
 		mono_w32error_set_last (mono_w32error_unix_to_win32 (errno));
-		g_free (filename_ext);
+		g_free_vb (filename_ext);
 		close (fd);
 		return(NULL);
 	}
 
 	/* Don't need the fd any more */
 	close (fd);
-	g_free (filename_ext);
+	g_free_vb (filename_ext);
 
 	return(file_map);
 }
@@ -3174,7 +3174,7 @@ get_stringtable_block (gconstpointer data_ptr, gchar *lang, const gunichar2 *str
 		}
 
 		lowercase_lang = g_utf8_strdown (found_lang, -1);
-		g_free (found_lang);
+		g_free_vb (found_lang);
 		found_lang = lowercase_lang;
 		lowercase_lang = NULL;
 
@@ -3188,7 +3188,7 @@ get_stringtable_block (gconstpointer data_ptr, gchar *lang, const gunichar2 *str
 						     NULL, block);
 		}
 
-		g_free (found_lang);
+		g_free_vb (found_lang);
 
 		if (data_ptr == NULL) {
 			/* Child block hit padding */
@@ -3243,7 +3243,7 @@ big_up_string_block (gconstpointer data_ptr, version_data *block)
 		 * safe side
 		 */
 		memcpy (block->key, big_value, unicode_chars (block->key) * 2);
-		g_free (big_value);
+		g_free_vb (big_value);
 
 		big_value = g_convert ((gchar *)data_ptr,
 				       unicode_chars (data_ptr) * 2,
@@ -3255,7 +3255,7 @@ big_up_string_block (gconstpointer data_ptr, version_data *block)
 		}
 		memcpy ((gpointer)data_ptr, big_value,
 			unicode_chars (data_ptr) * 2);
-		g_free (big_value);
+		g_free_vb (big_value);
 
 		data_ptr = ((gunichar2 *)data_ptr) + block->value_len;
 	}
@@ -3303,7 +3303,7 @@ big_up_stringtable_block (gconstpointer data_ptr, version_data *block)
 		}
 
 		memcpy (block->key, big_value, 16);
-		g_free (big_value);
+		g_free_vb (big_value);
 
 		data_ptr = big_up_string_block (data_ptr, block);
 
@@ -3485,7 +3485,7 @@ mono_w32process_ver_query_value (gconstpointer datablock, const gunichar2 *subbl
 		memcpy (lang, subblock + 16, 8 * sizeof(gunichar2));
 		lang_utf8 = g_utf16_to_utf8 (lang, 8, NULL, NULL, NULL);
 		lowercase_lang = g_utf8_strdown (lang_utf8, -1);
-		g_free (lang_utf8);
+		g_free_vb (lang_utf8);
 		lang_utf8 = lowercase_lang;
 		lowercase_lang = NULL;
 		string_key = subblock + 25;
@@ -3565,10 +3565,10 @@ mono_w32process_ver_query_value (gconstpointer datablock, const gunichar2 *subbl
 
   done:
 	if (lang_utf8) {
-		g_free (lang_utf8);
+		g_free_vb (lang_utf8);
 	}
 
-	g_free (subblock_utf8);
+	g_free_vb (subblock_utf8);
 	return(ret);
 }
 
@@ -3592,7 +3592,7 @@ copy_lang (gunichar2 *lang_out, guint32 lang_len, const gchar *text)
 		ret = lang_len;
 	}
 
-	g_free (unitext);
+	g_free_vb (unitext);
 
 	return(ret);
 }

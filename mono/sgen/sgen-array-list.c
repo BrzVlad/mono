@@ -38,7 +38,7 @@ sgen_array_list_grow (SgenArrayList *array, guint32 old_capacity)
 	if (array->mem_type != -1)
 		entries = (gpointer*) sgen_alloc_internal_dynamic (new_bucket_size, array->mem_type, TRUE);
 	else
-		entries = (gpointer*) g_malloc0 (new_bucket_size);
+		entries = (gpointer*) g_malloc0_vb (new_bucket_size);
 	if (array->bucket_alloc_callback)
 		array->bucket_alloc_callback (entries, new_bucket_size, TRUE);
 	/*
@@ -62,7 +62,7 @@ sgen_array_list_grow (SgenArrayList *array, guint32 old_capacity)
 	if (array->mem_type != -1)
 		sgen_free_internal_dynamic (entries, new_bucket_size, array->mem_type);
 	else
-		g_free (entries);
+		g_free_vb (entries);
 }
 
 static guint32

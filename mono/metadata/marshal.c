@@ -679,8 +679,8 @@ mono_ftnptr_to_delegate_handle (MonoClass *klass, gpointer ftn, MonoError *error
 			for (i = mono_method_signature (invoke)->param_count; i >= 0; i--)
 				if (mspecs [i])
 					mono_metadata_free_marshal_spec (mspecs [i]);
-			g_free (mspecs);
-			g_free (sig);
+			g_free_vb (mspecs);
+			g_free_vb (sig);
 		}
 
 		MONO_HANDLE_ASSIGN (d, MONO_HANDLE_NEW (MonoDelegate, mono_object_new_checked (mono_domain_get (), klass, error)));
@@ -814,7 +814,7 @@ mono_array_to_lparray (MonoArray *array)
 		break;
 	case MONO_TYPE_CLASS:
 		nativeArraySize = array->max_length;
-		nativeArray = (void **)g_malloc (sizeof(gpointer) * nativeArraySize);
+		nativeArray = (void **)g_malloc_vb (sizeof(gpointer) * nativeArraySize);
 		for(i = 0; i < nativeArraySize; ++i) {
 			nativeArray[i] = mono_cominterop_get_com_interface (((MonoObject **)array->vector)[i], klass->element_class, &error);
 			if (mono_error_set_pending_exception (&error))
@@ -866,7 +866,7 @@ mono_free_lparray (MonoArray *array, gpointer* nativeArray)
 	klass = array->obj.vtable->klass;
 
 	if (klass->element_class->byval_arg.type == MONO_TYPE_CLASS)
-		g_free (nativeArray);
+		g_free_vb (nativeArray);
 #endif
 }
 
@@ -884,7 +884,7 @@ mono_byvalarray_to_array (MonoArray *arr, gpointer native_arr, MonoClass *elclas
 
 		if (!error) {
 			memcpy (mono_array_addr (arr, guint16, 0), ut, items_written * sizeof (guint16));
-			g_free (ut);
+			g_free_vb (ut);
 		}
 		else
 			g_error_free (error);
@@ -917,7 +917,7 @@ mono_array_to_byvalarray (gpointer native_arr, MonoArray *arr, MonoClass *elclas
 		}
 
 		memcpy (native_arr, as, MIN (strlen (as), elnum));
-		g_free (as);
+		g_free_vb (as);
 	} else {
 		g_assert_not_reached ();
 	}
@@ -1020,7 +1020,7 @@ mono_string_utf8_to_builder (MonoStringBuilder *sb, char *text)
 	} else
 		g_error_free (error);
 
-	g_free (ut);
+	g_free_vb (ut);
 }
 
 MonoStringBuilder *
@@ -1088,7 +1088,7 @@ mono_string_builder_to_utf8 (MonoStringBuilder *sb)
 		gchar *res = (gchar *)mono_marshal_alloc (MAX (byte_count+1, len * sizeof (gchar)), &error);
 		if (!mono_error_ok (&error)) {
 			mono_marshal_free (str_utf16);
-			g_free (tmp);
+			g_free_vb (tmp);
 			mono_error_set_pending_exception (&error);
 			return NULL;
 		}
@@ -1097,7 +1097,7 @@ mono_string_builder_to_utf8 (MonoStringBuilder *sb)
 		res[byte_count] = '\0';
 
 		mono_marshal_free (str_utf16);
-		g_free (tmp);
+		g_free_vb (tmp);
 		return res;
 	}
 }
@@ -1209,7 +1209,7 @@ mono_string_to_byvalstr (gpointer dst, MonoString *src, int size)
 	if (len >= size)
 		len--;
 	memcpy (dst, s, len);
-	g_free (s);
+	g_free_vb (s);
 }
 
 /**
@@ -1266,7 +1266,7 @@ mono_mb_emit_exception_marshal_directive (MonoMethodBuilder *mb, char *msg)
 
 	if (!mb->dynamic) {
 		s = mono_image_strdup (mb->method->klass->image, msg);
-		g_free (msg);
+		g_free_vb (msg);
 	} else {
 		s = g_strdup (msg);
 	}
@@ -2056,7 +2056,7 @@ get_fixed_buffer_attr (MonoClassField *field, MonoType **out_etype, int *out_len
 		o = mono_array_get (typed_args, MonoObject*, 1);
 		g_assert (o->vtable->klass == mono_defaults.int32_class);
 		*out_len = *(gint32*)mono_object_unbox (o);
-		g_free (arginfo);
+		g_free_vb (arginfo);
 	}
 	if (cinfo && !cinfo->cached)
 		mono_custom_attrs_free (cinfo);
@@ -3199,7 +3199,7 @@ mono_marshal_get_delegate_begin_invoke (MonoMethod *method)
 		mb = mono_mb_new (method->klass, name, MONO_WRAPPER_DELEGATE_BEGIN_INVOKE);
 	else
 		mb = mono_mb_new (get_wrapper_target_class (method->klass->image), name, MONO_WRAPPER_DELEGATE_BEGIN_INVOKE);
-	g_free (name);
+	g_free_vb (name);
 
 #ifdef ENABLE_ILGEN
 	params_var = mono_mb_emit_save_args (mb, sig, FALSE);
@@ -3307,9 +3307,9 @@ mono_delegate_end_invoke (MonoDelegate *delegate, gpointer *params)
 			if (is_ok (&inner_error)) {
 				char  *tmp;
 				tmp = g_strdup_printf ("%s\nException Rethrown at:\n", strace);
-				g_free (strace);
+				g_free_vb (strace);
 				MonoString *tmp_str = mono_string_new_checked (domain, tmp, &inner_error);
-				g_free (tmp);
+				g_free_vb (tmp);
 				if (is_ok (&inner_error))
 					MONO_OBJECT_SETREF (((MonoException*)exc), stack_trace, tmp_str);
 			};
@@ -3441,7 +3441,7 @@ mono_marshal_get_delegate_end_invoke (MonoMethod *method)
 		mb = mono_mb_new (method->klass, name, MONO_WRAPPER_DELEGATE_END_INVOKE);
 	else
 		mb = mono_mb_new (get_wrapper_target_class (method->klass->image), name, MONO_WRAPPER_DELEGATE_END_INVOKE);
-	g_free (name);
+	g_free_vb (name);
 
 #ifdef ENABLE_ILGEN
 	params_var = mono_mb_emit_save_args (mb, sig, FALSE);
@@ -3502,7 +3502,7 @@ signature_pointer_pair_matches_pointer (gpointer key, gpointer value, gpointer u
 static void
 free_signature_pointer_pair (SignaturePointerPair *pair)
 {
-	g_free (pair);
+	g_free_vb (pair);
 }
 
 MonoMethod *
@@ -3643,7 +3643,7 @@ mono_marshal_get_delegate_invoke_internal (MonoMethod *method, gboolean callvirt
 		mb = mono_mb_new (method->klass, name, MONO_WRAPPER_DELEGATE_INVOKE);
 	else
 		mb = mono_mb_new (get_wrapper_target_class (method->klass->image), name, MONO_WRAPPER_DELEGATE_INVOKE);
-	g_free (name);
+	g_free_vb (name);
 
 #ifdef ENABLE_ILGEN
 	void_ret = sig->ret->type == MONO_TYPE_VOID && !method->string_ctor;
@@ -3828,7 +3828,7 @@ mono_marshal_get_delegate_invoke_internal (MonoMethod *method, gboolean callvirt
 
 		res = mono_mb_create_and_cache_full (cache, new_key, mb, sig, sig->param_count + 16, info, &found);
 		if (found)
-			g_free (new_key);
+			g_free_vb (new_key);
 	} else {
 		res = mono_mb_create_and_cache_full (cache, cache_key, mb, sig, sig->param_count + 16, info, NULL);
 	}
@@ -4211,7 +4211,7 @@ handle_enum:
 		}
 	}
 
-	g_free (tmp_nullable_locals);
+	g_free_vb (tmp_nullable_locals);
 }
 
 static void
@@ -4390,14 +4390,14 @@ mono_marshal_get_runtime_invoke_full (MonoMethod *method, gboolean virtual_, gbo
 		mono_marshal_unlock ();
 
 		if (res) {
-			g_free (callsig);
+			g_free_vb (callsig);
 			return res;
 		}
 
 		/* Make a copy of the signature from the image mempool */
 		tmp_sig = callsig;
 		callsig = mono_metadata_signature_dup_full (target_klass->image, callsig);
-		g_free (tmp_sig);
+		g_free_vb (tmp_sig);
 	}
 	
 	csig = mono_metadata_signature_alloc (target_klass->image, 4);
@@ -4418,7 +4418,7 @@ mono_marshal_get_runtime_invoke_full (MonoMethod *method, gboolean virtual_, gbo
 
 	name = mono_signature_to_name (callsig, virtual_ ? "runtime_invoke_virtual" : (need_direct_wrapper ? "runtime_invoke_direct" : "runtime_invoke"));
 	mb = mono_mb_new (target_klass, name,  MONO_WRAPPER_RUNTIME_INVOKE);
-	g_free (name);
+	g_free_vb (name);
 
 #ifdef ENABLE_ILGEN
 	param_names [0] = "this";
@@ -4541,7 +4541,7 @@ mono_marshal_get_runtime_invoke_dynamic (void)
 
 	name = g_strdup ("runtime_invoke_dynamic");
 	mb = mono_mb_new (mono_defaults.object_class, name, MONO_WRAPPER_RUNTIME_INVOKE);
-	g_free (name);
+	g_free_vb (name);
 
 #ifdef ENABLE_ILGEN
 	/* allocate local 0 (object) tmp */
@@ -4655,7 +4655,7 @@ mono_marshal_get_runtime_invoke_for_sig (MonoMethodSignature *sig)
 	mono_marshal_unlock ();
 
 	if (res) {
-		g_free (callsig);
+		g_free_vb (callsig);
 		return res;
 	}
 
@@ -4676,7 +4676,7 @@ mono_marshal_get_runtime_invoke_for_sig (MonoMethodSignature *sig)
 
 	name = mono_signature_to_name (callsig, "runtime_invoke_sig");
 	mb = mono_mb_new (mono_defaults.object_class, name,  MONO_WRAPPER_RUNTIME_INVOKE);
-	g_free (name);
+	g_free_vb (name);
 
 #ifdef ENABLE_ILGEN
 	param_names [0] = "this";
@@ -8285,7 +8285,7 @@ mono_marshal_get_native_wrapper (MonoMethod *method, gboolean check_exceptions, 
 					}
 				}
 			}
-			g_free (handles_locals);
+			g_free_vb (handles_locals);
 
 			mono_mb_emit_ldloc (mb, thread_info_var);
 			mono_mb_emit_ldloc_addr (mb, stack_mark_var);
@@ -8332,7 +8332,7 @@ mono_marshal_get_native_wrapper (MonoMethod *method, gboolean check_exceptions, 
 	for (i = sig->param_count; i >= 0; i--)
 		if (mspecs [i])
 			mono_metadata_free_marshal_spec (mspecs [i]);
-	g_free (mspecs);
+	g_free_vb (mspecs);
 #endif
 
 	/* mono_method_print_code (res); */
@@ -8389,7 +8389,7 @@ mono_marshal_get_native_func_wrapper (MonoImage *image, MonoMethodSignature *sig
 
 	res = mono_mb_create_and_cache_full (cache, new_key, mb, csig, csig->param_count + 16, NULL, &found);
 	if (found)
-		g_free (new_key);
+		g_free_vb (new_key);
 
 	mono_mb_free (mb);
 
@@ -8459,8 +8459,8 @@ mono_marshal_get_native_func_wrapper_aot (MonoClass *klass)
 	for (i = mono_method_signature (invoke)->param_count; i >= 0; i--)
 		if (mspecs [i])
 			mono_metadata_free_marshal_spec (mspecs [i]);
-	g_free (mspecs);
-	g_free (sig);
+	g_free_vb (mspecs);
+	g_free_vb (sig);
 
 	return res;
 }
@@ -8818,7 +8818,7 @@ mono_marshal_emit_managed_wrapper (MonoMethodBuilder *mb, MonoMethodSignature *i
 	mono_mb_set_clauses (mb, 2, clauses);
 
 	if (closed)
-		g_free (sig);
+		g_free_vb (sig);
 #endif
 }
 
@@ -8985,7 +8985,7 @@ mono_marshal_get_managed_wrapper (MonoMethod *method, MonoClass *delegate_klass,
 				}
 			}
 
-			g_free (arginfo);
+			g_free_vb (arginfo);
 
 			memset (&piinfo, 0, sizeof (piinfo));
 			m.piinfo = &piinfo;
@@ -9022,7 +9022,7 @@ mono_marshal_get_managed_wrapper (MonoMethod *method, MonoClass *delegate_klass,
 	for (i = mono_method_signature (invoke)->param_count; i >= 0; i--)
 		if (mspecs [i])
 			mono_metadata_free_marshal_spec (mspecs [i]);
-	g_free (mspecs);
+	g_free_vb (mspecs);
 
 	/* mono_method_print_code (res); */
 
@@ -9084,7 +9084,7 @@ mono_marshal_get_vtfixup_ftnptr (MonoImage *image, guint32 token, guint16 type)
 		for (i = sig->param_count; i >= 0; i--)
 			if (mspecs [i])
 				mono_metadata_free_marshal_spec (mspecs [i]);
-		g_free (mspecs);
+		g_free_vb (mspecs);
 
 		gpointer compiled_ptr = mono_compile_method_checked (method, &error);
 		mono_error_assert_ok (&error);
@@ -9854,7 +9854,7 @@ record_slot_vstore (MonoObject *array, size_t index, MonoObject *value)
 {
 	char *name = mono_type_get_full_name (array->vtable->klass->element_class);
 	printf ("slow vstore of %s\n", name);
-	g_free (name);
+	g_free_vb (name);
 }
 #endif
 
@@ -9884,7 +9884,7 @@ get_virtual_stelemref_wrapper (int kind)
 
 	name = g_strdup_printf ("virt_stelemref_%s", strelemref_wrapper_name [kind]);
 	mb = mono_mb_new (mono_defaults.object_class, name, MONO_WRAPPER_STELEMREF);
-	g_free (name);
+	g_free_vb (name);
 
 	if (!signature) {
 		MonoMethodSignature *sig = mono_metadata_signature_alloc (mono_defaults.corlib, 2);
@@ -10334,7 +10334,7 @@ mono_marshal_get_virtual_stelemref_wrappers (int *nwrappers)
 	int i;
 
 	*nwrappers = STELEMREF_KIND_COUNT;
-	res = (MonoMethod **)g_malloc0 (STELEMREF_KIND_COUNT * sizeof (MonoMethod*));
+	res = (MonoMethod **)g_malloc0_vb (STELEMREF_KIND_COUNT * sizeof (MonoMethod*));
 	for (i = 0; i < STELEMREF_KIND_COUNT; ++i)
 		res [i] = get_virtual_stelemref_wrapper (i);
 	return res;
@@ -10616,7 +10616,7 @@ mono_marshal_get_array_address (int rank, int elem_size)
 
 	name = g_strdup_printf ("ElementAddr_%d", elem_size);
 	mb = mono_mb_new (mono_defaults.object_class, name, MONO_WRAPPER_MANAGED_TO_MANAGED);
-	g_free (name);
+	g_free_vb (name);
 	
 #ifdef ENABLE_ILGEN
 	bounds = mono_mb_add_local (mb, &mono_defaults.int_class->byval_arg);
@@ -10713,7 +10713,7 @@ mono_marshal_get_array_address (int rank, int elem_size)
 	/* throw exception */
 	mono_mb_emit_exception (mb, "IndexOutOfRangeException", NULL);
 
-	g_free (branch_positions);
+	g_free_vb (branch_positions);
 #endif /* ENABLE_ILGEN */
 
 	info = mono_wrapper_info_create (mb, WRAPPER_SUBTYPE_ELEMENT_ADDR);
@@ -10738,7 +10738,7 @@ mono_marshal_get_array_address (int rank, int elem_size)
 			int new_size = elem_addr_cache_size + 4;
 			ArrayElemAddr *new_array = g_new0 (ArrayElemAddr, new_size);
 			memcpy (new_array, elem_addr_cache, elem_addr_cache_size * sizeof (ArrayElemAddr));
-			g_free (elem_addr_cache);
+			g_free_vb (elem_addr_cache);
 			elem_addr_cache = new_array;
 			elem_addr_cache_size = new_size;
 		}
@@ -10833,7 +10833,7 @@ mono_marshal_alloc_co_task_mem (size_t size)
 		/* This returns a valid pointer for size 0 on MS.NET */
 		size = 4;
 
-	return g_try_malloc ((gulong)size);
+	return g_try_malloc_vb ((gulong)size);
 }
 #endif
 
@@ -10872,7 +10872,7 @@ ves_icall_marshal_alloc (gsize size)
 static inline void
 mono_marshal_free_co_task_mem (void *ptr)
 {
-	g_free (ptr);
+	g_free_vb (ptr);
 	return;
 }
 #endif
@@ -10899,7 +10899,7 @@ mono_marshal_free_array (gpointer *ptr, int size)
 
 	for (i = 0; i < size; i++)
 		if (ptr [i])
-			g_free (ptr [i]);
+			g_free_vb (ptr [i]);
 }
 
 void *
@@ -11181,7 +11181,7 @@ ves_icall_System_Runtime_InteropServices_Marshal_PtrToStructure (gpointer src, M
 
 		tmp = g_strdup_printf ("Destination is a boxed value type.");
 		exc = mono_get_exception_argument ("dst", tmp);
-		g_free (tmp);  
+		g_free_vb (tmp);  
 
 		mono_set_pending_exception (exc);
 		return;
@@ -11267,7 +11267,7 @@ ves_icall_System_Runtime_InteropServices_Marshal_OffsetOf (MonoReflectionTypeHan
 			klass = klass->parent;
         }
 
-	g_free (fname);
+	g_free_vb (fname);
 
 	if(match_index == -1) {
 		/* Get back original class instance */
@@ -11297,7 +11297,7 @@ ves_icall_System_Runtime_InteropServices_Marshal_StringToHGlobalUni (MonoString 
 	if (string == NULL)
 		return NULL;
 	else {
-		gunichar2 *res = (gunichar2 *)g_malloc ((mono_string_length (string) + 1) * 2);
+		gunichar2 *res = (gunichar2 *)g_malloc_vb ((mono_string_length (string) + 1) * 2);
 
 		memcpy (res, mono_string_chars (string), mono_string_length (string) * 2);
 		res [mono_string_length (string)] = 0;
@@ -11378,7 +11378,7 @@ ves_icall_System_Runtime_InteropServices_Marshal_DestroyStructure (gpointer src,
 static inline void *
 mono_marshal_alloc_hglobal (size_t size)
 {
-	return g_try_malloc (size);
+	return g_try_malloc_vb (size);
 }
 #endif
 
@@ -11435,7 +11435,7 @@ ves_icall_System_Runtime_InteropServices_Marshal_ReAllocHGlobal (gpointer ptr, g
 static inline void
 mono_marshal_free_hglobal (gpointer ptr)
 {
-	g_free (ptr);
+	g_free_vb (ptr);
 	return;
 }
 #endif

@@ -53,7 +53,7 @@ mono_get_module_file_name (HMODULE module_handle)
 	for (;;) {
 		size = GetModuleFileName (module_handle, file_name, buffer_size);
 		if (!size) {
-			g_free (file_name);
+			g_free_vb (file_name);
 			return NULL;
 		}
 
@@ -66,7 +66,7 @@ mono_get_module_file_name (HMODULE module_handle)
 	}
 
 	file_name_utf8 = g_utf16_to_utf8 (file_name, size, NULL, NULL, NULL);
-	g_free (file_name);
+	g_free_vb (file_name);
 
 	return file_name_utf8;
 }
@@ -94,8 +94,8 @@ BOOL STDMETHODCALLTYPE _CorDllMain(HINSTANCE hInst, DWORD dwReason, LPVOID lpRes
 			mono_runtime_load (file_name, NULL);
 			error = (gchar*) mono_check_corlib_version ();
 			if (error) {
-				g_free (error);
-				g_free (file_name);
+				g_free_vb (error);
+				g_free_vb (file_name);
 				mono_runtime_quit ();
 				return FALSE;
 			}
@@ -110,7 +110,7 @@ BOOL STDMETHODCALLTYPE _CorDllMain(HINSTANCE hInst, DWORD dwReason, LPVOID lpRes
 		}
 
 		if (!image) {
-			g_free (file_name);
+			g_free_vb (file_name);
 			return FALSE;
 		}
 
@@ -122,7 +122,7 @@ BOOL STDMETHODCALLTYPE _CorDllMain(HINSTANCE hInst, DWORD dwReason, LPVOID lpRes
 		if (image->tables [MONO_TABLE_ASSEMBLY].rows && ((MonoCLIImageInfo*) image->image_info)->cli_cli_header.ch_vtable_fixups.rva)
 			assembly = mono_assembly_open_predicate (file_name, FALSE, FALSE, NULL, NULL, NULL);
 
-		g_free (file_name);
+		g_free_vb (file_name);
 		break;
 	case DLL_PROCESS_DETACH:
 		if (lpReserved != NULL)
@@ -133,7 +133,7 @@ BOOL STDMETHODCALLTYPE _CorDllMain(HINSTANCE hInst, DWORD dwReason, LPVOID lpRes
 		if (image)
 			mono_image_close (image);
 
-		g_free (file_name);
+		g_free_vb (file_name);
 		break;
 	}
 
@@ -164,8 +164,8 @@ __int32 STDMETHODCALLTYPE _CorExeMain(void)
 
 	corlib_version_error = (gchar*) mono_check_corlib_version ();
 	if (corlib_version_error) {
-		g_free (corlib_version_error);
-		g_free (file_name);
+		g_free_vb (corlib_version_error);
+		g_free_vb (file_name);
 		MessageBox (NULL, L"Corlib not in sync with this runtime.", NULL, MB_ICONERROR);
 		mono_runtime_quit ();
 		ExitProcess (1);
@@ -174,7 +174,7 @@ __int32 STDMETHODCALLTYPE _CorExeMain(void)
 	assembly = mono_assembly_open_predicate (file_name, FALSE, FALSE, NULL, NULL, NULL);
 	mono_close_exe_image ();
 	if (!assembly) {
-		g_free (file_name);
+		g_free_vb (file_name);
 		MessageBox (NULL, L"Cannot open assembly.", NULL, MB_ICONERROR);
 		mono_runtime_quit ();
 		ExitProcess (1);
@@ -183,7 +183,7 @@ __int32 STDMETHODCALLTYPE _CorExeMain(void)
 	image = assembly->image;
 	entry = mono_image_get_entry_point (image);
 	if (!entry) {
-		g_free (file_name);
+		g_free_vb (file_name);
 		MessageBox (NULL, L"Assembly doesn't have an entry point.", NULL, MB_ICONERROR);
 		mono_runtime_quit ();
 		ExitProcess (1);
@@ -191,7 +191,7 @@ __int32 STDMETHODCALLTYPE _CorExeMain(void)
 
 	method = mono_get_method_checked (image, entry, NULL, NULL, &error);
 	if (method == NULL) {
-		g_free (file_name);
+		g_free_vb (file_name);
 		mono_error_cleanup (&error); /* FIXME don't swallow the error */
 		MessageBox (NULL, L"The entry point method could not be loaded.", NULL, MB_ICONERROR);
 		mono_runtime_quit ();
@@ -813,7 +813,7 @@ STDAPI MonoFixupExe(HMODULE ModuleHandle)
 				ImportModuleHandle = NULL;
 				if (file_utf16 != NULL) {
 					ImportModuleHandle = LoadLibraryW(file_utf16);
-					g_free (file_utf16);
+					g_free_vb (file_utf16);
 				}
 
 				if (ImportModuleHandle == NULL)
@@ -884,9 +884,9 @@ mono_coree_set_act_ctx (const char* file_name)
 	dir_name_utf16 = g_utf8_to_utf16 (dir_name, -1, NULL, NULL, NULL);
 	base_name = g_path_get_basename (full_path);
 	base_name_utf16 = g_utf8_to_utf16 (base_name, -1, NULL, NULL, NULL);
-	g_free (base_name);
-	g_free (dir_name);
-	g_free (full_path);
+	g_free_vb (base_name);
+	g_free_vb (dir_name);
+	g_free_vb (full_path);
 
 	memset (&act_ctx, 0, sizeof (ACTCTX));
 	act_ctx.cbSize = sizeof (ACTCTX);
@@ -902,9 +902,9 @@ mono_coree_set_act_ctx (const char* file_name)
 		handle = CreateActCtx_proc (&act_ctx);
 	}
 
-	g_free (base_name_utf16);
-	g_free (dir_name_utf16);
-	g_free (full_path_utf16);
+	g_free_vb (base_name_utf16);
+	g_free_vb (dir_name_utf16);
+	g_free_vb (full_path_utf16);
 
 	if (handle != INVALID_HANDLE_VALUE)
 		ActivateActCtx_proc (handle, &cookie);
@@ -935,7 +935,7 @@ mono_load_coree (const char* exe_file_name)
 	memcpy (&file_name [size], L"mscoree.dll", 12 * sizeof (gunichar2));
 
 	module_handle = LoadLibrary (file_name);
-	g_free (file_name);
+	g_free_vb (file_name);
 
 	if (module_handle && !SUCCEEDED (MonoFixupCorEE (module_handle))) {
 		FreeLibrary (module_handle);

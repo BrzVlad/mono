@@ -139,7 +139,7 @@ get_saved_signal_handler (int signo, gboolean remove)
 static void
 save_old_signal_handler (int signo, struct sigaction *old_action)
 {
-	struct sigaction *handler_to_save = (struct sigaction *)g_malloc (sizeof (struct sigaction));
+	struct sigaction *handler_to_save = (struct sigaction *)g_malloc_vb (sizeof (struct sigaction));
 
 	mono_trace (G_LOG_LEVEL_DEBUG, MONO_TRACE_CONFIG,
 				"Saving old signal handler for signal %d.", signo);

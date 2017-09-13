@@ -64,7 +64,7 @@ void*
 malloc_shared_area (int pid)
 {
 	int size = mono_pagesize ();
-	SAreaHeader *sarea = (SAreaHeader *) g_malloc0 (size);
+	SAreaHeader *sarea = (SAreaHeader *) g_malloc0_vb (size);
 	sarea->size = size;
 	sarea->pid = pid;
 	sarea->stats_start = sizeof (SAreaHeader);
@@ -380,7 +380,7 @@ mono_valloc_granule (void)
 void*
 mono_valloc (void *addr, size_t length, int flags, MonoMemAccountType type)
 {
-	return g_malloc (length);
+	return g_malloc_vb (length);
 }
 
 void*
@@ -394,7 +394,7 @@ mono_valloc_aligned (size_t size, size_t alignment, int flags, MonoMemAccountTyp
 int
 mono_vfree (void *addr, size_t length, MonoMemAccountType type)
 {
-	g_free (addr);
+	g_free_vb (addr);
 	return 0;
 }
 
@@ -444,7 +444,7 @@ mono_shared_area_instances_slow (void **array, int count, gboolean cleanup)
 				break;
 		}
 	}
-	g_free (processes);
+	g_free_vb (processes);
 	return j;
 }
 
@@ -547,14 +547,14 @@ mono_shared_area_remove (void)
 
 	if (shared_area_disabled ()) {
 		if (malloced_shared_area)
-			g_free (malloced_shared_area);
+			g_free_vb (malloced_shared_area);
 		return;
 	}
 
 	g_snprintf (buf, sizeof (buf), "/mono.%d", getpid ());
 	shm_unlink (buf);
 	if (malloced_shared_area)
-		g_free (malloced_shared_area);
+		g_free_vb (malloced_shared_area);
 }
 
 void*
@@ -616,7 +616,7 @@ void
 mono_shared_area_remove (void)
 {
 	if (malloced_shared_area)
-		g_free (malloced_shared_area);
+		g_free_vb (malloced_shared_area);
 	malloced_shared_area = NULL;
 }
 
@@ -671,7 +671,7 @@ mono_pages_not_faulted (void *addr, size_t size)
 	gint64 count;
 	int pagesize = mono_pagesize ();
 	int npages = (size + pagesize - 1) / pagesize;
-	char *faulted = (char *) g_malloc0 (sizeof (char*) * npages);
+	char *faulted = (char *) g_malloc0_vb (sizeof (char*) * npages);
 
 	/*
 	 * We cast `faulted` to void* because Linux wants an unsigned
@@ -691,7 +691,7 @@ mono_pages_not_faulted (void *addr, size_t size)
 		}
 	}
 
-	g_free (faulted);
+	g_free_vb (faulted);
 
 	return count;
 #else

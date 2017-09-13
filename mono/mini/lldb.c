@@ -148,7 +148,7 @@ typedef struct {
 static inline void
 buffer_init (Buffer *buf, int size)
 {
-	buf->buf = (guint8 *)g_malloc (size);
+	buf->buf = (guint8 *)g_malloc_vb (size);
 	buf->p = buf->buf;
 	buf->end = buf->buf + size;
 }
@@ -244,7 +244,7 @@ buffer_add_buffer (Buffer *buf, Buffer *data)
 static inline void
 buffer_free (Buffer *buf)
 {
-	g_free (buf->buf);
+	g_free_vb (buf->buf);
 }
 
 typedef struct {
@@ -275,10 +275,10 @@ add_entry (EntryType type, Buffer *buf)
 	guint8 *data;
 	int size = buffer_len (buf);
 
-	data = g_malloc (size);
+	data = g_malloc_vb (size);
 	memcpy (data, buf->buf, size);
 
-	entry = g_malloc0 (sizeof (DebugEntry));
+	entry = g_malloc0_vb (sizeof (DebugEntry));
 	entry->type = type;
 	entry->addr = (guint64)(gsize)data;
 	entry->size = size;
@@ -483,7 +483,7 @@ mono_lldb_save_method_info (MonoCompile *cfg)
 
 	char *s = mono_method_full_name (cfg->method, TRUE);
 	buffer_add_string (buf, s);
-	g_free (s);
+	g_free_vb (s);
 
 	minfo = mono_debug_lookup_method (cfg->method);
 	MonoSeqPointInfo *seq_points = cfg->seq_point_info;
@@ -534,9 +534,9 @@ mono_lldb_save_method_info (MonoCompile *cfg)
 			buffer_add_int (buf, sp->end_line);
 			buffer_add_int (buf, sp->end_column);
 		}
-		g_free (locs);
-		g_free (source_files);
-		g_free (sym_seq_points);
+		g_free_vb (locs);
+		g_free_vb (source_files);
+		g_free_vb (sym_seq_points);
 		g_ptr_array_free (source_file_list, TRUE);
 	} else {
 		buffer_add_int (buf, 0);

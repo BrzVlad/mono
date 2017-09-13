@@ -691,7 +691,7 @@ mono_simd_simplify_indirection (MonoCompile *cfg)
 	}
 
 	DEBUG (printf ("[simd-simplify] max vreg is %d\n", max_vreg));
-	vreg_flags = (char *)g_malloc0 (max_vreg + 1);
+	vreg_flags = (char *)g_malloc0_vb (max_vreg + 1);
 	target_bb = g_new0 (MonoBasicBlock*, max_vreg + 1);
 
 	for (i = 0; i < cfg->num_varinfo; i++) {
@@ -813,8 +813,8 @@ mono_simd_simplify_indirection (MonoCompile *cfg)
 		}
 	}
 
-	g_free (vreg_flags);
-	g_free (target_bb);
+	g_free_vb (vreg_flags);
+	g_free_vb (target_bb);
 }
 
 /*
@@ -2094,7 +2094,7 @@ emit_vector_intrinsics (MonoCompile *cfg, MonoMethod *cmethod, MonoMethodSignatu
 	if (cfg->verbose_level > 1) {
 		char *name = mono_method_full_name (cmethod, TRUE);
 		printf ("  SIMD intrinsic %s\n", name);
-		g_free (name);
+		g_free_vb (name);
 	}
 
 	switch (intrins->name) {
@@ -2160,7 +2160,7 @@ emit_vector_intrinsics (MonoCompile *cfg, MonoMethod *cmethod, MonoMethodSignatu
 	if (cfg->verbose_level > 1) {
 		char *name = mono_method_full_name (cmethod, TRUE);
 		printf ("  SIMD method %s not handled.\n", name);
-		g_free (name);
+		g_free_vb (name);
 	}
 	return NULL;
 }
@@ -2230,7 +2230,7 @@ emit_vector_t_intrinsics (MonoCompile *cfg, MonoMethod *cmethod, MonoMethodSigna
 	if (cfg->verbose_level > 1) {
 		char *name = mono_method_full_name (cmethod, TRUE);
 		printf ("  SIMD intrinsic %s\n", name);
-		g_free (name);
+		g_free_vb (name);
 	}
 
 	switch (intrins->name) {
@@ -2440,7 +2440,7 @@ emit_vector_t_intrinsics (MonoCompile *cfg, MonoMethod *cmethod, MonoMethodSigna
 	if (cfg->verbose_level > 1) {
 		char *name = mono_method_full_name (cmethod, TRUE);
 		printf ("  SIMD method %s not handled.\n", name);
-		g_free (name);
+		g_free_vb (name);
 	}
 
 	return NULL;

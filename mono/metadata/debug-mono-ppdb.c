@@ -92,8 +92,8 @@ doc_free (gpointer key)
 {
 	MonoDebugSourceInfo *info = (MonoDebugSourceInfo *)key;
 
-	g_free (info->source_file);
-	g_free (info);
+	g_free_vb (info->source_file);
+	g_free_vb (info);
 }
 
 static MonoPPDBFile*
@@ -138,14 +138,14 @@ mono_ppdb_load_file (MonoImage *image, const guint8 *raw_contents, int size)
 			s = g_strdup (filename);
 			s [strlen (filename) - 4] = '\0';
 			ppdb_filename = g_strdup_printf ("%s.pdb", s);
-			g_free (s);
+			g_free_vb (s);
 		} else {
 			ppdb_filename = g_strdup_printf ("%s.pdb", filename);
 		}
 
 		ppdb_image = mono_image_open_metadata_only (ppdb_filename, &status);
 		if (!ppdb_image)
-			g_free (ppdb_filename);
+			g_free_vb (ppdb_filename);
 	}
 	if (!ppdb_image)
 		return NULL;
@@ -178,7 +178,7 @@ mono_ppdb_close (MonoDebugHandle *handle)
 	mono_image_close (ppdb->image);
 	g_hash_table_destroy (ppdb->doc_hash);
 	g_hash_table_destroy (ppdb->method_hash);
-	g_free (ppdb);
+	g_free_vb (ppdb);
 }
 
 MonoDebugMethodInfo *

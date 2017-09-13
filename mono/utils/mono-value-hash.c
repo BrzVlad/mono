@@ -194,7 +194,7 @@ do_rehash (MonoValueHashTable *hash)
 
 		*new_s = *s;
 	}
-	g_free (old_table);
+	g_free_vb (old_table);
 	hash->n_occupied = hash->in_use;
 }
 
@@ -334,7 +334,7 @@ mono_value_hash_table_destroy (MonoValueHashTable *hash)
 				(*hash->value_destroy_func)(GET_VALUE (s));
 		}
 	}
-	g_free (hash->table);
+	g_free_vb (hash->table);
 	
-	g_free (hash);
+	g_free_vb (hash);
 }

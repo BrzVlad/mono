@@ -203,8 +203,8 @@ mono_arch_get_gsharedvt_call_info (gpointer addr, MonoMethodSignature *normal_si
 
 	info->stack_usage = ALIGN_TO (info->stack_usage, MONO_ARCH_FRAME_ALIGNMENT);
 
-	g_free (caller_cinfo);
-	g_free (callee_cinfo);
+	g_free_vb (caller_cinfo);
+	g_free_vb (callee_cinfo);
 
 	return info;
 }

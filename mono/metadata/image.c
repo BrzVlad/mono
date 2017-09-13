@@ -145,7 +145,7 @@ mono_remove_image_unload_hook (MonoImageUnloadFunc func, gpointer user_data)
 		hook = (ImageUnloadHook *)l->data;
 
 		if (hook->func == func && hook->user_data == user_data) {
-			g_free (hook);
+			g_free_vb (hook);
 			image_unload_hooks = g_slist_delete_link (image_unload_hooks, l);
 			break;
 		}
@@ -733,8 +733,8 @@ mono_image_load_module_checked (MonoImage *image, int idx, MonoError *error)
 			if (moduleImage) {
 				if (!assign_assembly_parent_for_netmodule (moduleImage, image, error)) {
 					mono_image_close (moduleImage);
-					g_free (module_ref);
-					g_free (base_dir);
+					g_free_vb (module_ref);
+					g_free_vb (base_dir);
 					g_list_free (valid_modules);
 					return NULL;
 				}
@@ -747,13 +747,13 @@ mono_image_load_module_checked (MonoImage *image, int idx, MonoError *error)
 #endif
 				/* g_print ("loaded module %s from %s (%p)\n", module_ref, image->name, image->assembly); */
 			}
-			g_free (module_ref);
+			g_free_vb (module_ref);
 		}
 	}
 
 	image->modules_loaded [idx - 1] = TRUE;
 
-	g_free (base_dir);
+	g_free_vb (base_dir);
 	g_list_free (valid_modules);
 
 	return image->modules [idx - 1];
@@ -796,7 +796,7 @@ mono_image_init (MonoImage *image)
 	mono_os_mutex_init_recursive (&image->lock);
 	mono_os_mutex_init_recursive (&image->szarray_cache_lock);
 
-	image->mempool = mono_mempool_new_size (INITIAL_IMAGE_SIZE);
+	image->mempool = mono_mempool_new_runtime (G_STRLOC, INITIAL_IMAGE_SIZE);
 	mono_internal_hash_table_init (&image->class_cache,
 				       g_direct_hash,
 				       class_key_extract,
@@ -1366,7 +1366,7 @@ do_mono_image_open (const char *fname, MonoImageOpenStatus *status,
 			gchar *ffname = mono_portability_find_file (fname, TRUE);
 			if (ffname) {
 				filed = mono_file_map_open (ffname);
-				g_free (ffname);
+				g_free_vb (ffname);
 			}
 		}
 
@@ -1389,7 +1389,7 @@ do_mono_image_open (const char *fname, MonoImageOpenStatus *status,
 #endif
 	if (!image->raw_data) {
 		mono_file_map_close (filed);
-		g_free (image);
+		g_free_vb (image);
 		if (status)
 			*status = MONO_IMAGE_IMAGE_INVALID;
 		return NULL;
@@ -1528,7 +1528,7 @@ mono_image_open_from_data_internal (char *data, guint32 data_len, gboolean need_
 	}
 	datac = data;
 	if (need_copy) {
-		datac = (char *)g_try_malloc (data_len);
+		datac = (char *)g_try_malloc_vb (data_len);
 		if (!datac) {
 			if (status)
 				*status = MONO_IMAGE_ERROR_ERRNO;
@@ -1651,8 +1651,8 @@ mono_image_open_a_lot (const char *fname, MonoImageOpenStatus *status, gboolean 
 			mono_image_addref (image);
 			mono_images_unlock ();
 			if (fname_utf16)
-				g_free (fname_utf16);
-			g_free (absfname);
+				g_free_vb (fname_utf16);
+			g_free_vb (absfname);
 			return image;
 		}
 
@@ -1668,11 +1668,11 @@ mono_image_open_a_lot (const char *fname, MonoImageOpenStatus *status, gboolean 
 			mono_image_addref (image);
 		mono_images_unlock ();
 
-		g_free (fname_utf16);
+		g_free_vb (fname_utf16);
 
 		if (module_handle == NULL) {
 			g_assert (!image);
-			g_free (absfname);
+			g_free_vb (absfname);
 			if (status) {
 				if (last_error == ERROR_BAD_EXE_FORMAT || last_error == STATUS_INVALID_IMAGE_FORMAT)
 					*status = MONO_IMAGE_IMAGE_INVALID;
@@ -1689,7 +1689,7 @@ mono_image_open_a_lot (const char *fname, MonoImageOpenStatus *status, gboolean 
 		if (image) {
 			g_assert (image->is_module_handle);
 			g_assert (image->has_entry_point);
-			g_free (absfname);
+			g_free_vb (absfname);
 			return image;
 		}
 
@@ -1707,7 +1707,7 @@ mono_image_open_a_lot (const char *fname, MonoImageOpenStatus *status, gboolean 
 	 */
 	mono_images_lock ();
 	image = (MonoImage *)g_hash_table_lookup (loaded_images, absfname);
-	g_free (absfname);
+	g_free_vb (absfname);
 
 	if (image) { // Image already loaded
 		mono_image_addref (image);
@@ -1872,7 +1872,7 @@ void
 mono_dynamic_stream_reset (MonoDynamicStream* stream)
 {
 	stream->alloc_size = stream->index = stream->offset = 0;
-	g_free (stream->data);
+	g_free_vb (stream->data);
 	stream->data = NULL;
 	if (stream->hash) {
 		g_hash_table_destroy (stream->hash);
@@ -2000,7 +2000,7 @@ mono_image_close_except_pools (MonoImage *image)
 		}
 	} else {
 		if (image->references) {
-			g_free (image->references);
+			g_free_vb (image->references);
 			image->references = NULL;
 		}
 	}
@@ -2037,15 +2037,15 @@ mono_image_close_except_pools (MonoImage *image)
 				((char*)(ii->cli_sections [i]) <= ((char*)image->raw_data + image->raw_data_len)))
 				ii->cli_sections [i] = NULL;
 
-		g_free (image->raw_data);
+		g_free_vb (image->raw_data);
 	}
 
 	if (debug_assembly_unload) {
 		image->name = g_strdup_printf ("%s - UNLOADED", image->name);
 	} else {
-		g_free (image->name);
-		g_free (image->guid);
-		g_free (image->version);
+		g_free_vb (image->name);
+		g_free_vb (image->guid);
+		g_free_vb (image->version);
 	}
 
 	if (image->method_cache)
@@ -2090,7 +2090,7 @@ mono_image_close_except_pools (MonoImage *image)
 
 	for (i = 0; i < image->gshared_types_len; ++i)
 		free_hash (image->gshared_types [i]);
-	g_free (image->gshared_types);
+	g_free_vb (image->gshared_types);
 
 	/* The ownership of signatures is not well defined */
 	g_hash_table_destroy (image->memberref_signatures);
@@ -2118,16 +2118,16 @@ mono_image_close_except_pools (MonoImage *image)
 		MonoCLIImageInfo *ii = (MonoCLIImageInfo *)image->image_info;
 
 		if (ii->cli_section_tables)
-			g_free (ii->cli_section_tables);
+			g_free_vb (ii->cli_section_tables);
 		if (ii->cli_sections)
-			g_free (ii->cli_sections);
-		g_free (image->image_info);
+			g_free_vb (ii->cli_sections);
+		g_free_vb (image->image_info);
 	}
 
 	mono_image_close_except_pools_all (image->files, image->file_count);
 	mono_image_close_except_pools_all (image->modules, image->module_count);
 	if (image->modules_loaded)
-		g_free (image->modules_loaded);
+		g_free_vb (image->modules_loaded);
 
 	mono_os_mutex_destroy (&image->szarray_cache_lock);
 	mono_os_mutex_destroy (&image->lock);
@@ -2135,7 +2135,7 @@ mono_image_close_except_pools (MonoImage *image)
 	/*g_print ("destroy image %p (dynamic: %d)\n", image, image->dynamic);*/
 	if (image_is_dynamic (image)) {
 		/* Dynamic images are GC_MALLOCed */
-		g_free ((char*)image->module_name);
+		g_free_vb ((char*)image->module_name);
 		mono_dynamic_image_free ((MonoDynamicImage*)image);
 	}
 
@@ -2152,7 +2152,7 @@ mono_image_close_all (MonoImage**images, int image_count)
 			mono_image_close_finish (images [i]);
 	}
 	if (images)
-		g_free (images);
+		g_free_vb (images);
 }
 
 void
@@ -2166,7 +2166,7 @@ mono_image_close_finish (MonoImage *image)
 				mono_assembly_close_finish (image->references [i]);
 		}
 
-		g_free (image->references);
+		g_free_vb (image->references);
 		image->references = NULL;
 	}
 
@@ -2182,7 +2182,7 @@ mono_image_close_finish (MonoImage *image)
 			mono_mempool_invalidate (image->mempool);
 		else {
 			mono_mempool_destroy (image->mempool);
-			g_free (image);
+			g_free_vb (image);
 		}
 	} else {
 		if (debug_assembly_unload)
@@ -2315,7 +2315,7 @@ mono_image_walk_resource_tree (MonoCLIImageInfo *info, guint32 res_id,
  * \param lang_id The language id.
  * \param name the resource name to lookup.
  * \returns NULL if not found, otherwise a pointer to the in-memory representation
- * of the given resource. The caller should free it using \c g_free when no longer
+ * of the given resource. The caller should free it using \c g_free_vb when no longer
  * needed.
  */
 gpointer
@@ -2487,8 +2487,8 @@ mono_image_load_file_for_image_checked (MonoImage *image, int fileidx, MonoError
 	}
 
 done:
-	g_free (name);
-	g_free (base_dir);
+	g_free_vb (name);
+	g_free_vb (base_dir);
 	return res;
 }
 

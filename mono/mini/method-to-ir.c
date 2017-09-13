@@ -384,8 +384,8 @@ field_access_failure (MonoCompile *cfg, MonoMethod *method, MonoClassField *fiel
 	char *field_fname = mono_field_full_name (field);
 	mono_cfg_set_exception (cfg, MONO_EXCEPTION_MONO_ERROR);
 	mono_error_set_generic_error (&cfg->error, "System", "FieldAccessException", "Field `%s' is inaccessible from method `%s'\n", field_fname, method_fname);
-	g_free (method_fname);
-	g_free (field_fname);
+	g_free_vb (method_fname);
+	g_free_vb (field_fname);
 }
 
 static MONO_NEVER_INLINE void
@@ -2635,7 +2635,7 @@ sig_to_rgctx_sig (MonoMethodSignature *sig)
 	MonoMethodSignature *res;
 	int i;
 
-	res = (MonoMethodSignature *)g_malloc (MONO_SIZEOF_METHOD_SIGNATURE + (sig->param_count + 1) * sizeof (MonoType*));
+	res = (MonoMethodSignature *)g_malloc_vb (MONO_SIZEOF_METHOD_SIGNATURE + (sig->param_count + 1) * sizeof (MonoType*));
 	memcpy (res, sig, MONO_SIZEOF_METHOD_SIGNATURE);
 	res->param_count = sig->param_count + 1;
 	for (i = 0; i < sig->param_count; ++i)
@@ -2724,7 +2724,7 @@ mono_emit_jit_icall_by_info (MonoCompile *cfg, int il_offset, MonoJitICallInfo *
 		if (!info->wrapper_method) {
 			name = g_strdup_printf ("__icall_wrapper_%s", info->name);
 			info->wrapper_method = mono_marshal_get_icall_wrapper (info->sig, name, info->func, TRUE);
-			g_free (name);
+			g_free_vb (name);
 			mono_memory_barrier ();
 		}
 
@@ -4249,7 +4249,7 @@ mono_method_check_inlining (MonoCompile *cfg, MonoMethod *method)
 		char *inlinelimit;
 		if ((inlinelimit = g_getenv ("MONO_INLINELIMIT"))) {
 			inline_limit = atoi (inlinelimit);
-			g_free (inlinelimit);
+			g_free_vb (inlinelimit);
 		} else
 			inline_limit = INLINE_LENGTH_LIMIT;
 		inline_limit_inited = TRUE;
@@ -5911,7 +5911,7 @@ check_inline_called_method_name_limit (MonoMethod *called_method)
 		char *called_method_name = mono_method_full_name (called_method, TRUE);
 
 		strncmp_result = strncmp (called_method_name, limit, strlen (limit));
-		g_free (called_method_name);
+		g_free_vb (called_method_name);
 	
 		//return (strncmp_result <= 0);
 		return (strncmp_result == 0);
@@ -5941,7 +5941,7 @@ check_inline_caller_method_name_limit (MonoMethod *caller_method)
 		char *caller_method_name = mono_method_full_name (caller_method, TRUE);
 
 		strncmp_result = strncmp (caller_method_name, limit, strlen (limit));
-		g_free (caller_method_name);
+		g_free_vb (caller_method_name);
 	
 		//return (strncmp_result <= 0);
 		return (strncmp_result == 0);
@@ -6602,8 +6602,8 @@ set_exception_type_from_invalid_il (MonoCompile *cfg, MonoMethod *method, unsign
 	else
 		method_code = mono_disasm_code_one (NULL, method, ip, NULL);
 	mono_cfg_set_exception_invalid_program (cfg, g_strdup_printf ("Invalid IL code in %s: %s\n", method_fname, method_code));
- 	g_free (method_fname);
- 	g_free (method_code);
+ 	g_free_vb (method_fname);
+ 	g_free_vb (method_code);
 	cfg->headers_to_free = g_slist_prepend_mempool (cfg->mempool, cfg->headers_to_free, header);
 }
 
@@ -7204,7 +7204,7 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 				if (sps [i].il_offset < header->code_size)
 					mono_bitset_set_fast (seq_point_locs, sps [i].il_offset);
 			}
-			g_free (sps);
+			g_free_vb (sps);
 
 			MonoDebugMethodAsyncInfo* asyncMethod = mono_debug_lookup_method_async_debug_info (method);
 			if (asyncMethod) {
@@ -12690,7 +12690,7 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 		/* Method is too large */
 		mname = mono_method_full_name (method, TRUE);
 		mono_cfg_set_exception_invalid_program (cfg, g_strdup_printf ("Method %s is too complex.", mname));
-		g_free (mname);
+		g_free_vb (mname);
 	}
 
 	if ((cfg->verbose_level > 2) && (cfg->method == method)) 
@@ -14073,10 +14073,10 @@ mono_spill_global_vars (MonoCompile *cfg, gboolean *need_local_opts)
 		cfg->gsharedvt_locals_var_ins->inst_imm = 0;
 	}
 
-	g_free (live_range_start);
-	g_free (live_range_end);
-	g_free (live_range_start_bb);
-	g_free (live_range_end_bb);
+	g_free_vb (live_range_start);
+	g_free_vb (live_range_end);
+	g_free_vb (live_range_start_bb);
+	g_free_vb (live_range_end_bb);
 }
 
 

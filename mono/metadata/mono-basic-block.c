@@ -512,7 +512,7 @@ mono_basic_block_free (MonoSimpleBasicBlock *bb)
 		MonoSimpleBasicBlock *next = bb->next;
 		if (bb->out_bb)
 			g_slist_free (bb->out_bb);
-		g_free (bb);
+		g_free_vb (bb);
 		bb = next;
 	}
 }

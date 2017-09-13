@@ -422,7 +422,7 @@ mono_arch_create_generic_trampoline (MonoTrampolineType tramp_type, MonoTrampInf
 
 	tramp_name = mono_get_generic_trampoline_name (tramp_type);
 	*info = mono_tramp_info_create (tramp_name, buf, code - buf, ji, unwind_ops);
-	g_free (tramp_name);
+	g_free_vb (tramp_name);
 
 	return buf;
 }
@@ -482,7 +482,7 @@ mono_arch_create_rgctx_lazy_fetch_trampoline (guint32 slot, MonoTrampInfo **info
 
 	code = buf = mono_global_codeman_reserve (tramp_size);
 
-	rgctx_null_jumps = g_malloc (sizeof (guint8*) * (depth + 2));
+	rgctx_null_jumps = g_malloc_vb (sizeof (guint8*) * (depth + 2));
 
 	/* load vtable/mrgctx ptr */
 	x86_mov_reg_membase (code, X86_EAX, X86_ESP, 4, 4);
@@ -522,7 +522,7 @@ mono_arch_create_rgctx_lazy_fetch_trampoline (guint32 slot, MonoTrampInfo **info
 	for (i = mrgctx ? 1 : 0; i <= depth + 1; ++i)
 		x86_patch (rgctx_null_jumps [i], code);
 
-	g_free (rgctx_null_jumps);
+	g_free_vb (rgctx_null_jumps);
 
 	x86_mov_reg_membase (code, MONO_ARCH_VTABLE_REG, X86_ESP, 4, 4);
 
@@ -543,7 +543,7 @@ mono_arch_create_rgctx_lazy_fetch_trampoline (guint32 slot, MonoTrampInfo **info
 
 	char *name = mono_get_rgctx_fetch_trampoline_name (slot);
 	*info = mono_tramp_info_create (name, buf, code - buf, ji, unwind_ops);
-	g_free (name);
+	g_free_vb (name);
 
 	return buf;
 }

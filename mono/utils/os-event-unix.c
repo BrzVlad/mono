@@ -109,7 +109,7 @@ signal_and_unref (gpointer user_data)
 	mono_os_event_set (&data->event);
 	if (InterlockedDecrement ((gint32*) &data->ref) == 0) {
 		mono_os_event_destroy (&data->event);
-		g_free (data);
+		g_free_vb (data);
 	}
 }
 
@@ -141,7 +141,7 @@ mono_os_event_wait_multiple (MonoOSEvent **events, gsize nevents, gboolean waita
 		mono_thread_info_install_interrupt (signal_and_unref, data, &alerted);
 		if (alerted) {
 			mono_os_event_destroy (&data->event);
-			g_free (data);
+			g_free_vb (data);
 			return MONO_OS_EVENT_WAIT_RET_ALERTED;
 		}
 	}
@@ -222,13 +222,13 @@ done:
 		if (alerted) {
 			if (InterlockedDecrement ((gint32*) &data->ref) == 0) {
 				mono_os_event_destroy (&data->event);
-				g_free (data);
+				g_free_vb (data);
 			}
 			return MONO_OS_EVENT_WAIT_RET_ALERTED;
 		}
 
 		mono_os_event_destroy (&data->event);
-		g_free (data);
+		g_free_vb (data);
 	}
 
 	return ret;

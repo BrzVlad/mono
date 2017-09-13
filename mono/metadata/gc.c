@@ -118,7 +118,7 @@ break_coop_alertable_wait (gpointer user_data)
 	mono_coop_cond_signal (ud->cond);
 	mono_coop_mutex_unlock (ud->mutex);
 
-	g_free (ud);
+	g_free_vb (ud);
 }
 
 /*
@@ -140,7 +140,7 @@ coop_cond_timedwait_alertable (MonoCoopCond *cond, MonoCoopMutex *mutex, guint32
 
 		mono_thread_info_install_interrupt (break_coop_alertable_wait, ud, alertable);
 		if (*alertable) {
-			g_free (ud);
+			g_free_vb (ud);
 			return 0;
 		}
 	}
@@ -152,7 +152,7 @@ coop_cond_timedwait_alertable (MonoCoopCond *cond, MonoCoopMutex *mutex, guint32
 		else {
 			/* the interrupt token has not been taken by another
 			 * thread, so it's our responsability to free it up. */
-			g_free (ud);
+			g_free_vb (ud);
 		}
 	}
 	return res;
@@ -517,7 +517,7 @@ mono_domain_finalize (MonoDomain *domain, guint32 timeout)
 done:
 	if (InterlockedDecrement (&req->ref) == 0) {
 		mono_coop_sem_destroy (&req->done);
-		g_free (req);
+		g_free_vb (req);
 	}
 
 	return ret;
@@ -833,7 +833,7 @@ finalize_domain_objects (void)
 		/* mono_domain_finalize already returned, and
 		 * doesn't hold a reference to req anymore. */
 		mono_coop_sem_destroy (&req->done);
-		g_free (req);
+		g_free_vb (req);
 	}
 }
 
@@ -1111,7 +1111,7 @@ reference_queue_proccess (MonoReferenceQueue *queue)
 			mono_gchandle_free ((guint32)entry->gchandle);
 			ref_list_remove_element (iter, entry);
 			queue->callback (entry->user_data);
-			g_free (entry);
+			g_free_vb (entry);
 		} else {
 			iter = &entry->next;
 		}
@@ -1140,7 +1140,7 @@ restart:
 			goto restart;
 		}
 		*iter = queue->next;
-		g_free (queue);
+		g_free_vb (queue);
 	}
 	mono_coop_mutex_unlock (&reference_queue_mutex);
 }
@@ -1166,7 +1166,7 @@ reference_queue_clear_for_domain (MonoDomain *domain)
 				mono_gchandle_free ((guint32)entry->gchandle);
 				ref_list_remove_element (iter, entry);
 				queue->callback (entry->user_data);
-				g_free (entry);
+				g_free_vb (entry);
 			} else {
 				iter = &entry->next;
 			}

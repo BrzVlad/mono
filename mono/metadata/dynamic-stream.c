@@ -21,7 +21,7 @@ mono_dynstream_init (MonoDynamicStream *sh)
 
 	sh->index = 0;
 	sh->alloc_size = 4096;
-	sh->data = (char *)g_malloc (4096);
+	sh->data = (char *)g_malloc_vb (4096);
 	sh->hash = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
 	mono_dynstream_insert_string (sh, "");
 }
@@ -82,7 +82,7 @@ mono_dynstream_insert_mstring (MonoDynamicStream *sh, MonoString *str, MonoError
 	return_val_if_nok (error, -1);
 	guint32 idx;
 	idx = mono_dynstream_insert_string (sh, name);
-	g_free (name);
+	g_free_vb (name);
 	return idx;
 }
 

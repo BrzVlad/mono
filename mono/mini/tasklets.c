@@ -35,7 +35,7 @@ continuation_free (MonoContinuation *cont)
 {
 	if (cont->saved_stack)
 		mono_gc_free_fixed (cont->saved_stack);
-	g_free (cont);
+	g_free_vb (cont);
 }
 
 static MonoException*

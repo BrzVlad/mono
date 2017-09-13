@@ -166,9 +166,9 @@ static void get_string (void)
 		input++;
 	}
 	if (value != NULL)
-		g_free (value);
+		g_free_vb (value);
 	size_t len = input - start;
-	value = (char *)g_malloc (len + 1);
+	value = (char *)g_malloc_vb (len + 1);
 	memcpy (value, start, len);
 	value [len] = 0;
 }
@@ -247,7 +247,7 @@ static void
 cleanup (void)
 {
 	if (value != NULL)
-		g_free (value);
+		g_free_vb (value);
 }
 
 static int
@@ -432,7 +432,7 @@ mono_trace_enter_method (MonoMethod *method, char *ebp)
 	fname = mono_method_full_name (method, TRUE);
 	indent (1);
 	printf ("ENTER: %s(", fname);
-	g_free (fname);
+	g_free_vb (fname);
 
 	if (!ebp) {
 		printf (") ip: %p\n", RETURN_ADDRESS_N (1));
@@ -479,7 +479,7 @@ mono_trace_enter_method (MonoMethod *method, char *ebp)
 					char *as = string_to_utf8 (s);
 
 					printf ("this:[STRING:%p:%s], ", o, as);
-					g_free (as);
+					g_free_vb (as);
 				} else {
 					printf ("this:%p[%s.%s %s], ", o, klass->name_space, klass->name, o->vtable->domain->friendly_name);
 				}
@@ -525,7 +525,7 @@ mono_trace_enter_method (MonoMethod *method, char *ebp)
 				as = string_to_utf8 (s);
 
 				printf ("[STRING:%p:%s], ", s, as);
-				g_free (as);
+				g_free_vb (as);
 			} else 
 				printf ("[STRING:null], ");
 			break;
@@ -540,7 +540,7 @@ mono_trace_enter_method (MonoMethod *method, char *ebp)
 					char *as = string_to_utf8 ((MonoString*)o);
 
 					printf ("[STRING:%p:%s], ", o, as);
-					g_free (as);
+					g_free_vb (as);
 				} else if (klass == mono_defaults.int32_class) {
 					printf ("[INT32:%p:%d], ", o, *(gint32 *)((char *)o + sizeof (MonoObject)));
 				} else if (klass == mono_defaults.runtimetype_class) {
@@ -605,7 +605,7 @@ mono_trace_leave_method (MonoMethod *method, ...)
 	fname = mono_method_full_name (method, TRUE);
 	indent (-1);
 	printf ("LEAVE: %s", fname);
-	g_free (fname);
+	g_free_vb (fname);
 
 	if (method->is_inflated) {
 		/* FIXME: Might be better to pass the ji itself */
@@ -656,7 +656,7 @@ mono_trace_leave_method (MonoMethod *method, ...)
 			g_assert (((MonoObject *)s)->vtable->klass == mono_defaults.string_class);
 			as = string_to_utf8 (s);
 			printf ("[STRING:%p:%s]", s, as);
-			g_free (as);
+			g_free_vb (as);
 		} else 
 			printf ("[STRING:null], ");
 		break;

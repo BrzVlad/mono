@@ -206,7 +206,7 @@ tty_teardown (void)
 
 	if (teardown_str != NULL) {
 		unused = write (STDOUT_FILENO, teardown_str, strlen (teardown_str));
-		g_free (teardown_str);
+		g_free_vb (teardown_str);
 		teardown_str = NULL;
 	}
 
@@ -456,12 +456,12 @@ ves_icall_System_ConsoleDriver_TtySetup (MonoString *keypad, MonoString *teardow
 		char *str = g_getenv ("COLUMNS");
 		if (str != NULL) {
 			cols = atoi (str);
-			g_free (str);
+			g_free_vb (str);
 		}
 		str = g_getenv ("LINES");
 		if (str != NULL) {
 			rows = atoi (str);
-			g_free (str);
+			g_free_vb (str);
 		}
 
 		if (cols != 0 && rows != 0)

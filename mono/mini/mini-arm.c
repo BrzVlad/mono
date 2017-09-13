@@ -647,7 +647,7 @@ get_delegate_invoke_impl (MonoTrampInfo **info, gboolean has_target, gboolean pa
 	} else {
 		 char *name = g_strdup_printf ("delegate_invoke_impl_target_%d", param_count);
 		 *info = mono_tramp_info_create (name, start, code - start, NULL, unwind_ops);
-		 g_free (name);
+		 g_free_vb (name);
 	}
 
 	MONO_PROFILER_RAISE (jit_code_buffer, (start, code - start, MONO_PROFILER_CODE_BUFFER_DELEGATE_INVOKE, NULL));
@@ -728,7 +728,7 @@ mono_arch_get_delegate_invoke_impl (MonoMethodSignature *sig, gboolean has_targe
 		if (mono_aot_only) {
 			char *name = g_strdup_printf ("delegate_invoke_impl_target_%d", sig->param_count);
 			start = mono_aot_get_trampoline (name);
-			g_free (name);
+			g_free_vb (name);
 		} else {
 			MonoTrampInfo *info;
 			start = get_delegate_invoke_impl (&info, FALSE, sig->param_count);
@@ -828,7 +828,7 @@ mono_arch_init (void)
 
 	if (soft && !strncmp (soft, "1", 1))
 		arm_fpu = MONO_ARM_FPU_NONE;
-	g_free (soft);
+	g_free_vb (soft);
 #endif
 #endif
 
@@ -876,7 +876,7 @@ mono_arch_init (void)
 
 		thumb_supported = strstr (cpu_arch, "thumb") != NULL;
 		thumb2_supported = strstr (cpu_arch, "thumb2") != NULL;
-		g_free (cpu_arch);
+		g_free_vb (cpu_arch);
 	}
 }
 
@@ -1265,7 +1265,7 @@ get_call_info (MonoMemPool *mp, MonoMethodSignature *sig)
 	if (mp)
 		cinfo = mono_mempool_alloc0 (mp, sizeof (CallInfo) + (sizeof (ArgInfo) * n));
 	else
-		cinfo = g_malloc0 (sizeof (CallInfo) + (sizeof (ArgInfo) * n));
+		cinfo = g_malloc0_vb (sizeof (CallInfo) + (sizeof (ArgInfo) * n));
 
 	cinfo->nargs = n;
 	gr = ARMREG_R0;
@@ -1634,8 +1634,8 @@ mono_arch_tail_call_supported (MonoCompile *cfg, MonoMethodSignature *caller_sig
 	if (c2->stack_usage > 16 * 4)
 		res = FALSE;
 
-	g_free (c1);
-	g_free (c2);
+	g_free_vb (c1);
+	g_free_vb (c2);
 
 	return res;
 }
@@ -2727,7 +2727,7 @@ mono_arch_dyn_call_prepare (MonoMethodSignature *sig)
 	cinfo = get_call_info (NULL, sig);
 
 	if (!dyn_call_supported (cinfo, sig)) {
-		g_free (cinfo);
+		g_free_vb (cinfo);
 		return NULL;
 	}
 
@@ -2748,8 +2748,8 @@ mono_arch_dyn_call_free (MonoDynCallInfo *info)
 {
 	ArchDynCallInfo *ainfo = (ArchDynCallInfo*)info;
 
-	g_free (ainfo->cinfo);
-	g_free (ainfo);
+	g_free_vb (ainfo->cinfo);
+	g_free_vb (ainfo);
 }
 
 void
@@ -6036,7 +6036,7 @@ mono_arch_emit_prolog (MonoCompile *cfg)
 
 	sig = mono_method_signature (method);
 	cfg->code_size = 256 + sig->param_count * 64;
-	code = cfg->native_code = g_malloc (cfg->code_size);
+	code = cfg->native_code = g_malloc_vb (cfg->code_size);
 
 	mono_emit_unwind_op_def_cfa (cfg, code, ARMREG_SP, 0);
 
@@ -6484,7 +6484,7 @@ mono_arch_emit_prolog (MonoCompile *cfg)
 
 	cfg->code_len = code - cfg->native_code;
 	g_assert (cfg->code_len < cfg->code_size);
-	g_free (cinfo);
+	g_free_vb (cinfo);
 
 	return code;
 }
@@ -7038,11 +7038,11 @@ mono_arch_build_imt_trampoline (MonoVTable *vtable, MonoDomain *domain, MonoIMTC
 	{
 		char *buff = g_strdup_printf ("thunk_for_class_%s_%s_entries_%d", vtable->klass->name_space, vtable->klass->name, count);
 		mono_disassemble_code (NULL, (guint8*)start, size, buff);
-		g_free (buff);
+		g_free_vb (buff);
 	}
 #endif
 
-	g_free (constant_pool_starts);
+	g_free_vb (constant_pool_starts);
 
 	mono_arch_flush_icache ((guint8*)start, size);
 	MONO_PROFILER_RAISE (jit_code_buffer, (start, code - start, MONO_PROFILER_CODE_BUFFER_IMT_TRAMPOLINE, NULL));
@@ -7288,7 +7288,7 @@ mono_arch_get_seq_point_info (MonoDomain *domain, guint8 *code)
 		ji = mono_jit_info_table_find (domain, (char*)code);
 		g_assert (ji);
 
-		info = g_malloc0 (sizeof (SeqPointInfo) + ji->code_size);
+		info = g_malloc0_vb (sizeof (SeqPointInfo) + ji->code_size);
 
 		info->ss_trigger_page = ss_trigger_page;
 		info->bp_trigger_page = bp_trigger_page;

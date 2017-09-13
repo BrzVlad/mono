@@ -212,26 +212,26 @@ process_complete_path (const gunichar2 *appname, gchar **completed)
 
 	if (g_path_is_absolute (utf8app)) {
 		*completed = process_quote_path (utf8app);
-		g_free (utf8appmemory);
+		g_free_vb (utf8appmemory);
 		return TRUE;
 	}
 
 	if (g_file_test (utf8app, G_FILE_TEST_IS_EXECUTABLE) && !g_file_test (utf8app, G_FILE_TEST_IS_DIR)) {
 		*completed = process_quote_path (utf8app);
-		g_free (utf8appmemory);
+		g_free_vb (utf8appmemory);
 		return TRUE;
 	}
 	
 	found = g_find_program_in_path (utf8app);
 	if (found == NULL) {
 		*completed = NULL;
-		g_free (utf8appmemory);
+		g_free_vb (utf8appmemory);
 		return FALSE;
 	}
 
 	*completed = process_quote_path (found);
-	g_free (found);
-	g_free (utf8appmemory);
+	g_free_vb (found);
+	g_free_vb (utf8appmemory);
 	return TRUE;
 }
 
@@ -252,8 +252,8 @@ process_get_shell_arguments (MonoW32ProcessStartInfo *proc_start_info, MonoStrin
 			if (!mono_error_set_pending_exception (&mono_error)) {
 				new_cmd = g_strdup_printf ("%s %s", spath, cmd_utf8);
 				*cmd = mono_string_new_wrapper (new_cmd);
-				g_free (cmd_utf8);
-				g_free (new_cmd);
+				g_free_vb (cmd_utf8);
+				g_free_vb (new_cmd);
 			} else {
 				*cmd = NULL;
 			}
@@ -262,7 +262,7 @@ process_get_shell_arguments (MonoW32ProcessStartInfo *proc_start_info, MonoStrin
 			*cmd = mono_string_new_wrapper (spath);
 		}
 
-		g_free (spath);
+		g_free_vb (spath);
 	}
 
 	return (*cmd != NULL) ? TRUE : FALSE;
@@ -330,7 +330,7 @@ ves_icall_System_Diagnostics_Process_CreateProcess_internal (MonoW32ProcessStart
 
 	ret = mono_process_create_process (process_info, cmd, creation_flags, env_vars, dir, &startinfo, &procinfo);
 
-	g_free (env_vars);
+	g_free_vb (env_vars);
 
 	if (ret) {
 		process_info->process_handle = procinfo.hProcess;
@@ -372,7 +372,7 @@ ves_icall_System_Diagnostics_Process_GetProcesses_internal (void)
 		if (ret == FALSE) {
 			MonoException *exc;
 
-			g_free (pids);
+			g_free_vb (pids);
 			pids = NULL;
 			exc = mono_get_exception_not_supported ("This system does not support EnumProcesses");
 			mono_set_pending_exception (exc);
@@ -380,7 +380,7 @@ ves_icall_System_Diagnostics_Process_GetProcesses_internal (void)
 		}
 		if (needed < (count * sizeof (guint32)))
 			break;
-		g_free (pids);
+		g_free_vb (pids);
 		pids = NULL;
 		count = (count * 3) / 2;
 	} while (TRUE);
@@ -388,12 +388,12 @@ ves_icall_System_Diagnostics_Process_GetProcesses_internal (void)
 	count = needed / sizeof (guint32);
 	procs = mono_array_new_checked (mono_domain_get (), mono_get_int32_class (), count, &error);
 	if (mono_error_set_pending_exception (&error)) {
-		g_free (pids);
+		g_free_vb (pids);
 		return NULL;
 	}
 
 	memcpy (mono_array_addr (procs, guint32, 0), pids, needed);
-	g_free (pids);
+	g_free_vb (pids);
 	pids = NULL;
 
 	return procs;

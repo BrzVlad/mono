@@ -164,12 +164,12 @@ add_mono_string_to_blob_cached (MonoDynamicImage *assembly, MonoString *str)
 	mono_metadata_encode_value (len, b, &b);
 #if G_BYTE_ORDER != G_LITTLE_ENDIAN
 	{
-		char *swapped = g_malloc (2 * mono_string_length (str));
+		char *swapped = g_malloc_vb (2 * mono_string_length (str));
 		const char *p = (const char*)mono_string_chars (str);
 
 		swap_with_size (swapped, p, 2, mono_string_length (str));
 		idx = mono_dynamic_image_add_to_blob_cached (assembly, blob_size, b-blob_size, swapped, len);
-		g_free (swapped);
+		g_free_vb (swapped);
 	}
 #else
 	idx = mono_dynamic_image_add_to_blob_cached (assembly, blob_size, b-blob_size, (char*)mono_string_chars (str), len);
@@ -366,8 +366,8 @@ method_encode_code (MonoDynamicImage *assembly, ReflectionMethodBuilder *mb, Mon
 			}
 			char *str = g_strdup_printf ("Method %s does not have any IL associated", name);
 			mono_error_set_argument (error, NULL, "a method does not have any IL associated");
-			g_free (str);
-			g_free (name);
+			g_free_vb (str);
+			g_free_vb (name);
 			return 0;
 		}
 
@@ -1181,8 +1181,8 @@ mono_image_fill_file_table (MonoDomain *domain, MonoReflectionModule *module, Mo
 		path = g_strdup (module->image->name);
 	}
 	mono_sha1_get_digest_from_file (path, hash);
-	g_free (dir);
-	g_free (path);
+	g_free_vb (dir);
+	g_free_vb (path);
 	mono_metadata_encode_value (20, b, &b);
 	values [MONO_FILE_HASH_VALUE] = mono_image_add_stream_data (&assembly->blob, blob_size, b-blob_size);
 	mono_image_add_stream_data (&assembly->blob, (char*)hash, 20);
@@ -1557,7 +1557,7 @@ build_compressed_metadata (MonoDynamicImage *assembly, MonoError *error)
 	heapt_size += 3;
 	heapt_size &= ~3;
 	meta_size += heapt_size;
-	meta->raw_metadata = (char *)g_malloc0 (meta_size);
+	meta->raw_metadata = (char *)g_malloc0_vb (meta_size);
 	p = (unsigned char*)meta->raw_metadata;
 	/* the metadata signature */
 	*p++ = 'B'; *p++ = 'S'; *p++ = 'J'; *p++ = 'B';
@@ -1913,13 +1913,13 @@ assembly_add_resource (MonoReflectionModuleBuilder *mb, MonoDynamicImage *assemb
 		values = table->values + table->next_idx * MONO_FILE_SIZE;
 		values [MONO_FILE_FLAGS] = FILE_CONTAINS_NO_METADATA;
 		values [MONO_FILE_NAME] = string_heap_insert (&assembly->sheap, sname);
-		g_free (sname);
+		g_free_vb (sname);
 
 		mono_sha1_get_digest_from_file (name, hash);
 		mono_metadata_encode_value (20, b, &b);
 		values [MONO_FILE_HASH_VALUE] = mono_image_add_stream_data (&assembly->blob, blob_size, b-blob_size);
 		mono_image_add_stream_data (&assembly->blob, (char*)hash, 20);
-		g_free (name);
+		g_free_vb (name);
 		idx = table->next_idx++;
 		rsrc->offset = 0;
 		idx = MONO_IMPLEMENTATION_FILE | (idx << MONO_IMPLEMENTATION_BITS);
@@ -1983,7 +1983,7 @@ set_version_from_string (MonoString *version, guint32 *values, MonoError *error)
 		}
 		ver = p;
 	}
-	g_free (str);
+	g_free_vb (str);
 	return TRUE;
 }
 
@@ -2002,7 +2002,7 @@ load_public_key (MonoArray *pkey, MonoDynamicImage *assembly) {
 	token = mono_image_add_stream_data (&assembly->blob, blob_size, b - blob_size);
 	mono_image_add_stream_data (&assembly->blob, mono_array_addr (pkey, char, 0), len);
 
-	assembly->public_key = (guint8 *)g_malloc (len);
+	assembly->public_key = (guint8 *)g_malloc_vb (len);
 	memcpy (assembly->public_key, mono_array_addr (pkey, char, 0), len);
 	assembly->public_key_len = len;
 
@@ -2018,7 +2018,7 @@ load_public_key (MonoArray *pkey, MonoDynamicImage *assembly) {
 		g_warning ("Invalid public key length: %d bits (total: %d)", (int)MONO_PUBLIC_KEY_BIT_SIZE (len), (int)len);
 		assembly->strong_name_size = MONO_DEFAULT_PUBLIC_KEY_LENGTH; /* to be safe */
 	}
-	assembly->strong_name = (char *)g_malloc0 (assembly->strong_name_size);
+	assembly->strong_name = (char *)g_malloc0_vb (assembly->strong_name_size);
 
 	return token;
 }
@@ -2136,13 +2136,13 @@ mono_image_get_type_info (MonoDomain *domain, MonoReflectionTypeBuilder *tb, Mon
 	if (strcmp (n, "Object") == 0)
 		is_object++;
 	values [MONO_TYPEDEF_NAME] = string_heap_insert (&assembly->sheap, n);
-	g_free (n);
+	g_free_vb (n);
 	n = mono_string_to_utf8_checked (tb->nspace, error);
 	return_val_if_nok (error, FALSE);
 	if (strcmp (n, "System") == 0)
 		is_system++;
 	values [MONO_TYPEDEF_NAMESPACE] = string_heap_insert (&assembly->sheap, n);
-	g_free (n);
+	g_free_vb (n);
 	if (tb->parent && !(is_system && is_object) && 
 			!(tb->attrs & TYPE_ATTRIBUTE_INTERFACE)) { /* interfaces don't have a parent */
 		MonoType *parent_type = mono_reflection_type_get_handle ((MonoReflectionType*)tb->parent, error);
@@ -2685,7 +2685,7 @@ resource_tree_free (ResTreeNode * node)
 	for (list = node->children; list; list = list->next)
 		resource_tree_free ((ResTreeNode*)list->data);
 	g_slist_free(node->children);
-	g_free (node);
+	g_free_vb (node);
 }
 
 static void
@@ -2718,17 +2718,17 @@ assembly_add_win32_resources (MonoDynamicImage *assembly, MonoReflectionAssembly
 	}
 	/* Directory structure */
 	size += mono_array_length (assemblyb->win32_resources) * 256;
-	p = buf = (char *)g_malloc (size);
+	p = buf = (char *)g_malloc_vb (size);
 
 	resource_tree_encode (tree, p, p, &p);
 
 	g_assert (p - buf <= size);
 
-	assembly->win32_res = (char *)g_malloc (p - buf);
+	assembly->win32_res = (char *)g_malloc_vb (p - buf);
 	assembly->win32_res_size = p - buf;
 	memcpy (assembly->win32_res, buf, p - buf);
 
-	g_free (buf);
+	g_free_vb (buf);
 	resource_tree_free (tree);
 }
 
@@ -3071,7 +3071,7 @@ mono_image_create_pefile (MonoReflectionModuleBuilder *mb, HANDLE file, MonoErro
 			checked_write_file (file, assembly->strong_name, assembly->strong_name_size);
 				
 
-			g_free (assembly->image.raw_metadata);
+			g_free_vb (assembly->image.raw_metadata);
 			break;
 		case MONO_SECTION_RELOC: {
 			struct {

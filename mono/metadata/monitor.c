@@ -277,7 +277,7 @@ mono_monitor_cleanup (void)
 	 * Those weak links reside in the monitor structures, which we've freed earlier.
 	 *
 	 * Unless we fix this dependency in the shutdown sequence this code has to remain
-	 * disabled, or at least the call to g_free().
+	 * disabled, or at least the call to g_free_vb().
 	 */
 	/*
 	for (marray = monitor_allocated; marray; marray = next) {
@@ -290,7 +290,7 @@ mono_monitor_cleanup (void)
 		}
 
 		next = marray->next;
-		g_free (marray);
+		g_free_vb (marray);
 	}
 	*/
 }
@@ -359,7 +359,7 @@ mon_finalize (MonoThreadsSync *mon)
 
 	if (mon->entry_sem != NULL) {
 		mono_coop_sem_destroy (mon->entry_sem);
-		g_free (mon->entry_sem);
+		g_free_vb (mon->entry_sem);
 		mon->entry_sem = NULL;
 	}
 	/* If this isn't empty then something is seriously broken - it
@@ -413,7 +413,7 @@ mon_new (gsize id)
 		if (!monitor_freelist) {
 			MonitorArray *last;
 			LOCK_DEBUG (g_message ("%s: allocating more monitors: %d", __func__, array_size));
-			marray = (MonitorArray *)g_malloc0 (MONO_SIZEOF_MONO_ARRAY + array_size * sizeof (MonoThreadsSync));
+			marray = (MonitorArray *)g_malloc0_vb (MONO_SIZEOF_MONO_ARRAY + array_size * sizeof (MonoThreadsSync));
 			marray->num_monitors = array_size;
 			array_size *= 2;
 			/* link into the freelist */
@@ -846,7 +846,7 @@ retry_contended:
 		if (InterlockedCompareExchangePointer ((gpointer*)&mon->entry_sem, sem, NULL) != NULL) {
 			/* Someone else just put a handle here */
 			mono_coop_sem_destroy (sem);
-			g_free (sem);
+			g_free_vb (sem);
 		}
 	}
 

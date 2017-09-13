@@ -47,7 +47,7 @@ mono_path_canonicalize (const char *path)
 	} else {
 		gchar *tmpdir = g_get_current_dir ();
 		abspath = g_build_filename (tmpdir, path, NULL);
-		g_free (tmpdir);
+		g_free_vb (tmpdir);
 	}
 
 #ifdef HOST_WIN32
@@ -123,7 +123,7 @@ resolve_symlink (const char *path)
 		if (n < 0){
 			char *copy = p;
 			p = mono_path_canonicalize (copy);
-			g_free (copy);
+			g_free_vb (copy);
 			return p;
 		}
 		
@@ -131,13 +131,13 @@ resolve_symlink (const char *path)
 		if (!g_path_is_absolute (buffer)) {
 			dir = g_path_get_dirname (p);
 			concat = g_build_filename (dir, buffer, NULL);
-			g_free (dir);
+			g_free_vb (dir);
 		} else {
 			concat = g_strdup (buffer);
 		}
-		g_free (p);
+		g_free_vb (p);
 		p = mono_path_canonicalize (concat);
-		g_free (concat);
+		g_free_vb (concat);
 	} while (iterations < MAXSYMLINKS);
 
 	return p;
@@ -160,14 +160,14 @@ mono_path_resolve_symlinks (const char *path)
 		// resolve_symlink of "" goes into canonicalize which resolves to cwd
 		if (strcmp (split [i], "") != 0) {
 			tmp = g_strdup_printf ("%s%s", p, split [i]);
-			g_free (p);
+			g_free_vb (p);
 			p = resolve_symlink (tmp);
-			g_free (tmp);
+			g_free_vb (tmp);
 		}
 
 		if (split [i+1] != NULL) {
 			tmp = g_strdup_printf ("%s%s", p, G_DIR_SEPARATOR_S);
-			g_free (p);
+			g_free_vb (p);
 			p = tmp;
 		}
 	}

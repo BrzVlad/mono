@@ -327,7 +327,7 @@ free_thread_info (gpointer mem)
 	mono_os_sem_destroy (&info->resume_semaphore);
 	mono_threads_suspend_free (info);
 
-	g_free (info);
+	g_free_vb (info);
 }
 
 /*
@@ -363,7 +363,7 @@ thread_handle_destroy (gpointer data)
 	thread_handle = (MonoThreadHandle*) data;
 
 	mono_os_event_destroy (&thread_handle->event);
-	g_free (thread_handle);
+	g_free_vb (thread_handle);
 }
 
 static gboolean
@@ -646,10 +646,10 @@ mono_thread_info_attach (void)
 
 	info = (MonoThreadInfo *) mono_native_tls_get_value (thread_info_key);
 	if (!info) {
-		info = (MonoThreadInfo *) g_malloc0 (thread_info_size);
+		info = (MonoThreadInfo *) g_malloc0_vb (thread_info_size);
 		THREADS_DEBUG ("attaching %p\n", info);
 		if (!register_thread (info)) {
-			g_free (info);
+			g_free_vb (info);
 			return NULL;
 		}
 	}
@@ -767,7 +767,7 @@ mono_thread_info_init (size_t info_size)
 			sleepWarnDuration = threshold / 20;
 		} else
 			g_warning("MONO_SLEEP_ABORT_LIMIT must be a number >= 40");
-		g_free (sleepLimit);
+		g_free_vb (sleepLimit);
 	}
 
 	mono_os_sem_init (&global_suspend_semaphore, 1);
@@ -1462,7 +1462,7 @@ mono_thread_info_install_interrupt (void (*callback) (gpointer data), gpointer d
 		if (previous_token != INTERRUPT_STATE)
 			g_error ("mono_thread_info_install_interrupt: previous_token should be INTERRUPT_STATE (%p), but it was %p", INTERRUPT_STATE, previous_token);
 
-		g_free (token);
+		g_free_vb (token);
 
 		*interrupted = TRUE;
 	}
@@ -1492,7 +1492,7 @@ mono_thread_info_uninstall_interrupt (gboolean *interrupted)
 		/* if it is interrupted, then it is going to be freed in finish interrupt */
 		*interrupted = TRUE;
 	} else {
-		g_free (previous_token);
+		g_free_vb (previous_token);
 	}
 
 	THREADS_INTERRUPT_DEBUG ("interrupt uninstall  tid %p previous_token %p interrupted %s\n",
@@ -1562,7 +1562,7 @@ mono_thread_info_finish_interrupt (MonoThreadInfoInterruptToken *token)
 
 	token->callback (token->data);
 
-	g_free (token);
+	g_free_vb (token);
 }
 
 void

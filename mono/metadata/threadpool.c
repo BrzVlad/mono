@@ -237,7 +237,7 @@ tpdomain_get (MonoDomain *domain)
 static void
 tpdomain_free (ThreadPoolDomain *tpdomain)
 {
-	g_free (tpdomain);
+	g_free_vb (tpdomain);
 }
 
 /* LOCKING: domains_lock must be held */

@@ -375,7 +375,7 @@ encode_public_tok (const guchar *token, gint32 len)
 	gchar *res;
 	int i;
 
-	res = (gchar *)g_malloc (len * 2 + 1);
+	res = (gchar *)g_malloc_vb (len * 2 + 1);
 	for (i = 0; i < len; i++) {
 		res [i * 2] = allowed [token [i] >> 4];
 		res [i * 2 + 1] = allowed [token [i] & 0xF];
@@ -424,7 +424,7 @@ mono_set_assemblies_path (const char* path)
 		char *tmp = *splitted;
 		if (*tmp)
 			*dest++ = mono_path_canonicalize (tmp);
-		g_free (tmp);
+		g_free_vb (tmp);
 		splitted++;
 	}
 	*dest = *splitted;
@@ -452,7 +452,7 @@ check_path_env (void)
 		return;
 
 	mono_set_assemblies_path(path);
-	g_free (path);
+	g_free_vb (path);
 }
 
 static void
@@ -466,7 +466,7 @@ check_extra_gac_path_env (void)
 		return;
 
 	splitted = g_strsplit (path, G_SEARCHPATH_SEPARATOR_S, 1000);
-	g_free (path);
+	g_free_vb (path);
 
 	if (extra_gac_paths)
 		g_strfreev (extra_gac_paths);
@@ -519,8 +519,8 @@ mono_assembly_binding_info_free (MonoAssemblyBindingInfo *info)
 	if (!info)
 		return;
 
-	g_free (info->name);
-	g_free (info->culture);
+	g_free_vb (info->name);
+	g_free_vb (info->culture);
 }
 
 static void
@@ -551,8 +551,8 @@ get_publisher_policy_info (MonoImage *image, MonoAssemblyName *aname, MonoAssemb
 	subpath = g_path_get_dirname (image->name);
 	fullpath = g_build_path (G_DIR_SEPARATOR_S, subpath, filename, NULL);
 	mono_config_parse_publisher_policy (fullpath, binding_info);
-	g_free (subpath);
-	g_free (fullpath);
+	g_free_vb (subpath);
+	g_free_vb (fullpath);
 	
 	/* Define the optional elements/attributes before checking */
 	if (!binding_info->culture)
@@ -675,7 +675,7 @@ load_in_path (const char *basename, const char** search_path, MonoImageOpenStatu
 	for (i = 0; search_path [i]; ++i) {
 		fullpath = g_build_filename (search_path [i], basename, NULL);
 		result = mono_assembly_open_predicate (fullpath, refonly, FALSE, predicate, user_data, status);
-		g_free (fullpath);
+		g_free_vb (fullpath);
 		if (result)
 			return result;
 	}
@@ -824,9 +824,9 @@ set_dirs (char *exe)
 		mono_set_dirs (lib, config);
 	}
 	
-	g_free (config);
-	g_free (lib);
-	g_free (mono);
+	g_free_vb (config);
+	g_free_vb (lib);
+	g_free_vb (mono);
 }
 
 #endif /* HOST_WIN32 */
@@ -884,12 +884,12 @@ mono_set_rootdir (void)
 		fallback ();
 #endif
 
-	g_free (config);
-	g_free (root);
-	g_free (installdir);
-	g_free (bindir);
-	g_free (name);
-	g_free (resolvedname);
+	g_free_vb (config);
+	g_free_vb (root);
+	g_free_vb (installdir);
+	g_free_vb (bindir);
+	g_free_vb (name);
+	g_free_vb (resolvedname);
 #elif defined(DISABLE_MONO_AUTODETECTION)
 	fallback ();
 #else
@@ -909,7 +909,7 @@ mono_set_rootdir (void)
 	/* Solaris 10 style */
 	str = g_strdup_printf ("/proc/%d/path/a.out", getpid ());
 	s = readlink (str, buf, sizeof (buf)-1);
-	g_free (str);
+	g_free_vb (str);
 	if (s != -1){
 		buf [s] = 0;
 		set_dirs (buf);
@@ -989,7 +989,7 @@ mono_assembly_fill_assembly_name_full (MonoImage *image, MonoAssemblyName *aname
 	aname->revision = cols [MONO_ASSEMBLY_REV_NUMBER];
 	aname->hash_alg = cols [MONO_ASSEMBLY_HASH_ALG];
 	if (cols [MONO_ASSEMBLY_PUBLIC_KEY]) {
-		guchar* token = (guchar *)g_malloc (8);
+		guchar* token = (guchar *)g_malloc_vb (8);
 		gchar* encoded;
 		const gchar* pkey;
 		int len;
@@ -1002,8 +1002,8 @@ mono_assembly_fill_assembly_name_full (MonoImage *image, MonoAssemblyName *aname
 		encoded = encode_public_tok (token, 8);
 		g_strlcpy ((char*)aname->public_key_token, encoded, MONO_PUBLIC_KEY_TOKEN_LENGTH);
 
-		g_free (encoded);
-		g_free (token);
+		g_free_vb (encoded);
+		g_free_vb (token);
 	}
 	else {
 		aname->public_key = NULL;
@@ -1322,7 +1322,7 @@ mono_assembly_get_assemblyref (MonoImage *image, int index, MonoAssemblyName *an
 	if (cols [MONO_ASSEMBLYREF_PUBLIC_KEY]) {
 		gchar *token = assemblyref_public_tok (image, cols [MONO_ASSEMBLYREF_PUBLIC_KEY], aname->flags);
 		g_strlcpy ((char*)aname->public_key_token, token, MONO_PUBLIC_KEY_TOKEN_LENGTH);
-		g_free (token);
+		g_free_vb (token);
 	} else {
 		memset (aname->public_key_token, 0, MONO_PUBLIC_KEY_TOKEN_LENGTH);
 	}
@@ -1407,7 +1407,7 @@ mono_assembly_load_reference (MonoImage *image, int index)
 				   image->name, aname.name, index,
 				   aname.major, aname.minor, aname.build, aname.revision,
 				   strlen ((char*)aname.public_key_token) == 0 ? "(none)" : (char*)aname.public_key_token, extra_msg);
-		g_free (extra_msg);
+		g_free_vb (extra_msg);
 
 	}
 
@@ -1500,7 +1500,7 @@ free_assembly_load_hooks (void)
 
 	for (hook = assembly_load_hook; hook; hook = next) {
 		next = hook->next;
-		g_free (hook);
+		g_free_vb (hook);
 	}
 }
 
@@ -1595,7 +1595,7 @@ free_assembly_search_hooks (void)
 
 	for (hook = assembly_search_hook; hook; hook = next) {
 		next = hook->next;
-		g_free (hook);
+		g_free_vb (hook);
 	}
 }
 
@@ -1704,12 +1704,12 @@ free_assembly_preload_hooks (void)
 
 	for (hook = assembly_preload_hook; hook; hook = next) {
 		next = hook->next;
-		g_free (hook);
+		g_free_vb (hook);
 	}
 
 	for (hook = assembly_refonly_preload_hook; hook; hook = next) {
 		next = hook->next;
-		g_free (hook);
+		g_free_vb (hook);
 	}
 }
 
@@ -1728,15 +1728,15 @@ absolute_dir (const gchar *filename)
 	if (g_path_is_absolute (filename)) {
 		part = g_path_get_dirname (filename);
 		res = g_strconcat (part, G_DIR_SEPARATOR_S, NULL);
-		g_free (part);
+		g_free_vb (part);
 		return res;
 	}
 
 	cwd = g_get_current_dir ();
 	mixed = g_build_filename (cwd, filename, NULL);
 	parts = g_strsplit (mixed, G_DIR_SEPARATOR_S, 0);
-	g_free (mixed);
-	g_free (cwd);
+	g_free_vb (mixed);
+	g_free_vb (cwd);
 
 	list = NULL;
 	for (i = 0; (part = parts [i]) != NULL; i++) {
@@ -1766,7 +1766,7 @@ absolute_dir (const gchar *filename)
 	g_list_free (list);
 	g_strfreev (parts);
 	if (*res == '\0') {
-		g_free (res);
+		g_free_vb (res);
 		return g_strdup (".");
 	}
 
@@ -1800,7 +1800,7 @@ mono_assembly_open_from_bundle (const char *filename, MonoImageOpenStatus *statu
 
 	lowercase_filename = g_utf8_strdown (filename, -1);
 	is_satellite = g_str_has_suffix (lowercase_filename, ".resources.dll");
-	g_free (lowercase_filename);
+	g_free_vb (lowercase_filename);
 	name = g_path_get_basename (filename);
 	mono_assemblies_lock ();
 	for (i = 0; !image && bundles [i]; ++i) {
@@ -1813,10 +1813,10 @@ mono_assembly_open_from_bundle (const char *filename, MonoImageOpenStatus *statu
 	if (image) {
 		mono_image_addref (image);
 		mono_trace (G_LOG_LEVEL_INFO, MONO_TRACE_ASSEMBLY, "Assembly Loader loaded assembly from bundle: '%s'.", is_satellite ? filename : name);
-		g_free (name);
+		g_free_vb (name);
 		return image;
 	}
-	g_free (name);
+	g_free_vb (name);
 	return NULL;
 }
 
@@ -1892,10 +1892,10 @@ mono_assembly_open_predicate (const char *filename, gboolean refonly,
 		tmpuri = uri;
 		uri = mono_escape_uri_string (tmpuri);
 		fname = g_filename_from_uri (uri, NULL, &error);
-		g_free (uri);
+		g_free_vb (uri);
 
 		if (tmpuri != filename)
-			g_free (tmpuri);
+			g_free_vb (tmpuri);
 
 		if (error != NULL) {
 			g_warning ("%s\n", error->message);
@@ -1918,12 +1918,12 @@ mono_assembly_open_predicate (const char *filename, gboolean refonly,
 				    "Assembly Loader shadow copy error: %s.", mono_error_get_message (&error));
 			mono_error_cleanup (&error);
 			*status = MONO_IMAGE_IMAGE_INVALID;
-			g_free (fname);
+			g_free_vb (fname);
 			return NULL;
 		}
 	}
 	if (new_fname && new_fname != fname) {
-		g_free (fname);
+		g_free_vb (fname);
 		fname = new_fname;
 		mono_trace (G_LOG_LEVEL_INFO, MONO_TRACE_ASSEMBLY,
 			    "Assembly Loader shadow-copied assembly to: '%s'.", fname);
@@ -1944,7 +1944,7 @@ mono_assembly_open_predicate (const char *filename, gboolean refonly,
 	if (!image){
 		if (*status == MONO_IMAGE_OK)
 			*status = MONO_IMAGE_ERROR_ERRNO;
-		g_free (fname);
+		g_free_vb (fname);
 		return NULL;
 	}
 
@@ -1958,13 +1958,13 @@ mono_assembly_open_predicate (const char *filename, gboolean refonly,
 		if (mono_loader_get_strict_strong_names () &&
 		    predicate && !predicate (image->assembly, user_data)) {
 			mono_image_close (image);
-			g_free (fname);
+			g_free_vb (fname);
 			return NULL;
 		} else {
 			/* Already loaded by another appdomain */
 			mono_assembly_invoke_load_hook (image->assembly);
 			mono_image_close (image);
-			g_free (fname);
+			g_free_vb (fname);
 			return image->assembly;
 		}
 	}
@@ -1982,7 +1982,7 @@ mono_assembly_open_predicate (const char *filename, gboolean refonly,
 	/* Clear the reference added by mono_image_open */
 	mono_image_close (image);
 	
-	g_free (fname);
+	g_free_vb (fname);
 
 	return ass;
 }
@@ -1990,7 +1990,7 @@ mono_assembly_open_predicate (const char *filename, gboolean refonly,
 static void
 free_item (gpointer val, gpointer user_data)
 {
-	g_free (val);
+	g_free_vb (val);
 }
 
 /**
@@ -2058,7 +2058,7 @@ mono_assembly_load_friends (MonoAssembly* ass)
 		if (mono_assembly_name_parse_full (data, aname, TRUE, NULL, NULL)) {
 			list = g_slist_prepend (list, aname);
 		} else {
-			g_free (aname);
+			g_free_vb (aname);
 		}
 	}
 	mono_custom_attrs_free (attrs);
@@ -2208,7 +2208,7 @@ mono_assembly_load_from_predicate (MonoImage *image, const char *fname,
 		}
 
 		base_dir = absolute_dir (tmp_fn);
-		g_free (tmp_fn);
+		g_free_vb (tmp_fn);
 	}
 #else
 	base_dir = absolute_dir (fname);
@@ -2228,8 +2228,8 @@ mono_assembly_load_from_predicate (MonoImage *image, const char *fname,
 
 	if (mono_defaults.corlib && strcmp (ass->aname.name, "mscorlib") == 0) {
 		// MS.NET doesn't support loading other mscorlibs
-		g_free (ass);
-		g_free (base_dir);
+		g_free_vb (ass);
+		g_free_vb (base_dir);
 		mono_image_addref (mono_defaults.corlib);
 		*status = MONO_IMAGE_OK;
 		return mono_defaults.corlib->assembly;
@@ -2247,8 +2247,8 @@ mono_assembly_load_from_predicate (MonoImage *image, const char *fname,
 	if (ass->aname.name) {
 		ass2 = mono_assembly_invoke_search_hook_internal (&ass->aname, NULL, refonly, FALSE);
 		if (ass2) {
-			g_free (ass);
-			g_free (base_dir);
+			g_free_vb (ass);
+			g_free_vb (base_dir);
 			mono_image_close (image);
 			*status = MONO_IMAGE_OK;
 			return ass2;
@@ -2266,8 +2266,8 @@ mono_assembly_load_from_predicate (MonoImage *image, const char *fname,
 		MonoError refasm_error;
 		if (mono_assembly_has_reference_assembly_attribute (ass, &refasm_error)) {
 			mono_trace (G_LOG_LEVEL_INFO, MONO_TRACE_ASSEMBLY, "Image for assembly '%s' (%s) has ReferenceAssemblyAttribute, skipping", ass->aname.name, image->name);
-			g_free (ass);
-			g_free (base_dir);
+			g_free_vb (ass);
+			g_free_vb (base_dir);
 			mono_image_close (image);
 			*status = MONO_IMAGE_IMAGE_INVALID;
 			return NULL;
@@ -2277,8 +2277,8 @@ mono_assembly_load_from_predicate (MonoImage *image, const char *fname,
 
 	if (predicate && !predicate (ass, user_data)) {
 		mono_trace (G_LOG_LEVEL_INFO, MONO_TRACE_ASSEMBLY, "Predicate returned FALSE, skipping '%s' (%s)\n", ass->aname.name, image->name);
-		g_free (ass);
-		g_free (base_dir);
+		g_free_vb (ass);
+		g_free_vb (base_dir);
 		mono_image_close (image);
 		*status = MONO_IMAGE_IMAGE_INVALID;
 		return NULL;
@@ -2293,8 +2293,8 @@ mono_assembly_load_from_predicate (MonoImage *image, const char *fname,
 		 */
 		mono_assemblies_unlock ();
 		ass2 = image->assembly;
-		g_free (ass);
-		g_free (base_dir);
+		g_free_vb (ass);
+		g_free_vb (base_dir);
 		mono_image_close (image);
 		*status = MONO_IMAGE_OK;
 		return ass2;
@@ -2360,10 +2360,10 @@ mono_assembly_name_free (MonoAssemblyName *aname)
 	if (aname == NULL)
 		return;
 
-	g_free ((void *) aname->name);
-	g_free ((void *) aname->culture);
-	g_free ((void *) aname->hash_value);
-	g_free ((guint8*) aname->public_key);
+	g_free_vb ((void *) aname->name);
+	g_free_vb ((void *) aname->culture);
+	g_free_vb ((void *) aname->hash_value);
+	g_free_vb ((guint8*) aname->public_key);
 }
 
 static gboolean
@@ -2432,7 +2432,7 @@ parse_public_key (const gchar *key, gchar** pubkey, gboolean *is_ecma)
 	if (!pubkey)
 		return TRUE;
 		
-	arr = (gchar *)g_malloc (keylen + 4);
+	arr = (gchar *)g_malloc_vb (keylen + 4);
 	/* Encode the size of the blob */
 	mono_metadata_encode_value (keylen, &arr[0], &endp);
 	offset = (gint)(endp-arr);
@@ -2498,7 +2498,7 @@ build_assembly_name (const char *name, const char *version, const char *culture,
 		}
 		lower = g_ascii_strdown (token, MONO_PUBLIC_KEY_TOKEN_LENGTH);
 		g_strlcpy ((char*)aname->public_key_token, lower, MONO_PUBLIC_KEY_TOKEN_LENGTH);
-		g_free (lower);
+		g_free_vb (lower);
 	}
 
 	if (key) {
@@ -2512,7 +2512,7 @@ build_assembly_name (const char *name, const char *version, const char *culture,
 			if (save_public_key)
 				aname->public_key = (guint8*)pkey;
 			else
-				g_free (pkey);
+				g_free_vb (pkey);
 			g_strlcpy ((gchar*)aname->public_key_token, "b77a5c561934e089", MONO_PUBLIC_KEY_TOKEN_LENGTH);
 			return TRUE;
 		}
@@ -2522,12 +2522,12 @@ build_assembly_name (const char *name, const char *version, const char *culture,
 		mono_digest_get_public_token ((guchar*) tok, (guint8*) pkeyptr, len);
 		encoded = encode_public_tok ((guchar*) tok, 8);
 		g_strlcpy ((gchar*)aname->public_key_token, encoded, MONO_PUBLIC_KEY_TOKEN_LENGTH);
-		g_free (encoded);
+		g_free_vb (encoded);
 
 		if (save_public_key)
 			aname->public_key = (guint8*) pkey;
 		else
-			g_free (pkey);
+			g_free_vb (pkey);
 	}
 
 	return TRUE;
@@ -2664,11 +2664,11 @@ mono_assembly_name_parse_full (const char *name, MonoAssemblyName *aname, gboole
 			if (!g_ascii_strcasecmp (retargetable, "yes")) {
 				flags |= ASSEMBLYREF_RETARGETABLE_FLAG;
 			} else if (g_ascii_strcasecmp (retargetable, "no")) {
-				g_free (retargetable_uq);
+				g_free_vb (retargetable_uq);
 				goto cleanup_and_fail;
 			}
 
-			g_free (retargetable_uq);
+			g_free_vb (retargetable_uq);
 			tmp++;
 			continue;
 		}
@@ -2688,11 +2688,11 @@ mono_assembly_name_parse_full (const char *name, MonoAssemblyName *aname, gboole
 			else if (!g_ascii_strcasecmp (procarch, "AMD64"))
 				arch = MONO_PROCESSOR_ARCHITECTURE_AMD64;
 			else {
-				g_free (procarch_uq);
+				g_free_vb (procarch_uq);
 				goto cleanup_and_fail;
 			}
 
-			g_free (procarch_uq);
+			g_free_vb (procarch_uq);
 			tmp++;
 			continue;
 		}
@@ -2720,11 +2720,11 @@ mono_assembly_name_parse_full (const char *name, MonoAssemblyName *aname, gboole
 		key_uq == NULL ? key : key_uq,
 		flags, arch, aname, save_public_key);
 
-	g_free (dllname_uq);
-	g_free (version_uq);
-	g_free (culture_uq);
-	g_free (token_uq);
-	g_free (key_uq);
+	g_free_vb (dllname_uq);
+	g_free_vb (version_uq);
+	g_free_vb (culture_uq);
+	g_free_vb (token_uq);
+	g_free_vb (key_uq);
 
 	g_strfreev (parts);
 	return res;
@@ -2788,7 +2788,7 @@ mono_assembly_name_new (const char *name)
 	MonoAssemblyName *aname = g_new0 (MonoAssemblyName, 1);
 	if (mono_assembly_name_parse (name, aname))
 		return aname;
-	g_free (aname);
+	g_free_vb (aname);
 	return NULL;
 }
 
@@ -2889,7 +2889,7 @@ probe_for_partial_name (const char *basepath, const char *fullname, MonoAssembly
 			minor = gac_aname.minor;
 			build = gac_aname.build;
 			revision = gac_aname.revision;
-			g_free (fullpath);
+			g_free_vb (fullpath);
 			fullpath = g_build_path (G_DIR_SEPARATOR_S, basepath, direntry, fullname, NULL);
 		}
 
@@ -2902,7 +2902,7 @@ probe_for_partial_name (const char *basepath, const char *fullname, MonoAssembly
 		return NULL;
 	else {
 		MonoAssembly *res = mono_assembly_open_predicate (fullpath, FALSE, FALSE, NULL, NULL, status);
-		g_free (fullpath);
+		g_free_vb (fullpath);
 		return res;
 	}
 }
@@ -2967,23 +2967,23 @@ mono_assembly_load_with_partial_name (const char *name, MonoImageOpenStatus *sta
 		while (!res && *paths) {
 			gacpath = g_build_path (G_DIR_SEPARATOR_S, *paths, "lib", "mono", "gac", aname->name, NULL);
 			res = probe_for_partial_name (gacpath, fullname, aname, status);
-			g_free (gacpath);
+			g_free_vb (gacpath);
 			paths++;
 		}
 	}
 
 	if (res) {
 		res->in_gac = TRUE;
-		g_free (fullname);
+		g_free_vb (fullname);
 		mono_assembly_name_free (aname);
 		return res;
 	}
 
 	gacpath = g_build_path (G_DIR_SEPARATOR_S, mono_assembly_getrootdir (), "mono", "gac", aname->name, NULL);
 	res = probe_for_partial_name (gacpath, fullname, aname, status);
-	g_free (gacpath);
+	g_free_vb (gacpath);
 
-	g_free (fullname);
+	g_free_vb (fullname);
 	mono_assembly_name_free (aname);
 
 	if (res)
@@ -3073,7 +3073,7 @@ mono_assembly_load_publisher_policy (MonoAssemblyName *aname)
 
 	if (strstr (aname->name, ".dll")) {
 		len = strlen (aname->name) - 4;
-		name = (gchar *)g_malloc (len + 1);
+		name = (gchar *)g_malloc_vb (len + 1);
 		memcpy (name, aname->name, len);
 		name[len] = 0;
 	} else
@@ -3086,14 +3086,14 @@ mono_assembly_load_publisher_policy (MonoAssemblyName *aname)
 	
 	pname = g_strdup_printf ("policy.%d.%d.%s", aname->major, aname->minor, name);
 	version = g_strdup_printf ("0.0.0.0_%s_%s", culture, aname->public_key_token);
-	g_free (name);
-	g_free (culture);
+	g_free_vb (name);
+	g_free_vb (culture);
 	
 	filename = g_strconcat (pname, ".dll", NULL);
 	subpath = g_build_path (G_DIR_SEPARATOR_S, pname, version, filename, NULL);
-	g_free (pname);
-	g_free (version);
-	g_free (filename);
+	g_free_vb (pname);
+	g_free_vb (version);
+	g_free_vb (filename);
 
 	image = NULL;
 	if (extra_gac_paths) {
@@ -3102,21 +3102,21 @@ mono_assembly_load_publisher_policy (MonoAssemblyName *aname)
 			fullpath = g_build_path (G_DIR_SEPARATOR_S, *paths,
 					"lib", "mono", "gac", subpath, NULL);
 			image = mono_image_open (fullpath, NULL);
-			g_free (fullpath);
+			g_free_vb (fullpath);
 			paths++;
 		}
 	}
 
 	if (image) {
-		g_free (subpath);
+		g_free_vb (subpath);
 		return image;
 	}
 
 	fullpath = g_build_path (G_DIR_SEPARATOR_S, mono_assembly_getrootdir (), 
 			"mono", "gac", subpath, NULL);
 	image = mono_image_open (fullpath, NULL);
-	g_free (subpath);
-	g_free (fullpath);
+	g_free_vb (subpath);
+	g_free_vb (fullpath);
 	
 	return image;
 }
@@ -3287,7 +3287,7 @@ mono_domain_parse_assembly_bindings (MonoDomain *domain, int amajor, int aminor,
 		mono_config_parse_assembly_bindings (domain_config_file_path, amajor, aminor, domain, assembly_binding_info_parsed);
 		domain->assembly_bindings_parsed = TRUE;
 		if (domain_config_file_name != domain_config_file_path)
-			g_free (domain_config_file_path);
+			g_free_vb (domain_config_file_path);
 	}
 
 	mono_domain_unlock (domain);
@@ -3330,7 +3330,7 @@ mono_assembly_apply_binding (MonoAssemblyName *aname, MonoAssemblyName *dest_nam
 		 * the same thing when the domain was created. */
 		mono_error_assert_ok (&error);
 		mono_domain_parse_assembly_bindings (domain, aname->major, aname->minor, domain_config_file_name);
-		g_free (domain_config_file_name);
+		g_free_vb (domain_config_file_name);
 
 		mono_domain_lock (domain);
 		info2 = get_per_domain_assembly_binding_info (domain, aname);
@@ -3373,7 +3373,7 @@ mono_assembly_apply_binding (MonoAssemblyName *aname, MonoAssemblyName *dest_nam
 		/* This binding was added by another thread 
 		 * before us */
 		mono_assembly_binding_info_free (info);
-		g_free (info);
+		g_free_vb (info);
 		
 		info = info2;
 	} else
@@ -3408,7 +3408,7 @@ mono_assembly_load_from_gac (MonoAssemblyName *aname,  gchar *filename, MonoImag
 
 	if (strstr (aname->name, ".dll")) {
 		len = strlen (filename) - 4;
-		name = (gchar *)g_malloc (len + 1);
+		name = (gchar *)g_malloc_vb (len + 1);
 		memcpy (name, aname->name, len);
 		name[len] = 0;
 	} else {
@@ -3425,38 +3425,38 @@ mono_assembly_load_from_gac (MonoAssemblyName *aname,  gchar *filename, MonoImag
 	version = g_strdup_printf ("%d.%d.%d.%d_%s_%s", aname->major,
 			aname->minor, aname->build, aname->revision,
 			culture, pubtok);
-	g_free (pubtok);
+	g_free_vb (pubtok);
 	
 	subpath = g_build_path (G_DIR_SEPARATOR_S, name, version, filename, NULL);
-	g_free (name);
-	g_free (version);
-	g_free (culture);
+	g_free_vb (name);
+	g_free_vb (version);
+	g_free_vb (culture);
 
 	if (extra_gac_paths) {
 		paths = extra_gac_paths;
 		while (!result && *paths) {
 			fullpath = g_build_path (G_DIR_SEPARATOR_S, *paths, "lib", "mono", "gac", subpath, NULL);
 			result = mono_assembly_open_predicate (fullpath, refonly, FALSE, NULL, NULL, status);
-			g_free (fullpath);
+			g_free_vb (fullpath);
 			paths++;
 		}
 	}
 
 	if (result) {
 		result->in_gac = TRUE;
-		g_free (subpath);
+		g_free_vb (subpath);
 		return result;
 	}
 
 	fullpath = g_build_path (G_DIR_SEPARATOR_S, mono_assembly_getrootdir (),
 			"mono", "gac", subpath, NULL);
 	result = mono_assembly_open_predicate (fullpath, refonly, FALSE, NULL, NULL, status);
-	g_free (fullpath);
+	g_free_vb (fullpath);
 
 	if (result)
 		result->in_gac = TRUE;
 	
-	g_free (subpath);
+	g_free_vb (subpath);
 
 	return result;
 }
@@ -3476,7 +3476,7 @@ mono_assembly_load_corlib (const MonoRuntimeInfo *runtime, MonoImageOpenStatus *
 	aname = mono_assembly_name_new ("mscorlib.dll");
 	corlib = invoke_assembly_preload_hook (aname, assemblies_path);
 	mono_assembly_name_free (aname);
-	g_free (aname);
+	g_free_vb (aname);
 	if (corlib != NULL)
 		goto return_corlib_and_facades;
 
@@ -3492,12 +3492,12 @@ mono_assembly_load_corlib (const MonoRuntimeInfo *runtime, MonoImageOpenStatus *
 	if (assemblies_path) { // Custom assemblies path
 		corlib = load_in_path (corlib_file, (const char**)assemblies_path, status, FALSE, NULL, NULL);
 		if (corlib) {
-			g_free (corlib_file);
+			g_free_vb (corlib_file);
 			goto return_corlib_and_facades;
 		}
 	}
 	corlib = load_in_path (corlib_file, default_path, status, FALSE, NULL, NULL);
-	g_free (corlib_file);
+	g_free_vb (corlib_file);
 
 return_corlib_and_facades:
 	if (corlib && !strcmp (runtime->framework_version, "4.5"))  // FIXME: stop hardcoding 4.5 here
@@ -3533,10 +3533,10 @@ mono_assembly_candidate_predicate_sn_same_name (MonoAssembly *candidate, gpointe
 	if (mono_trace_is_traced (G_LOG_LEVEL_INFO, MONO_TRACE_ASSEMBLY)) {
 		char * s = mono_stringify_assembly_name (wanted_name);
 		mono_trace (G_LOG_LEVEL_INFO, MONO_TRACE_ASSEMBLY, "Predicate: wanted = %s\n", s);
-		g_free (s);
+		g_free_vb (s);
 		s = mono_stringify_assembly_name (candidate_name);
 		mono_trace (G_LOG_LEVEL_INFO, MONO_TRACE_ASSEMBLY, "Predicate: candidate = %s\n", s);
-		g_free (s);
+		g_free_vb (s);
 	}
 
 
@@ -3649,17 +3649,17 @@ mono_assembly_load_full_nosearch (MonoAssemblyName *aname,
 
 		result = mono_assembly_load_from_gac (aname, filename, status, refonly);
 		if (result) {
-			g_free (filename);
+			g_free_vb (filename);
 			return result;
 		}
 
 		if (basedir) {
 			fullpath = g_build_filename (basedir, filename, NULL);
 			result = mono_assembly_open_predicate (fullpath, refonly, FALSE, predicate, predicate_ud, status);
-			g_free (fullpath);
+			g_free_vb (fullpath);
 			if (result) {
 				result->in_gac = FALSE;
-				g_free (filename);
+				g_free_vb (filename);
 				return result;
 			}
 		}
@@ -3667,7 +3667,7 @@ mono_assembly_load_full_nosearch (MonoAssemblyName *aname,
 		result = load_in_path (filename, default_path, status, refonly, predicate, predicate_ud);
 		if (result)
 			result->in_gac = FALSE;
-		g_free (filename);
+		g_free_vb (filename);
 		if (result)
 			return result;
 	}
@@ -3816,10 +3816,10 @@ mono_assembly_close_except_image_pools (MonoAssembly *assembly)
 	for (tmp = assembly->friend_assembly_names; tmp; tmp = tmp->next) {
 		MonoAssemblyName *fname = (MonoAssemblyName *)tmp->data;
 		mono_assembly_name_free (fname);
-		g_free (fname);
+		g_free_vb (fname);
 	}
 	g_slist_free (assembly->friend_assembly_names);
-	g_free (assembly->basedir);
+	g_free_vb (assembly->basedir);
 
 	MONO_PROFILER_RAISE (assembly_unloaded, (assembly));
 
@@ -3835,9 +3835,9 @@ mono_assembly_close_finish (MonoAssembly *assembly)
 		mono_image_close_finish (assembly->image);
 
 	if (assembly_is_dynamic (assembly)) {
-		g_free ((char*)assembly->aname.culture);
+		g_free_vb ((char*)assembly->aname.culture);
 	} else {
-		g_free (assembly);
+		g_free_vb (assembly);
 	}
 }
 
@@ -3921,7 +3921,7 @@ mono_assemblies_cleanup (void)
 		MonoAssemblyBindingInfo *info = (MonoAssemblyBindingInfo *)l->data;
 
 		mono_assembly_binding_info_free (info);
-		g_free (info);
+		g_free_vb (info);
 	}
 	g_slist_free (loaded_assembly_bindings);
 
@@ -3945,7 +3945,7 @@ mono_assembly_cleanup_domain_bindings (guint32 domain_id)
 		if (info->domain_id == domain_id) {
 			*iter = l->next;
 			mono_assembly_binding_info_free (info);
-			g_free (info);
+			g_free_vb (info);
 			g_slist_free_1 (l);
 		} else {
 			iter = &l->next;
@@ -4068,7 +4068,7 @@ mono_assembly_try_decode_skip_verification (const char *p, const char *endn)
 		char *res = g_convert (p, endn - p, "UTF-8", "UTF-16LE", &read, &written, NULL);
 		if (res) {
 			gboolean found = strstr (res, SKIP_VISIBILITY_XML_ATTRIBUTE) != NULL;
-			g_free (res);
+			g_free_vb (res);
 			return found;
 		}
 		return FALSE;

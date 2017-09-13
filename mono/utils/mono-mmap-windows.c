@@ -199,7 +199,7 @@ void
 mono_shared_area_remove (void)
 {
 	if (malloced_shared_area)
-		g_free (malloced_shared_area);
+		g_free_vb (malloced_shared_area);
 	malloced_shared_area = NULL;
 }
 

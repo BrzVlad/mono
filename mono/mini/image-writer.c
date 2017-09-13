@@ -303,9 +303,9 @@ bin_writer_emit_ensure_buffer (BinSection *section, int size)
 		guint8 *data;
 		while (new_size <= new_offset)
 			new_size *= 2;
-		data = (guint8 *)g_malloc0 (new_size);
+		data = (guint8 *)g_malloc0_vb (new_size);
 		memcpy (data, section->data, section->data_len);
-		g_free (section->data);
+		g_free_vb (section->data);
 		section->data = data;
 		section->data_len = new_size;
 	}
@@ -631,7 +631,7 @@ bin_writer_emit_writeout (MonoImageWriter *acfg)
 
 	if (!acfg->fp) {
 		acfg->out_buf_size = file_size;
-		acfg->out_buf = g_malloc (acfg->out_buf_size);
+		acfg->out_buf = g_malloc_vb (acfg->out_buf_size);
 	}
 
 	bin_writer_fwrite (acfg, &header, sizeof (header), 1);
@@ -1573,7 +1573,7 @@ bin_writer_emit_writeout (MonoImageWriter *acfg)
 
 	if (!acfg->fp) {
 		acfg->out_buf_size = file_offset + sizeof (secth);
-		acfg->out_buf = (guint8 *)g_malloc (acfg->out_buf_size);
+		acfg->out_buf = (guint8 *)g_malloc_vb (acfg->out_buf_size);
 	}
 
 	bin_writer_fwrite (acfg, &header, sizeof (header), 1);
@@ -2345,7 +2345,7 @@ mono_img_writer_create (FILE *fp, gboolean use_bin_writer)
 
 	w->fp = fp;
 	w->use_bin_writer = use_bin_writer;
-	w->mempool = mono_mempool_new ();
+	w->mempool = mono_mempool_new_runtime (G_STRLOC, 0);
 
 	return w;
 }
@@ -2355,7 +2355,7 @@ mono_img_writer_destroy (MonoImageWriter *w)
 {
 	// FIXME: Free all the stuff
 	mono_mempool_destroy (w->mempool);
-	g_free (w);
+	g_free_vb (w);
 }
 
 gboolean

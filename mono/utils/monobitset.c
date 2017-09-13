@@ -37,7 +37,7 @@ mono_bitset_new (guint32 max_size, guint32 flags) {
 	guint32 real_size = (max_size + BITS_PER_CHUNK - 1) / BITS_PER_CHUNK;
 	MonoBitSet *result;
 
-	result = (MonoBitSet *) g_malloc0 (sizeof (MonoBitSet) + sizeof (gsize) * (real_size - MONO_ZERO_LEN_ARRAY));
+	result = (MonoBitSet *) g_malloc0_vb (sizeof (MonoBitSet) + sizeof (gsize) * (real_size - MONO_ZERO_LEN_ARRAY));
 	result->size = real_size * BITS_PER_CHUNK;
 	result->flags = flags;
 	return result;
@@ -74,7 +74,7 @@ mono_bitset_mem_new (gpointer mem, guint32 max_size, guint32 flags) {
 void
 mono_bitset_free (MonoBitSet *set) {
 	if (!(set->flags & MONO_BITSET_DONT_FREE))
-		g_free (set);
+		g_free_vb (set);
 }
 
 /**

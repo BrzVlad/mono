@@ -124,15 +124,30 @@ typedef guint32 gunichar;
  * Allocation
  */
 void g_free (void *ptr);
+void g_free_verbose (void *ptr, const char *file);
 gpointer g_realloc (gpointer obj, gsize size);
+gpointer g_realloc_verbose (gpointer obj, gsize size, const char *file);
 gpointer g_malloc (gsize x);
+gpointer g_malloc_verbose (gsize x, const char *file);
 gpointer g_malloc0 (gsize x);
+gpointer g_malloc0_verbose (gsize x, const char *file);
 gpointer g_calloc (gsize n, gsize x);
+gpointer g_calloc_verbose (gsize n, gsize x, const char *file);
 gpointer g_try_malloc (gsize x);
+gpointer g_try_malloc_verbose (gsize x, const char *file);
 gpointer g_try_realloc (gpointer obj, gsize size);
+gpointer g_try_realloc_verbose (gpointer obj, gsize size, const char *file);
 
-#define g_new(type,size)        ((type *) g_malloc (sizeof (type) * (size)))
-#define g_new0(type,size)       ((type *) g_malloc0 (sizeof (type)* (size)))
+#define g_free_vb(size) (g_free_verbose (size, __FILE__))
+#define g_realloc_vb(obj,size) (g_realloc_verbose (obj, size, __FILE__))
+#define g_malloc_vb(size) (g_malloc_verbose (size, __FILE__))
+#define g_malloc0_vb(size) (g_malloc0_verbose (size, __FILE__))
+#define g_calloc_vb(n,x) (g_calloc_verbose (n, x, __FILE__))
+#define g_try_malloc_vb(x) (g_try_malloc_verbose (x, __FILE__))
+#define g_try_realloc_vb(obj,size) (g_try_realloc_verbose (obj, size, __FILE__))
+
+#define g_new(type,size)        ((type *) g_malloc_verbose (sizeof (type) * (size), __FILE__))
+#define g_new0(type,size)       ((type *) g_malloc0_verbose (sizeof (type)* (size), __FILE__))
 #define g_newa(type,size)       ((type *) alloca (sizeof (type) * (size)))
 
 #define g_memmove(dest,src,len) memmove (dest, src, len)

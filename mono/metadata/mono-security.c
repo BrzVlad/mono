@@ -94,7 +94,7 @@ GetTokenName (uid_t uid)
 #else
 	fbufsize = MONO_SYSCONF_DEFAULT_SIZE;
 #endif
-	fbuf = (gchar *)g_malloc0 (fbufsize);
+	fbuf = (gchar *)g_malloc0_vb (fbufsize);
 	retval = getpwuid_r (uid, &pwd, fbuf, fbufsize, &p);
 	result = ((retval == 0) && (p == &pwd));
 #else
@@ -108,7 +108,7 @@ GetTokenName (uid_t uid)
 	}
 
 #ifdef HAVE_GETPWUID_R
-	g_free (fbuf);
+	g_free_vb (fbuf);
 #endif
 
 #endif /* HAVE_PWD_H */
@@ -140,7 +140,7 @@ IsMemberInList (uid_t user, struct group *g)
 		}
 	}		
 
-	g_free (utf8_username);
+	g_free_vb (utf8_username);
 	return result;
 }
 
@@ -168,7 +168,7 @@ IsDefaultGroup (uid_t user, gid_t group)
 	fbufsize = MONO_SYSCONF_DEFAULT_SIZE;
 #endif
 
-	fbuf = (gchar *)g_malloc0 (fbufsize);
+	fbuf = (gchar *)g_malloc0_vb (fbufsize);
 	retval = getpwuid_r (user, &pwd, fbuf, fbufsize, &p);
 	result = ((retval == 0) && (p == &pwd));
 #else
@@ -182,7 +182,7 @@ IsDefaultGroup (uid_t user, gid_t group)
 	}
 
 #ifdef HAVE_GETPWUID_R
-	g_free (fbuf);
+	g_free_vb (fbuf);
 #endif
 
 #endif /* HAVE_PWD_H */
@@ -238,7 +238,7 @@ internal_get_token_name (gpointer token, gunichar2 ** uniname)
 	if (uname) {
 		size = strlen (uname);
 		*uniname = g_utf8_to_utf16 (uname, size, NULL, NULL, NULL);
-		g_free (uname);
+		g_free_vb (uname);
 	}
 
 	return size;
@@ -262,7 +262,7 @@ ves_icall_System_Security_Principal_WindowsIdentity_GetTokenName (gpointer token
 		result = mono_string_new_handle (mono_domain_get (), "", error);
 
 	if (uniname)
-		g_free (uniname);
+		g_free_vb (uniname);
 
 	return result;
 }
@@ -297,7 +297,7 @@ ves_icall_System_Security_Principal_WindowsIdentity_GetUserToken (MonoStringHand
 	fbufsize = MONO_SYSCONF_DEFAULT_SIZE;
 #endif
 
-	fbuf = (gchar *)g_malloc0 (fbufsize);
+	fbuf = (gchar *)g_malloc0_vb (fbufsize);
 	retval = getpwnam_r (utf8_name, &pwd, fbuf, fbufsize, &p);
 	result = ((retval == 0) && (p == &pwd));
 #else
@@ -311,9 +311,9 @@ ves_icall_System_Security_Principal_WindowsIdentity_GetUserToken (MonoStringHand
 	}
 
 #ifdef HAVE_GETPWNAM_R
-	g_free (fbuf);
+	g_free_vb (fbuf);
 #endif
-	g_free (utf8_name);
+	g_free_vb (utf8_name);
 
 #endif /* HAVE_PWD_H */
 
@@ -429,7 +429,7 @@ ves_icall_System_Security_Principal_WindowsPrincipal_IsMemberOfGroupId (gpointer
 #else
 	fbufsize = MONO_SYSCONF_DEFAULT_SIZE;
 #endif
-	fbuf = (gchar *)g_malloc0 (fbufsize);
+	fbuf = (gchar *)g_malloc0_vb (fbufsize);
 	retval = getgrgid_r ((gid_t) GPOINTER_TO_INT (group), &grp, fbuf, fbufsize, &g);
 	result = ((retval == 0) && (g == &grp));
 #else
@@ -443,7 +443,7 @@ ves_icall_System_Security_Principal_WindowsPrincipal_IsMemberOfGroupId (gpointer
 	}
 
 #ifdef HAVE_GETGRGID_R
-	g_free (fbuf);
+	g_free_vb (fbuf);
 #endif
 
 #endif /* HAVE_GRP_H */
@@ -472,7 +472,7 @@ ves_icall_System_Security_Principal_WindowsPrincipal_IsMemberOfGroupName (gpoint
 #else
 		size_t fbufsize = MONO_SYSCONF_DEFAULT_SIZE;
 #endif
-		fbuf = (gchar *)g_malloc0 (fbufsize);
+		fbuf = (gchar *)g_malloc0_vb (fbufsize);
 		retval = getgrnam_r (utf8_groupname, &grp, fbuf, fbufsize, &g);
 		result = ((retval == 0) && (g == &grp));
 #else
@@ -486,9 +486,9 @@ ves_icall_System_Security_Principal_WindowsPrincipal_IsMemberOfGroupName (gpoint
 		}
 
 #ifdef HAVE_GETGRNAM_R
-		g_free (fbuf);
+		g_free_vb (fbuf);
 #endif
-		g_free (utf8_groupname);
+		g_free_vb (utf8_groupname);
 	}
 
 #endif /* HAVE_GRP_H */
@@ -510,7 +510,7 @@ IsProtected (MonoString *path, gint32 protection)
 		if (stat (utf8_name, &st) == 0) {
 			result = (((st.st_mode & 0777) & protection) == 0);
 		}
-		g_free (utf8_name);
+		g_free_vb (utf8_name);
 	}
 	return result;
 }
@@ -529,7 +529,7 @@ Protect (MonoString *path, gint32 file_mode, gint32 add_dir_mode)
 				mode |= add_dir_mode;
 			result = (chmod (utf8_name, mode) == 0);
 		}
-		g_free (utf8_name);
+		g_free_vb (utf8_name);
 	}
 	return result;
 }

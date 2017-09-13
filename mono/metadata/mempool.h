@@ -15,6 +15,9 @@ MONO_API MonoMemPool *
 mono_mempool_new           (void);
 
 MONO_API MonoMemPool *
+mono_mempool_new_runtime   (const char *source, int initial_size);
+
+MONO_API MonoMemPool *
 mono_mempool_new_size      (int initial_size);
 
 MONO_API void

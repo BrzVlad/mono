@@ -39,12 +39,12 @@ mono_w32process_get_name (pid_t pid)
 		return NULL;
 	}
 
-	if ((pi = g_malloc (size)) == NULL)
+	if ((pi = g_malloc_vb (size)) == NULL)
 		return NULL;
 
 	if (sysctl (mib, 4, pi, &size, NULL, 0) < 0) {
 		if (errno == ENOMEM) {
-			g_free (pi);
+			g_free_vb (pi);
 			mono_trace (G_LOG_LEVEL_DEBUG, MONO_TRACE_IO_LAYER, "%s: Didn't allocate enough memory for kproc info", __func__);
 		}
 		return NULL;
@@ -52,7 +52,7 @@ mono_w32process_get_name (pid_t pid)
 
 	ret = strlen (pi->ki_comm) > 0 ? g_strdup (pi->ki_comm) : NULL;
 
-	g_free (pi);
+	g_free_vb (pi);
 #elif defined(__OpenBSD__)
 	mib [0] = CTL_KERN;
 	mib [1] = KERN_PROC;
@@ -67,7 +67,7 @@ retry:
 		return NULL;
 	}
 
-	if ((pi = g_malloc (size)) == NULL)
+	if ((pi = g_malloc_vb (size)) == NULL)
 		return NULL;
 
 	mib[5] = (int)(size / sizeof(struct kinfo_proc));
@@ -75,7 +75,7 @@ retry:
 	if ((sysctl (mib, 6, pi, &size, NULL, 0) < 0) ||
 		(size != sizeof (struct kinfo_proc))) {
 		if (errno == ENOMEM) {
-			g_free (pi);
+			g_free_vb (pi);
 			goto retry;
 		}
 		return NULL;
@@ -83,7 +83,7 @@ retry:
 
 	ret = strlen (pi->p_comm) > 0 ? g_strdup (pi->p_comm) : NULL;
 
-	g_free (pi);
+	g_free_vb (pi);
 #endif
 
 	return ret;
@@ -101,7 +101,7 @@ mono_w32process_get_modules_callback (struct dl_phdr_info *info, gsize size, gpo
 	if (size < offsetof (struct dl_phdr_info, dlpi_phnum) + sizeof (info->dlpi_phnum))
 		return (-1);
 
-	struct dl_phdr_info *cpy = g_calloc (1, sizeof(struct dl_phdr_info));
+	struct dl_phdr_info *cpy = g_calloc_vb (1, sizeof(struct dl_phdr_info));
 	if (!cpy)
 		return (-1);
 
@@ -137,7 +137,7 @@ mono_w32process_get_modules (pid_t pid)
 		mono_trace (G_LOG_LEVEL_DEBUG, MONO_TRACE_IO_LAYER, "%s: inode=%d, filename=%s, address_start=%p, address_end=%p",
 			__func__, mod->inode, mod->filename, mod->address_start, mod->address_end);
 
-		g_free (info);
+		g_free_vb (info);
 
 		if (g_slist_find_custom (ret, mod, mono_w32process_module_equals) == NULL) {
 			ret = g_slist_prepend (ret, mod);

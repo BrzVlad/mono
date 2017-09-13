@@ -198,7 +198,7 @@ mono_code_manager_install_callbacks (MonoCodeManagerCallbacks* callbacks)
 MonoCodeManager* 
 mono_code_manager_new (void)
 {
-	return (MonoCodeManager *) g_malloc0 (sizeof (MonoCodeManager));
+	return (MonoCodeManager *) g_malloc0_vb (sizeof (MonoCodeManager));
 }
 
 /**
@@ -246,7 +246,7 @@ free_chunklist (CodeChunk *chunk)
 			dlfree (dead->data);
 		}
 		code_memory_used -= dead->size;
-		g_free (dead);
+		g_free_vb (dead);
 	}
 }
 
@@ -260,7 +260,7 @@ mono_code_manager_destroy (MonoCodeManager *cman)
 {
 	free_chunklist (cman->full);
 	free_chunklist (cman->current);
-	g_free (cman);
+	g_free_vb (cman);
 }
 
 /**
@@ -407,7 +407,7 @@ new_codechunk (CodeChunk *last, int dynamic, int size)
 #endif
 	}
 
-	chunk = (CodeChunk *) g_malloc (sizeof (CodeChunk));
+	chunk = (CodeChunk *) g_malloc_vb (sizeof (CodeChunk));
 	if (!chunk) {
 		if (flags == CODE_FLAG_MALLOC)
 			dlfree (ptr);

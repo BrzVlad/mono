@@ -40,7 +40,7 @@ extern MonoBoolean ves_icall_System_Net_NetworkInformation_MacOsIPInterfacePrope
 
 	if ((ifindex = if_nametoindex(ifacename)) == 0)
 		return FALSE;
-	g_free(ifacename);
+	g_free_vb(ifacename);
 
 	// MIB array defining data to read from sysctl
 	mib[0] = CTL_NET;	// Networking
@@ -55,12 +55,12 @@ extern MonoBoolean ves_icall_System_Net_NetworkInformation_MacOsIPInterfacePrope
 		return FALSE;
 
 	// Allocate suffcient memory for available data based on the previous sysctl call
-	if ((buf = g_malloc (needed)) == NULL)
+	if ((buf = g_malloc_vb (needed)) == NULL)
 		return FALSE;
 
 	// Second sysctl call to retrieve data into appropriately sized buffer
 	if (sysctl(mib, G_N_ELEMENTS(mib), buf, &needed, NULL, 0) < 0) {
-		g_free (buf);
+		g_free_vb (buf);
 		return FALSE;
 	}
 
@@ -111,7 +111,7 @@ extern MonoBoolean ves_icall_System_Net_NetworkInformation_MacOsIPInterfacePrope
 		gwnum++;
 	}
 leave:
-	g_free (buf);
+	g_free_vb (buf);
 	return is_ok (&error);
 }
 

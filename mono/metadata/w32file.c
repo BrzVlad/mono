@@ -293,7 +293,7 @@ get_search_dir (const gunichar2 *pattern)
 
 	p = g_utf16_to_utf8 (pattern, -1, NULL, NULL, NULL);
 	result = g_path_get_dirname (p);
-	g_free (p);
+	g_free_vb (p);
 	return result;
 }
 
@@ -353,7 +353,7 @@ get_filesystem_entries (const gunichar2 *path,
 			full_name = g_build_filename (utf8_path, utf8_result, NULL);
 			g_ptr_array_add (names, full_name);
 
-			g_free (utf8_result);
+			g_free_vb (utf8_result);
 		}
 	} while(mono_w32file_find_next (find_handle, &data));
 
@@ -362,15 +362,15 @@ get_filesystem_entries (const gunichar2 *path,
 		goto fail;
 	}
 
-	g_free (utf8_path);
+	g_free_vb (utf8_path);
 	return names;
 fail:
 	if (names) {
 		for (i = 0; i < names->len; i++)
-			g_free (g_ptr_array_index (names, i));
+			g_free_vb (g_ptr_array_index (names, i));
 		g_ptr_array_free (names, TRUE);
 	}
-	g_free (utf8_path);
+	g_free_vb (utf8_path);
 	return FALSE;
 }
 
@@ -409,7 +409,7 @@ ves_icall_System_IO_MonoIO_GetFileSystemEntries (MonoString *path,
 		if (mono_error_set_pending_exception (&error))
 			goto leave;
 		mono_array_setref (result, i, name);
-		g_free (g_ptr_array_index (names, i));
+		g_free_vb (g_ptr_array_index (names, i));
 	}
 leave:
 	g_ptr_array_free (names, TRUE);
@@ -437,9 +437,9 @@ incremental_find_check_match (IncrementalFind *handle, WIN32_FIND_DATA *data, Mo
 		return FALSE;
 	
 	full_name = g_build_filename (handle->utf8_path, utf8_result, NULL);
-	g_free (utf8_result);
+	g_free_vb (utf8_result);
 	*result = mono_string_new_checked (mono_domain_get (), full_name, error);
-	g_free (full_name);
+	g_free_vb (full_name);
 	if (!is_ok (error))
 		return FALSE;
 	
@@ -535,7 +535,7 @@ ves_icall_System_IO_MonoIO_FindFirst (MonoString *path,
 	ifh->utf8_path = mono_string_to_utf8_checked (path, &error);
 	if (mono_error_set_pending_exception (&error)) {
 		mono_w32file_find_close (find_handle);
-		g_free (ifh);
+		g_free_vb (ifh);
 		return NULL;
 	}
 	ifh->domain = mono_domain_get ();
@@ -596,8 +596,8 @@ ves_icall_System_IO_MonoIO_FindClose (gpointer handle)
 		error = mono_w32error_get_last ();
 	} else
 		error = ERROR_SUCCESS;
-	g_free (ifh->utf8_path);
-	g_free (ifh);
+	g_free_vb (ifh->utf8_path);
+	g_free_vb (ifh);
 
 	return error;
 }
@@ -620,7 +620,7 @@ ves_icall_System_IO_MonoIO_GetCurrentDirectory (gint32 *io_error)
 	res_len = mono_w32file_get_cwd (len, buf);
 	if (res_len > len) { /*buf is too small.*/
 		int old_res_len = res_len;
-		g_free (buf);
+		g_free_vb (buf);
 		buf = g_new (gunichar2, res_len);
 		res_len = mono_w32file_get_cwd (res_len, buf) == old_res_len;
 	}
@@ -635,7 +635,7 @@ ves_icall_System_IO_MonoIO_GetCurrentDirectory (gint32 *io_error)
 		*io_error=mono_w32error_get_last ();
 	}
 
-	g_free (buf);
+	g_free_vb (buf);
 	mono_error_set_pending_exception (&error);
 	return result;
 }
@@ -1190,7 +1190,7 @@ mono_filesize_from_path (MonoString *string)
 	else
 		res = (gint64)buf.st_size;
 
-	g_free (path);
+	g_free_vb (path);
 
 	return res;
 }

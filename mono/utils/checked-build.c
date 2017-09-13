@@ -59,7 +59,7 @@ mono_check_mode_enabled (MonoCheckMode query)
 #endif
 			}
 			g_strfreev (env_split);
-			g_free (env_string);
+			g_free_vb (env_string);
 		}
 
 		check_mode = env_check_mode;
@@ -75,7 +75,7 @@ mono_check_transition_limit (void)
 		const gchar *env_string = g_getenv ("MONO_CHECK_THREAD_TRANSITION_HISTORY");
 		if (env_string) {
 			transition_limit = atoi (env_string);
-			g_free (env_string);
+			g_free_vb (env_string);
 		} else {
 			transition_limit = 3;
 		}
@@ -150,7 +150,7 @@ translate_backtrace (gpointer native_trace[], int size)
 			g_string_append_printf (bt, "\tat %s\n", names [i]);
 	}
 
-	g_free (names);
+	g_free_vb (names);
 	return g_string_free (bt, FALSE);
 }
 
@@ -179,7 +179,7 @@ typedef struct {
 static void
 free_transition (ThreadTransition *t)
 {
-	g_free (t);
+	g_free_vb (t);
 }
 
 void
@@ -236,7 +236,7 @@ mono_fatal_with_history (const char *msg, ...)
 				t->suspend_count_delta > 0 ? "+" : "", //I'd like to see this sort of values: -1, 0, +1
 				t->suspend_count_delta,
 				bt);
-			g_free (bt);
+			g_free_vb (bt);
 		}
 	}
 
@@ -589,7 +589,7 @@ check_image_may_reference_image_set (MonoImage *from, MonoImageSet *to)
 }
 
 // Small helper-- get a descriptive string for a MonoMemPoolOwner
-// Callers are obligated to free buffer with g_free after use
+// Callers are obligated to free buffer with g_free_vb after use
 static const char *
 check_mempool_owner_name (MonoMemPoolOwner owner)
 {
@@ -605,7 +605,7 @@ check_mempool_owner_name (MonoMemPoolOwner owner)
 		char *temp = mono_image_set_description (owner.image_set);
 		g_string_append (result, "(Image set)");
 		g_string_append (result, temp);
-		g_free (temp);
+		g_free_vb (temp);
 	}
 	else
 	{

@@ -354,14 +354,14 @@ mono_method_desc_new (const char *name, gboolean include_namespace)
 		*use_args++ = 0;
 		end = strchr (use_args, ')');
 		if (!end) {
-			g_free (class_nspace);
+			g_free_vb (class_nspace);
 			return NULL;
 		}
 		*end = 0;
 	}
 	method_name = strrchr (class_nspace, ':');
 	if (!method_name) {
-		g_free (class_nspace);
+		g_free_vb (class_nspace);
 		return NULL;
 	}
 	/* allow two :: to separate the method name */
@@ -432,10 +432,10 @@ void
 mono_method_desc_free (MonoMethodDesc *desc)
 {
 	if (desc->name_space)
-		g_free (desc->name_space);
+		g_free_vb (desc->name_space);
 	else if (desc->klass)
-		g_free (desc->klass);
-	g_free (desc);
+		g_free_vb (desc->klass);
+	g_free_vb (desc);
 }
 
 /**
@@ -463,10 +463,10 @@ mono_method_desc_match (MonoMethodDesc *desc, MonoMethod *method)
 		return FALSE;
 	sig = mono_signature_get_desc (mono_method_signature (method), desc->include_namespace);
 	if (strcmp (sig, desc->args)) {
-		g_free (sig);
+		g_free_vb (sig);
 		return FALSE;
 	}
-	g_free (sig);
+	g_free_vb (sig);
 	return TRUE;
 }
 
@@ -612,7 +612,7 @@ dis_one (GString *str, MonoDisHelper *dh, MonoMethod *method, const unsigned cha
 	if (dh->indenter) {
 		tmp = dh->indenter (dh, method, label);
 		g_string_append (str, tmp);
-		g_free (tmp);
+		g_free_vb (tmp);
 	}
 	if (dh->label_format)
 		g_string_append_printf (str, dh->label_format, label);
@@ -634,7 +634,7 @@ dis_one (GString *str, MonoDisHelper *dh, MonoMethod *method, const unsigned cha
 		if (dh->tokener) {
 			tmp = dh->tokener (dh, method, token);
 			g_string_append (str, tmp);
-			g_free (tmp);
+			g_free_vb (tmp);
 		} else {
 			g_string_append_printf (str, "0x%08x", token);
 		}
@@ -655,7 +655,7 @@ dis_one (GString *str, MonoDisHelper *dh, MonoMethod *method, const unsigned cha
 
 #ifdef NO_UNALIGNED_ACCESS
 			/* The blob might not be 2 byte aligned */
-			blob2 = g_malloc ((len2 * 2) + 1);
+			blob2 = g_malloc_vb ((len2 * 2) + 1);
 			memcpy (blob2, blob, len2 * 2);
 #else
 			blob2 = (char*)blob;
@@ -669,16 +669,16 @@ dis_one (GString *str, MonoDisHelper *dh, MonoMethod *method, const unsigned cha
 				for (i = 0; i < len2; ++i)
 					buf [i] = GUINT16_FROM_LE (((guint16*)blob2) [i]);
 				s = g_utf16_to_utf8 (buf, len2, NULL, NULL, NULL);
-				g_free (buf);
+				g_free_vb (buf);
 			}
 #else
 				s = g_utf16_to_utf8 ((gunichar2*)blob2, len2, NULL, NULL, NULL);
 #endif
 
 			g_string_append_printf (str, "\"%s\"", s);
-			g_free (s);
+			g_free_vb (s);
 			if (blob != blob2)
-				g_free (blob2);
+				g_free_vb (blob2);
 		}
 		ip += 4;
 		break;
@@ -899,19 +899,19 @@ mono_method_get_name_full (MonoMethod *method, gboolean signature, gboolean ret,
 			char *ret_str = mono_type_full_name (sig->ret);
 			res = g_strdup_printf ("%s%s %s:%s%s (%s)", wrapper, ret_str, klass_desc,
 								   method->name, inst_desc ? inst_desc : "", tmpsig);
-			g_free (ret_str);
+			g_free_vb (ret_str);
 		} else {
 			res = g_strdup_printf ("%s%s:%s%s (%s)", wrapper, klass_desc,
 								   method->name, inst_desc ? inst_desc : "", tmpsig);
 		}
-		g_free (tmpsig);
+		g_free_vb (tmpsig);
 	} else {
 		res = g_strdup_printf ("%s%s:%s%s", wrapper, klass_desc,
 							   method->name, inst_desc ? inst_desc : "");
 	}
 
-	g_free (klass_desc);
-	g_free (inst_desc);
+	g_free_vb (klass_desc);
+	g_free_vb (inst_desc);
 
 	return res;
 }
@@ -977,7 +977,7 @@ mono_object_describe (MonoObject *obj)
 		} else {
 			g_print ("String at %p, length: %d, unable to decode UTF16\n", obj, mono_string_length ((MonoString*) obj));
 		}
-		g_free (utf8);
+		g_free_vb (utf8);
 	} else if (klass->rank) {
 		MonoArray *array = (MonoArray*)obj;
 		sep = print_name_space (klass);
@@ -1185,5 +1185,5 @@ mono_method_print_code (MonoMethod *method)
 	}
 	code = mono_disasm_code (0, method, header->code, header->code + header->code_size);
 	printf ("CODE FOR %s:\n%s\n", mono_method_full_name (method, TRUE), code);
-	g_free (code);
+	g_free_vb (code);
 }

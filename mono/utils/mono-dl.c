@@ -86,13 +86,13 @@ get_dl_name_from_libtool (const char *libtool_file)
 		if (*line == '#' || *line == 0)
 			continue;
 		if (strncmp ("dlname", line, 6) == 0) {
-			g_free (dlname);
+			g_free_vb (dlname);
 			dlname = read_string (line + 6, file);
 		} else if (strncmp ("libdir", line, 6) == 0) {
-			g_free (libdir);
+			g_free_vb (libdir);
 			libdir = read_string (line + 6, file);
 		} else if (strncmp ("installed", line, 9) == 0) {
-			g_free (installed);
+			g_free_vb (installed);
 			installed = read_string (line + 9, file);
 		}
 	}
@@ -102,14 +102,14 @@ get_dl_name_from_libtool (const char *libtool_file)
 		char *dir = g_path_get_dirname (libtool_file);
 		if (dlname)
 			line = g_strconcat (dir, G_DIR_SEPARATOR_S ".libs" G_DIR_SEPARATOR_S, dlname, NULL);
-		g_free (dir);
+		g_free_vb (dir);
 	} else {
 		if (libdir && dlname)
 			line = g_strconcat (libdir, G_DIR_SEPARATOR_S, dlname, NULL);
 	}
-	g_free (dlname);
-	g_free (libdir);
-	g_free (installed);
+	g_free_vb (dlname);
+	g_free_vb (libdir);
+	g_free_vb (installed);
 	return line;
 }
 
@@ -126,7 +126,7 @@ get_dl_name_from_libtool (const char *libtool_file)
  * from the module to the shared namespace. The \c MONO_DL_LAZY bit can be set
  * to lazily load the symbols instead of resolving everithing at load time.
  * \p error_msg points to a string where an error message will be stored in
- * case of failure.   The error must be released with \c g_free.
+ * case of failure.   The error must be released with \c g_free_vb.
  * \returns a \c MonoDl pointer on success, NULL on failure.
  */
 MonoDl*
@@ -140,7 +140,7 @@ mono_dl_open (const char *name, int flags, char **error_msg)
 	if (error_msg)
 		*error_msg = NULL;
 
-	module = (MonoDl *) g_malloc (sizeof (MonoDl));
+	module = (MonoDl *) g_malloc_vb (sizeof (MonoDl));
 	if (!module) {
 		if (error_msg)
 			*error_msg = g_strdup ("Out of memory");
@@ -159,7 +159,7 @@ mono_dl_open (const char *name, int flags, char **error_msg)
 			
 			lib = handler->load_func (name, lflags, error_msg, handler->user_data);
 			if (error_msg && *error_msg != NULL)
-				g_free (*error_msg);
+				g_free_vb (*error_msg);
 			
 			if (lib != NULL){
 				dl_fallback = handler;
@@ -174,7 +174,7 @@ mono_dl_open (const char *name, int flags, char **error_msg)
 		const char *ext;
 		/* This platform does not support dlopen */
 		if (name == NULL) {
-			g_free (module);
+			g_free_vb (module);
 			return NULL;
 		}
 		
@@ -184,16 +184,16 @@ mono_dl_open (const char *name, int flags, char **error_msg)
 			suff = "";
 		lname = g_strconcat (name, suff, NULL);
 		llname = get_dl_name_from_libtool (lname);
-		g_free (lname);
+		g_free_vb (lname);
 		if (llname) {
 			lib = mono_dl_open_file (llname, lflags);
-			g_free (llname);
+			g_free_vb (llname);
 		}
 		if (!lib) {
 			if (error_msg) {
 				*error_msg = mono_dl_current_error_string ();
 			}
-			g_free (module);
+			g_free_vb (module);
 			return NULL;
 		}
 	}
@@ -222,11 +222,11 @@ mono_dl_symbol (MonoDl *module, const char *name, void **symbol)
 	} else {
 #if MONO_DL_NEED_USCORE
 		{
-			char *usname = g_malloc (strlen (name) + 2);
+			char *usname = g_malloc_vb (strlen (name) + 2);
 			*usname = '_';
 			strcpy (usname + 1, name);
 			sym = mono_dl_lookup_symbol (module, usname);
-			g_free (usname);
+			g_free_vb (usname);
 		}
 #else
 		sym = mono_dl_lookup_symbol (module, name);
@@ -260,7 +260,7 @@ mono_dl_close (MonoDl *module)
 	} else
 		mono_dl_close_handle (module);
 	
-	g_free (module);
+	g_free_vb (module);
 }
 
 /**
@@ -363,7 +363,7 @@ mono_dl_fallback_unregister (MonoDlFallbackHandler *handler)
 		return;
 
 	g_slist_remove (fallback_handlers, handler);
-	g_free (handler);
+	g_free_vb (handler);
 }
 
 static MonoDl*
@@ -375,9 +375,9 @@ try_load (const char *lib_name, char *dir, int flags, char **err)
 	iter = NULL;
 	*err = NULL;
 	while ((path = mono_dl_build_path (dir, lib_name, &iter))) {
-		g_free (*err);
+		g_free_vb (*err);
 		runtime_lib = mono_dl_open (path, flags, err);
-		g_free (path);
+		g_free_vb (path);
 		if (runtime_lib)
 			return runtime_lib;
 	}
@@ -403,29 +403,29 @@ mono_dl_open_runtime_lib (const char* lib_name, int flags, char **error_msg)
 		base = g_path_get_dirname (resolvedname);
 		name = g_strdup_printf ("%s/.libs", base);
 		runtime_lib = try_load (lib_name, name, flags, error_msg);
-		g_free (name);
+		g_free_vb (name);
 		if (!runtime_lib)
 			baseparent = g_path_get_dirname (base);
 		if (!runtime_lib) {
 			name = g_strdup_printf ("%s/lib", baseparent);
 			runtime_lib = try_load (lib_name, name, flags, error_msg);
-			g_free (name);
+			g_free_vb (name);
 		}
 #ifdef __MACH__
 		if (!runtime_lib) {
 			name = g_strdup_printf ("%s/Libraries", baseparent);
 			runtime_lib = try_load (lib_name, name, flags, error_msg);
-			g_free (name);
+			g_free_vb (name);
 		}
 #endif
 		if (!runtime_lib) {
 			name = g_strdup_printf ("%s/profiler/.libs", baseparent);
 			runtime_lib = try_load (lib_name, name, flags, error_msg);
-			g_free (name);
+			g_free_vb (name);
 		}
-		g_free (base);
-		g_free (resolvedname);
-		g_free (baseparent);
+		g_free_vb (base);
+		g_free_vb (resolvedname);
+		g_free_vb (baseparent);
 	}
 	if (!runtime_lib)
 		runtime_lib = try_load (lib_name, NULL, flags, error_msg);

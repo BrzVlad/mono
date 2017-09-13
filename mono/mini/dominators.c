@@ -139,7 +139,7 @@ compute_dominators (MonoCompile *cfg)
 		mono_bitset_set_fast (dominators, 0);
 	}
 
-	g_free (doms);
+	g_free_vb (doms);
 
 	cfg->comp_done |= MONO_COMP_DOM | MONO_COMP_IDOM;
 
@@ -402,7 +402,7 @@ mono_compute_natural_loops (MonoCompile *cfg)
 			body_start->loop_body_start = 1;
 		}
 	}
-	g_free (bb_indexes);
+	g_free_vb (bb_indexes);
 
 	if (cfg->verbose_level > 1) {
 		for (i = 0; i < cfg->num_bblocks; ++i) {

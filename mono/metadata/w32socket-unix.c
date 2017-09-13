@@ -115,7 +115,7 @@ socket_data_destroy (MonoFDHandle *fdhandle)
 	sockethandle = (SocketHandle*) fdhandle;
 	g_assert (sockethandle);
 
-	g_free (sockethandle);
+	g_free_vb (sockethandle);
 }
 
 void
@@ -376,7 +376,7 @@ wsabuf_to_msghdr (WSABUF *buffers, guint32 count, struct msghdr *hdr)
 static void
 msghdr_iov_free (struct msghdr *hdr)
 {
-	g_free (hdr->msg_iov);
+	g_free_vb (hdr->msg_iov);
 }
 
 int
@@ -631,7 +631,7 @@ mono_w32socket_transmit_file (SOCKET sock, gpointer file_handle, TRANSMIT_FILE_B
 		MONO_EXIT_GC_SAFE;
 	} while (ret != -1 && errno == EINTR && !mono_thread_info_is_interrupt_state (info));
 #else
-	buffer = g_malloc (SF_BUFFER_SIZE);
+	buffer = g_malloc_vb (SF_BUFFER_SIZE);
 
 	do {
 		do {
@@ -650,7 +650,7 @@ mono_w32socket_transmit_file (SOCKET sock, gpointer file_handle, TRANSMIT_FILE_B
 		} while (ret == -1 && errno == EINTR && !mono_thread_info_is_interrupt_state (info));
 	} while (ret != -1 && errno == EINTR && !mono_thread_info_is_interrupt_state (info));
 
-	g_free (buffer);
+	g_free_vb (buffer);
 #endif
 
 	if (ret == -1) {
@@ -1263,7 +1263,7 @@ mono_w32socket_ioctl (SOCKET sock, gint32 command, gchar *input, gint inputlen, 
 	ret = ioctl (((MonoFDHandle*) sockethandle)->fd, command, buffer);
 	MONO_EXIT_GC_SAFE;
 	if (ret == -1) {
-		g_free (buffer);
+		g_free_vb (buffer);
 
 		gint errnum = errno;
 		mono_trace (G_LOG_LEVEL_DEBUG, MONO_TRACE_IO_LAYER, "%s: WSAIoctl error: %s", __func__, g_strerror (errno));
@@ -1287,7 +1287,7 @@ mono_w32socket_ioctl (SOCKET sock, gint32 command, gchar *input, gint inputlen, 
 	if (inputlen > 0 && output != NULL)
 		memcpy (output, buffer, inputlen);
 
-	g_free (buffer);
+	g_free_vb (buffer);
 	*written = inputlen;
 
 	mono_fdhandle_unref ((MonoFDHandle*) sockethandle);

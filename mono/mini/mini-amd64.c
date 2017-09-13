@@ -860,7 +860,7 @@ get_call_info (MonoMemPool *mp, MonoMethodSignature *sig)
 	if (mp)
 		cinfo = (CallInfo *)mono_mempool_alloc0 (mp, sizeof (CallInfo) + (sizeof (ArgInfo) * n));
 	else
-		cinfo = (CallInfo *)g_malloc0 (sizeof (CallInfo) + (sizeof (ArgInfo) * n));
+		cinfo = (CallInfo *)g_malloc0_vb (sizeof (CallInfo) + (sizeof (ArgInfo) * n));
 
 	cinfo->nargs = n;
 	cinfo->gsharedvt = mini_is_gsharedvt_variable_signature (sig);
@@ -1108,7 +1108,7 @@ mono_arch_get_argument_info (MonoMethodSignature *csig, int param_count, MonoJit
 		arg_info [k + 1].size = 0;
 	}
 
-	g_free (cinfo);
+	g_free_vb (cinfo);
 
 	return args_size;
 }
@@ -1128,8 +1128,8 @@ mono_arch_tail_call_supported (MonoCompile *cfg, MonoMethodSignature *caller_sig
 		/* An address on the callee's stack is passed as the first argument */
 		res = FALSE;
 
-	g_free (c1);
-	g_free (c2);
+	g_free_vb (c1);
+	g_free_vb (c2);
 
 	return res;
 }
@@ -2429,7 +2429,7 @@ mono_arch_dyn_call_prepare (MonoMethodSignature *sig)
 	cinfo = get_call_info (NULL, sig);
 
 	if (!dyn_call_supported (sig, cinfo)) {
-		g_free (cinfo);
+		g_free_vb (cinfo);
 		return NULL;
 	}
 
@@ -2451,8 +2451,8 @@ mono_arch_dyn_call_free (MonoDynCallInfo *info)
 {
 	ArchDynCallInfo *ainfo = (ArchDynCallInfo*)info;
 
-	g_free (ainfo->cinfo);
-	g_free (ainfo);
+	g_free_vb (ainfo->cinfo);
+	g_free_vb (ainfo);
 }
 
 #define PTR_TO_GREG(ptr) (mgreg_t)(ptr)
@@ -6571,7 +6571,7 @@ mono_arch_emit_prolog (MonoCompile *cfg)
 
 	cfg->code_size = MAX (cfg->header->code_size * 4, 1024);
 
-	code = cfg->native_code = (unsigned char *)g_malloc (cfg->code_size);
+	code = cfg->native_code = (unsigned char *)g_malloc_vb (cfg->code_size);
 
 	if (mono_jit_trace_calls != NULL && mono_trace_eval (method))
 		trace = TRUE;
@@ -7668,7 +7668,7 @@ get_delegate_invoke_impl (MonoTrampInfo **info, gboolean has_target, guint32 par
 	} else {
 		char *name = g_strdup_printf ("delegate_invoke_impl_target_%d", param_count);
 		*info = mono_tramp_info_create (name, start, code - start, NULL, unwind_ops);
-		g_free (name);
+		g_free_vb (name);
 	}
 
 	if (mono_jit_map_is_enabled ()) {
@@ -7679,7 +7679,7 @@ get_delegate_invoke_impl (MonoTrampInfo **info, gboolean has_target, guint32 par
 			buff = g_strdup_printf ("delegate_invoke_no_target_%d", param_count);
 		mono_emit_jit_tramp (start, code - start, buff);
 		if (!has_target)
-			g_free (buff);
+			g_free_vb (buff);
 	}
 	MONO_PROFILER_RAISE (jit_code_buffer, (start, code - start, MONO_PROFILER_CODE_BUFFER_DELEGATE_INVOKE, NULL));
 
@@ -7719,7 +7719,7 @@ get_delegate_virtual_invoke_impl (MonoTrampInfo **info, gboolean load_imt_reg, i
 
 	tramp_name = mono_get_delegate_virtual_invoke_impl_name (load_imt_reg, offset);
 	*info = mono_tramp_info_create (tramp_name, start, code - start, NULL, unwind_ops);
-	g_free (tramp_name);
+	g_free_vb (tramp_name);
 
 	return start;
 }
@@ -7805,7 +7805,7 @@ mono_arch_get_delegate_invoke_impl (MonoMethodSignature *sig, gboolean has_targe
 		if (mono_aot_only) {
 			char *name = g_strdup_printf ("delegate_invoke_impl_target_%d", sig->param_count);
 			start = (guint8 *)mono_aot_get_trampoline (name);
-			g_free (name);
+			g_free_vb (name);
 		} else {
 			MonoTrampInfo *info;
 			start = (guint8 *)get_delegate_invoke_impl (&info, FALSE, sig->param_count);
@@ -8296,7 +8296,7 @@ mono_arch_get_seq_point_info (MonoDomain *domain, guint8 *code)
 		g_assert (ji);
 
 		// FIXME: Optimize the size
-		info = (SeqPointInfo *)g_malloc0 (sizeof (SeqPointInfo) + (ji->code_size * sizeof (gpointer)));
+		info = (SeqPointInfo *)g_malloc0_vb (sizeof (SeqPointInfo) + (ji->code_size * sizeof (gpointer)));
 
 		info->ss_tramp_addr = &ss_trampoline;
 

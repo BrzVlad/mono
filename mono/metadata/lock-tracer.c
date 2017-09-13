@@ -80,7 +80,7 @@ mono_locks_tracer_init (void)
 
 	name = g_strdup_printf ("locks.%d", getpid ());
 	trace_file = fopen (name, "w+");
-	g_free (name);
+	g_free_vb (name);
 
 #ifdef TARGET_OSX
 	res = dladdr ((void*)&mono_locks_tracer_init, &info);
@@ -129,7 +129,7 @@ add_record (RecordType record_kind, RuntimeLocks kind, gpointer lock)
 	msg = g_strdup_printf ("%x,%d,%d,%p,%p,%p,%p,%p,%p\n", (guint32)mono_native_thread_id_get (), record_kind, kind, lock, frames [1], frames [2], frames [3], frames [4], frames [5]);
 	fwrite (msg, strlen (msg), 1, trace_file);
 	fflush (trace_file);
-	g_free (msg);
+	g_free_vb (msg);
 }
 
 void

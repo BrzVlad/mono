@@ -79,40 +79,40 @@ get_arg_slots (ArgInfo *ainfo, int **out_slots)
 	case ArgInIReg:
 	case ArgVtypeByRef:
 		nsrc = 1;
-		src = g_malloc (nsrc * sizeof (int));
+		src = g_malloc_vb (nsrc * sizeof (int));
 		src [0] = map_reg (sreg);
 		break;
 	case ArgVtypeByRefOnStack:
 		nsrc = 1;
-		src = g_malloc (nsrc * sizeof (int));
+		src = g_malloc_vb (nsrc * sizeof (int));
 		src [0] = map_stack_slot (sslot);
 		break;
 	case ArgInFReg:
 	case ArgInFRegR4:
 		nsrc = 1;
-		src = g_malloc (nsrc * sizeof (int));
+		src = g_malloc_vb (nsrc * sizeof (int));
 		src [0] = map_freg (sreg);
 		break;
 	case ArgHFA:
 		nsrc = ainfo->nregs;
-		src = g_malloc (nsrc * sizeof (int));
+		src = g_malloc_vb (nsrc * sizeof (int));
 		for (i = 0; i < ainfo->nregs; ++i)
 			src [i] = map_freg (sreg + i);
 		break;
 	case ArgVtypeInIRegs:
 		nsrc = ainfo->nregs;
-		src = g_malloc (nsrc * sizeof (int));
+		src = g_malloc_vb (nsrc * sizeof (int));
 		for (i = 0; i < ainfo->nregs; ++i)
 			src [i] = map_reg (sreg + i);
 		break;
 	case ArgOnStack:
 		nsrc = 1;
-		src = g_malloc (nsrc * sizeof (int));
+		src = g_malloc_vb (nsrc * sizeof (int));
 		src [0] = map_stack_slot (sslot);
 		break;
 	case ArgVtypeOnStack:
 		nsrc = ainfo->size / 8;
-		src = g_malloc (nsrc * sizeof (int));
+		src = g_malloc_vb (nsrc * sizeof (int));
 		for (i = 0; i < nsrc; ++i)
 			src [i] = map_stack_slot (sslot + i);
 		break;
@@ -310,8 +310,8 @@ mono_arch_get_gsharedvt_call_info (gpointer addr, MonoMethodSignature *normal_si
 		for (i = 0; i < nslots; ++i)
 			add_to_map (map, src [i], dst [i]);
 
-		g_free (src);
-		g_free (dst);
+		g_free_vb (src);
+		g_free_vb (dst);
 	}
 
 	if (cinfo->ret.storage == ArgVtypeByRef) {

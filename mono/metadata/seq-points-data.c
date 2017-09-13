@@ -132,7 +132,7 @@ void
 mono_seq_point_info_free (gpointer ptr)
 {
 	MonoSeqPointInfo* info = (MonoSeqPointInfo*) ptr;
-	g_free (info);
+	g_free_vb (info);
 }
 
 static int
@@ -373,7 +373,7 @@ mono_seq_point_data_init (SeqPointData *data, int entry_capacity)
 {
 	data->entry_count = 0;
 	data->entry_capacity = entry_capacity;
-	data->entries = (SeqPointDataEntry *)g_malloc (sizeof (SeqPointDataEntry) * entry_capacity);
+	data->entries = (SeqPointDataEntry *)g_malloc_vb (sizeof (SeqPointDataEntry) * entry_capacity);
 }
 
 void
@@ -382,9 +382,9 @@ mono_seq_point_data_free (SeqPointData *data)
 	int i;
 	for (i=0; i<data->entry_count; i++) {
 		if (data->entries [i].free_seq_points)
-			g_free (data->entries [i].seq_points);
+			g_free_vb (data->entries [i].seq_points);
 	}
-	g_free (data->entries);
+	g_free_vb (data->entries);
 }
 
 gboolean
@@ -403,7 +403,7 @@ mono_seq_point_data_read (SeqPointData *data, char *path)
 	fsize = ftell(f);
 	fseek(f, 0, SEEK_SET);
 
-	buffer_orig = buffer = (guint8 *)g_malloc (fsize + 1);
+	buffer_orig = buffer = (guint8 *)g_malloc_vb (fsize + 1);
 	fread(buffer_orig, fsize, 1, f);
 	fclose(f);
 
@@ -418,7 +418,7 @@ mono_seq_point_data_read (SeqPointData *data, char *path)
 		data->entries [i].free_seq_points = TRUE;
 	}
 
-	g_free (buffer_orig);
+	g_free_vb (buffer_orig);
 	return TRUE;
 }
 
@@ -439,7 +439,7 @@ mono_seq_point_data_write (SeqPointData *data, char *path)
 	// Add size of entry_count and native_base_offsets
 	size += 4 + data->entry_count * 4;
 
-	buffer_orig = buffer = (guint8 *)g_malloc (size);
+	buffer_orig = buffer = (guint8 *)g_malloc_vb (size);
 
 	encode_var_int (buffer, &buffer, data->entry_count);
 
@@ -450,7 +450,7 @@ mono_seq_point_data_write (SeqPointData *data, char *path)
 	}
 
 	fwrite (buffer_orig, 1, buffer - buffer_orig, f);
-	g_free (buffer_orig);
+	g_free_vb (buffer_orig);
 	fclose (f);
 
 	return TRUE;

@@ -356,7 +356,7 @@ mono_get_corlib_version (void)
 /**
  * mono_check_corlib_version:
  * Checks that the corlib that is loaded matches the version of this runtime.
- * \returns NULL if the runtime will work with the corlib, or a \c g_malloc
+ * \returns NULL if the runtime will work with the corlib, or a \c g_malloc_vb
  * allocated string with the error otherwise.
  */
 const char*
@@ -650,7 +650,7 @@ mono_domain_create_appdomain_internal (char *friendly_name, MonoAppDomainSetupHa
 			MonoStringHandle s = mono_string_new_utf16_handle (data, mono_string_chars (MONO_HANDLE_RAW (root_app_base)), mono_string_handle_length (root_app_base), error);
 			mono_gchandle_free (gchandle);
 			if (!is_ok (error)) {
-				g_free (data->friendly_name);
+				g_free_vb (data->friendly_name);
 				goto leave;
 			}
 			MONO_HANDLE_SET (setup, application_base, s);
@@ -663,7 +663,7 @@ mono_domain_create_appdomain_internal (char *friendly_name, MonoAppDomainSetupHa
 
 	data->setup = MONO_HANDLE_RAW (copy_app_domain_setup (data, setup, error));
 	if (!mono_error_ok (error)) {
-		g_free (data->friendly_name);
+		g_free_vb (data->friendly_name);
 		goto leave;
 	}
 
@@ -674,11 +674,11 @@ mono_domain_create_appdomain_internal (char *friendly_name, MonoAppDomainSetupHa
 	/*FIXME, guard this for when the debugger is not running */
 	char *shadow_location = get_shadow_assembly_location_base (data, error);
 	if (!mono_error_ok (error)) {
-		g_free (data->friendly_name);
+		g_free_vb (data->friendly_name);
 		goto leave;
 	}
 
-	g_free (shadow_location);
+	g_free_vb (shadow_location);
 #endif
 
 	create_domain_objects (data);
@@ -846,7 +846,7 @@ ves_icall_System_AppDomain_GetData (MonoAppDomainHandle ad, MonoStringHandle nam
 		o = MONO_HANDLE_NEW (MonoString, mono_g_hash_table_lookup (add->env, MONO_HANDLE_RAW (name)));
 
 	mono_domain_unlock (add);
-	g_free (str);
+	g_free_vb (str);
 
 	return MONO_HANDLE_CAST (MonoObject, o);
 }
@@ -969,10 +969,10 @@ start_element (GMarkupParseContext *context,
 	if (strcmp (element_name, "probing") != 0)
 		return;
 
-	g_free (runtime_config->domain->private_bin_path);
+	g_free_vb (runtime_config->domain->private_bin_path);
 	runtime_config->domain->private_bin_path = get_attribute_value (attribute_names, attribute_values, "privatePath");
 	if (runtime_config->domain->private_bin_path && !runtime_config->domain->private_bin_path [0]) {
-		g_free (runtime_config->domain->private_bin_path);
+		g_free_vb (runtime_config->domain->private_bin_path);
 		runtime_config->domain->private_bin_path = NULL;
 		return;
 	}
@@ -1053,10 +1053,10 @@ mono_domain_set_options_from_config (MonoDomain *domain)
 	g_markup_parse_context_free (context);
 
   free_and_out:
-	g_free (text);
+	g_free_vb (text);
 	if (config_file_name != config_file_path)
-		g_free (config_file_name);
-	g_free (config_file_path);
+		g_free_vb (config_file_name);
+	g_free_vb (config_file_path);
 }
 
 MonoAppDomainHandle
@@ -1073,7 +1073,7 @@ ves_icall_System_AppDomain_createDomain (MonoStringHandle friendly_name, MonoApp
 	fname = mono_string_handle_to_utf8 (friendly_name, error);
 	return_val_if_nok (error, ad);
 	ad = mono_domain_create_appdomain_internal (fname, setup, error);
-	g_free (fname);
+	g_free_vb (fname);
 #endif
 	return ad;
 }
@@ -1201,7 +1201,7 @@ mono_domain_assembly_postload_search (MonoAssemblyName *aname, MonoAssembly *req
 	/* FIXME: We invoke managed code here, so there is a potential for deadlocks */
 
 	assembly = mono_try_assembly_resolve (domain, aname_str, requesting, refonly, &error);
-	g_free (aname_str);
+	g_free_vb (aname_str);
 	mono_error_cleanup (&error);
 
 	return assembly;
@@ -1356,7 +1356,7 @@ set_domain_search_path (MonoDomain *domain)
 		else {
 			gchar *tmp2 = search_path;
 			search_path = g_strjoin (";", search_path, domain->private_bin_path, NULL);
-			g_free (tmp2);
+			g_free_vb (tmp2);
 		}
 	}
 	
@@ -1382,7 +1382,7 @@ set_domain_search_path (MonoDomain *domain)
 #endif
 		
 		pvt_split = g_strsplit (search_path, ";", 1000);
-		g_free (search_path);
+		g_free_vb (search_path);
 		for (tmp = pvt_split; *tmp; tmp++, npaths++);
 	}
 
@@ -1393,7 +1393,7 @@ set_domain_search_path (MonoDomain *domain)
 		 * Don't do this because the first time is called, the domain
 		 * setup is not finished.
 		 *
-		 * domain->search_path = g_malloc (sizeof (char *));
+		 * domain->search_path = g_malloc_vb (sizeof (char *));
 		 * domain->search_path [0] = NULL;
 		*/
 		mono_domain_assemblies_unlock (domain);
@@ -1403,14 +1403,14 @@ set_domain_search_path (MonoDomain *domain)
 	if (domain->search_path)
 		g_strfreev (domain->search_path);
 
-	tmp = (gchar **)g_malloc ((npaths + 1) * sizeof (gchar *));
+	tmp = (gchar **)g_malloc_vb ((npaths + 1) * sizeof (gchar *));
 	tmp [npaths] = NULL;
 
 	*tmp = mono_string_to_utf8_checked (setup->application_base, &error);
 	if (!mono_error_ok (&error)) {
 		mono_error_cleanup (&error);
 		g_strfreev (pvt_split);
-		g_free (tmp);
+		g_free_vb (tmp);
 
 		mono_domain_assemblies_unlock (domain);
 		return;
@@ -1430,17 +1430,17 @@ set_domain_search_path (MonoDomain *domain)
 		tmpuri = uri;
 		uri = mono_escape_uri_string (tmpuri);
 		*tmp = g_filename_from_uri (uri, NULL, &gerror);
-		g_free (uri);
+		g_free_vb (uri);
 
 		if (tmpuri != file)
-			g_free (tmpuri);
+			g_free_vb (tmpuri);
 
 		if (gerror != NULL) {
 			g_warning ("%s\n", gerror->message);
 			g_error_free (gerror);
 			*tmp = file;
 		} else {
-			g_free (file);
+			g_free_vb (file);
 		}
 	}
 
@@ -1460,20 +1460,20 @@ set_domain_search_path (MonoDomain *domain)
 				appbaselen = strlen (tmp [0]);
 
 			if (strncmp (tmp [0], reduced, appbaselen)) {
-				g_free (reduced);
-				g_free (tmp [i]);
+				g_free_vb (reduced);
+				g_free_vb (tmp [i]);
 				tmp [i] = g_strdup ("");
 				continue;
 			}
 
 			freeme = tmp [i];
 			tmp [i] = reduced;
-			g_free (freeme);
+			g_free_vb (freeme);
 		}
 	}
 	
 	if (setup->private_bin_path_probe != NULL) {
-		g_free (tmp [0]);
+		g_free_vb (tmp [0]);
 		tmp [0] = g_strdup ("");
 	}
 		
@@ -1513,7 +1513,7 @@ shadow_copy_sibling (gchar *src, gint srclen, const char *extension, gchar *targ
 		if (file == NULL)
 			return TRUE;
 
-		g_free (file);
+		g_free_vb (file);
 	} else if (!g_file_test (src, G_FILE_TEST_IS_REGULAR)) {
 		return TRUE;
 	}
@@ -1532,8 +1532,8 @@ shadow_copy_sibling (gchar *src, gint srclen, const char *extension, gchar *targ
 	if (copy_result)
 		copy_result = mono_w32file_set_attributes (dest, FILE_ATTRIBUTE_NORMAL);
 
-	g_free (orig);
-	g_free (dest);
+	g_free_vb (orig);
+	g_free_vb (dest);
 	
 	return copy_result;
 }
@@ -1587,17 +1587,17 @@ get_shadow_assembly_location_base (MonoDomain *domain, MonoError *error)
 
 		appname = mono_string_to_utf8_checked (setup->application_name, error);
 		if (!mono_error_ok (error)) {
-			g_free (cache_path);
+			g_free_vb (cache_path);
 			return NULL;
 		}
 
 		location = g_build_filename (cache_path, appname, "assembly", "shadow", NULL);
-		g_free (appname);
-		g_free (cache_path);
+		g_free_vb (appname);
+		g_free_vb (cache_path);
 	} else {
 		userdir = g_strdup_printf ("%s-mono-cachepath", g_get_user_name ());
 		location = g_build_filename (g_get_tmp_dir (), userdir, "assembly", "shadow", NULL);
-		g_free (userdir);
+		g_free_vb (userdir);
 	}
 	return location;
 }
@@ -1621,15 +1621,15 @@ get_shadow_assembly_location (const char *filename, MonoError *error)
 	g_snprintf (path_hash, sizeof (path_hash), "%08x_%08x_%08x", hash ^ hash2, hash2, domain->shadow_serial);
 	tmploc = get_shadow_assembly_location_base (domain, error);
 	if (!mono_error_ok (error)) {
-		g_free (bname);
-		g_free (dirname);
+		g_free_vb (bname);
+		g_free_vb (dirname);
 		return NULL;
 	}
 
 	location = g_build_filename (tmploc, name_hash, path_hash, bname, NULL);
-	g_free (tmploc);
-	g_free (bname);
-	g_free (dirname);
+	g_free_vb (tmploc);
+	g_free_vb (bname);
+	g_free_vb (dirname);
 	return location;
 }
 
@@ -1649,7 +1649,7 @@ private_file_needs_copying (const char *src, struct stat *sbuf_src, char *dest)
 		time_t tnow = time (NULL);
 
 		if (real_src)
-			g_free (real_src);
+			g_free_vb (real_src);
 
 		memset (sbuf_src, 0, sizeof (*sbuf_src));
 		sbuf_src->st_mtime = tnow;
@@ -1658,7 +1658,7 @@ private_file_needs_copying (const char *src, struct stat *sbuf_src, char *dest)
 	}
 
 	if (real_src)
-		g_free (real_src);
+		g_free_vb (real_src);
 
 	if (stat (dest, &sbuf_dest) == -1)
 		return TRUE;
@@ -1683,26 +1683,26 @@ shadow_copy_create_ini (const char *shadow, const char *filename)
 
 	dir_name = g_path_get_dirname (shadow);
 	ini_file = g_build_filename (dir_name, "__AssemblyInfo__.ini", NULL);
-	g_free (dir_name);
+	g_free_vb (dir_name);
 	if (g_file_test (ini_file, G_FILE_TEST_IS_REGULAR)) {
-		g_free (ini_file);
+		g_free_vb (ini_file);
 		return TRUE;
 	}
 
 	u16_ini = g_utf8_to_utf16 (ini_file, strlen (ini_file), NULL, NULL, NULL);
-	g_free (ini_file);
+	g_free_vb (ini_file);
 	if (!u16_ini) {
 		return FALSE;
 	}
 	handle = (void **)mono_w32file_create (u16_ini, GENERIC_WRITE, FILE_SHARE_READ|FILE_SHARE_WRITE, CREATE_NEW, FileAttributes_Normal);
-	g_free (u16_ini);
+	g_free_vb (u16_ini);
 	if (handle == INVALID_HANDLE_VALUE) {
 		return FALSE;
 	}
 
 	full_path = mono_path_resolve_symlinks (filename);
 	result = mono_w32file_write (handle, full_path, strlen (full_path), &n);
-	g_free (full_path);
+	g_free_vb (full_path);
 	mono_w32file_close (handle);
 	return result;
 }
@@ -1733,7 +1733,7 @@ mono_is_shadow_copy_enabled (MonoDomain *domain, const gchar *dir_name)
 		return FALSE;
 	}
 	shadow_enabled = !g_ascii_strncasecmp (shadow_status_string, "true", 4);
-	g_free (shadow_status_string);
+	g_free_vb (shadow_status_string);
 
 	if (!shadow_enabled)
 		return FALSE;
@@ -1749,10 +1749,10 @@ mono_is_shadow_copy_enabled (MonoDomain *domain, const gchar *dir_name)
 	}
 
 	if (strstr (dir_name, base_dir)) {
-		g_free (base_dir);
+		g_free_vb (base_dir);
 		return TRUE;
 	}
-	g_free (base_dir);
+	g_free_vb (base_dir);
 
 	all_dirs = mono_string_to_utf8_checked (setup->shadow_copy_directories, &error);
 	if (!mono_error_ok (&error)) {
@@ -1770,7 +1770,7 @@ mono_is_shadow_copy_enabled (MonoDomain *domain, const gchar *dir_name)
 		dir_ptr++;
 	}
 	g_strfreev (directories);
-	g_free (all_dirs);
+	g_free_vb (all_dirs);
 	return found;
 }
 
@@ -1803,7 +1803,7 @@ mono_make_shadow_copy (const char *filename, MonoError *oerror)
 	set_domain_search_path (domain);
 
 	if (!mono_is_shadow_copy_enabled (domain, dir_name)) {
-		g_free (dir_name);
+		g_free_vb (dir_name);
 		return (char *) filename;
 	}
 
@@ -1811,18 +1811,18 @@ mono_make_shadow_copy (const char *filename, MonoError *oerror)
 	shadow_dir = get_shadow_assembly_location_base (domain, &error);
 	if (!mono_error_ok (&error)) {
 		mono_error_cleanup (&error);
-		g_free (dir_name);
+		g_free_vb (dir_name);
 		mono_error_set_execution_engine (oerror, "Failed to create shadow copy (invalid characters in shadow directory name).");
 		return NULL;
 	}
 
 	if (strstr (dir_name, shadow_dir)) {
-		g_free (shadow_dir);
-		g_free (dir_name);
+		g_free_vb (shadow_dir);
+		g_free_vb (dir_name);
 		return (char *) filename;
 	}
-	g_free (shadow_dir);
-	g_free (dir_name);
+	g_free_vb (shadow_dir);
+	g_free_vb (dir_name);
 
 	shadow = get_shadow_assembly_location (filename, &error);
 	if (!mono_error_ok (&error)) {
@@ -1832,7 +1832,7 @@ mono_make_shadow_copy (const char *filename, MonoError *oerror)
 	}
 
 	if (g_ensure_directory_exists (shadow) == FALSE) {
-		g_free (shadow);
+		g_free_vb (shadow);
 		mono_error_set_execution_engine (oerror, "Failed to create shadow copy (ensure directory exists).");
 		return NULL;
 	}	
@@ -1849,7 +1849,7 @@ mono_make_shadow_copy (const char *filename, MonoError *oerror)
 	 * and not have it runtime error" */
 	attrs = mono_w32file_get_attributes (orig);
 	if (attrs == INVALID_FILE_ATTRIBUTES) {
-		g_free (shadow);
+		g_free_vb (shadow);
 		return (char *)filename;
 	}
 
@@ -1860,11 +1860,11 @@ mono_make_shadow_copy (const char *filename, MonoError *oerror)
 	if (copy_result)
 		copy_result = mono_w32file_set_attributes (dest, FILE_ATTRIBUTE_NORMAL);
 
-	g_free (dest);
-	g_free (orig);
+	g_free_vb (dest);
+	g_free_vb (orig);
 
 	if (copy_result == FALSE) {
-		g_free (shadow);
+		g_free_vb (shadow);
 
 		/* Fix for bug #17251 - if file not found try finding assembly by other means (it is not fatal error) */
 		if (mono_w32error_get_last() == ERROR_FILE_NOT_FOUND || mono_w32error_get_last() == ERROR_PATH_NOT_FOUND)
@@ -1886,18 +1886,18 @@ mono_make_shadow_copy (const char *filename, MonoError *oerror)
 	if (copy_result)
 		copy_result = shadow_copy_sibling (sibling_source, sibling_source_len, ".config", sibling_target, sibling_target_len, 7);
 	
-	g_free (sibling_source);
-	g_free (sibling_target);
+	g_free_vb (sibling_source);
+	g_free_vb (sibling_target);
 	
 	if (!copy_result)  {
-		g_free (shadow);
+		g_free_vb (shadow);
 		mono_error_set_execution_engine (oerror, "Failed to create shadow copy of sibling data (mono_w32file_copy).");
 		return NULL;
 	}
 
 	/* Create a .ini file containing the original assembly location */
 	if (!shadow_copy_create_ini (shadow, filename)) {
-		g_free (shadow);
+		g_free_vb (shadow);
 		mono_error_set_execution_engine (oerror, "Failed to create shadow copy .ini file.");
 		return NULL;
 	}
@@ -1959,7 +1959,7 @@ try_load_from (MonoAssembly **assembly,
 	if (IS_PORTABILITY_SET) {
 		gchar *new_fullpath = mono_portability_find_file (fullpath, TRUE);
 		if (new_fullpath) {
-			g_free (fullpath);
+			g_free_vb (fullpath);
 			fullpath = new_fullpath;
 			found = TRUE;
 		}
@@ -1969,7 +1969,7 @@ try_load_from (MonoAssembly **assembly,
 	if (found)
 		*assembly = mono_assembly_open_predicate (fullpath, refonly, FALSE, predicate, user_data, NULL);
 
-	g_free (fullpath);
+	g_free_vb (fullpath);
 	return (*assembly != NULL);
 }
 
@@ -2020,7 +2020,7 @@ real_load (gchar **search_path, const gchar *culture, const gchar *name, gboolea
 			break;
 	}
 
-	g_free (filename);
+	g_free_vb (filename);
 	return result;
 }
 
@@ -2129,7 +2129,7 @@ ves_icall_System_Reflection_Assembly_LoadFrom (MonoStringHandle fname, MonoBoole
 	result = mono_assembly_get_object_handle (domain, ass, error);
 
 leave:
-	g_free (name);
+	g_free_vb (name);
 	return result;
 }
 
@@ -2148,7 +2148,7 @@ ves_icall_System_AppDomain_LoadAssemblyRaw (MonoAppDomainHandle ad,
 	guint32 raw_assembly_len = mono_array_handle_length (raw_assembly);
 
 	/* Copy the data ourselves to unpin the raw assembly byte array as soon as possible */
-	char *assembly_data = (char*) g_try_malloc (raw_assembly_len);
+	char *assembly_data = (char*) g_try_malloc_vb (raw_assembly_len);
 	if (!assembly_data) {
 		mono_error_set_out_of_memory (error, "Could not allocate %ud bytes to copy raw assembly data", raw_assembly_len);
 		return refass;
@@ -2206,7 +2206,7 @@ ves_icall_System_AppDomain_LoadAssembly (MonoAppDomainHandle ad, MonoStringHandl
 	if (!is_ok (error))
 		goto fail;
 	parsed = mono_assembly_name_parse (name, &aname);
-	g_free (name);
+	g_free_vb (name);
 
 	if (!parsed) {
 		MonoReflectionAssemblyHandle refass = MONO_HANDLE_CAST (MonoReflectionAssembly, NULL_HANDLE);
@@ -2489,7 +2489,7 @@ unload_data_unref (unload_data *data)
 		mono_atomic_load_acquire (count, gint32, &data->refcount);
 		g_assert (count >= 1 && count <= 2);
 		if (count == 1) {
-			g_free (data);
+			g_free_vb (data);
 			return;
 		}
 	} while (InterlockedCompareExchange (&data->refcount, count - 1, count) != count);
@@ -2770,7 +2770,7 @@ mono_domain_try_unload (MonoDomain *domain, MonoObject **exc)
 
 		*exc = (MonoObject *) mono_get_exception_cannot_unload_appdomain (thread_data->failure_reason);
 
-		g_free (thread_data->failure_reason);
+		g_free_vb (thread_data->failure_reason);
 		thread_data->failure_reason = NULL;
 	}
 

@@ -295,7 +295,7 @@ get_type_init_exception_for_vtable (MonoVTable *vtable)
 		else
 			full_name = g_strdup (klass->name);
 		ex = mono_get_exception_type_initialization_checked (full_name, NULL, &error);
-		g_free (full_name);
+		g_free_vb (full_name);
 		return_val_if_nok (&error, NULL);
 	}
 
@@ -328,7 +328,7 @@ unref_type_lock (TypeInitializationLock *lock)
 	if (lock->waiting_count == 0) {
 		mono_coop_mutex_destroy (&lock->mutex);
 		mono_coop_cond_destroy (&lock->cond);
-		g_free (lock);
+		g_free_vb (lock);
 		return TRUE;
 	} else {
 		return FALSE;
@@ -422,7 +422,7 @@ mono_runtime_class_init_full (MonoVTable *vtable, MonoError *error)
 				return FALSE;
 			}
 		}
-		lock = (TypeInitializationLock *)g_malloc0 (sizeof (TypeInitializationLock));
+		lock = (TypeInitializationLock *)g_malloc0_vb (sizeof (TypeInitializationLock));
 		mono_coop_mutex_init_recursive (&lock->mutex);
 		mono_coop_cond_init (&lock->cond);
 		lock->initializing_tid = tid;
@@ -494,7 +494,7 @@ mono_runtime_class_init_full (MonoVTable *vtable, MonoError *error)
 				full_name = g_strdup (klass->name);
 
 			MonoException *exc_to_throw = mono_get_exception_type_initialization_checked (full_name, exc, error);
-			g_free (full_name);
+			g_free_vb (full_name);
 
 			mono_error_assert_ok (error); //We can't recover from this, no way to fail a type we can't alloc a failure.
 
@@ -739,7 +739,7 @@ compute_class_bitmap (MonoClass *klass, gsize *bitmap, int size, int offset, int
 		max_size = klass->instance_size / sizeof (gpointer);
 	if (max_size > size) {
 		g_assert (offset <= 0);
-		bitmap = (gsize *)g_malloc0 ((max_size + BITMAP_EL_SIZE - 1) / BITMAP_EL_SIZE * sizeof (gsize));
+		bitmap = (gsize *)g_malloc0_vb ((max_size + BITMAP_EL_SIZE - 1) / BITMAP_EL_SIZE * sizeof (gsize));
 		size = max_size;
 	}
 
@@ -863,7 +863,7 @@ compute_class_non_ref_bitmap (MonoClass *klass, gsize *bitmap, int size, int off
 
 	max_size = class->instance_size / sizeof (gpointer);
 	if (max_size >= size) {
-		bitmap = g_malloc0 (sizeof (gsize) * ((max_size) + 1));
+		bitmap = g_malloc0_vb (sizeof (gsize) * ((max_size) + 1));
 	}
 
 	for (p = class; p != NULL; p = p->parent) {
@@ -979,9 +979,9 @@ mono_class_insecure_overlapping (MonoClass *klass)
 		}
 	}
 	if (bitmap != default_bitmap)
-		g_free (bitmap);
+		g_free_vb (bitmap);
 	if (nrbitmap != default_nrbitmap)
-		g_free (nrbitmap);
+		g_free_vb (nrbitmap);
 	if (insecure) {
 		g_print ("class %s.%s in assembly %s has overlapping references\n", klass->name_space, klass->name, klass->image->name);
 		return FALSE;
@@ -1034,7 +1034,7 @@ mono_class_compute_gc_descriptor (MonoClass *klass)
 			/*printf ("new vt array descriptor: 0x%x for %s.%s\n", class->gc_descr,
 				class->name_space, class->name);*/
 			if (bitmap != default_bitmap)
-				g_free (bitmap);
+				g_free_vb (bitmap);
 		}
 	} else {
 		/*static int count = 0;
@@ -1048,7 +1048,7 @@ mono_class_compute_gc_descriptor (MonoClass *klass)
 		*/
 		/*printf ("new descriptor: %p 0x%x for %s.%s\n", class->gc_descr, bitmap [0], class->name_space, class->name);*/
 		if (bitmap != default_bitmap)
-			g_free (bitmap);
+			g_free_vb (bitmap);
 	}
 
 	/* Publish the data */
@@ -1188,7 +1188,7 @@ mono_method_get_imt_slot (MonoMethod *method)
 		break;
 	}
 	
-	g_free (hashes_start);
+	g_free_vb (hashes_start);
 	/* Report the result */
 	return c % MONO_IMT_SIZE;
 }
@@ -1210,7 +1210,7 @@ add_imt_builder_entry (MonoImtBuilderEntry **imt_builder, MonoMethod *method, gu
 		return;
 	}
 
-	entry = (MonoImtBuilderEntry *)g_malloc0 (sizeof (MonoImtBuilderEntry));
+	entry = (MonoImtBuilderEntry *)g_malloc0_vb (sizeof (MonoImtBuilderEntry));
 	entry->key = method;
 	entry->value.vtable_slot = vtable_slot;
 	entry->next = imt_builder [imt_slot];
@@ -1230,7 +1230,7 @@ add_imt_builder_entry (MonoImtBuilderEntry **imt_builder, MonoMethod *method, gu
 	char *method_name = mono_method_full_name (method, TRUE);
 	printf ("Added IMT slot for method (%p) %s: imt_slot = %d, vtable_slot = %d, colliding with other %d entries\n",
 			method, method_name, imt_slot, vtable_slot, entry->children);
-	g_free (method_name);
+	g_free_vb (method_name);
 	}
 #endif
 }
@@ -1316,7 +1316,7 @@ imt_sort_slot_entries (MonoImtBuilderEntry *entries) {
 
 	imt_emit_ir (sorted_array, 0, number_of_entries, result);
 
-	g_free (sorted_array);
+	g_free_vb (sorted_array);
 	return result;
 }
 
@@ -1337,7 +1337,7 @@ initialize_imt_slot (MonoVTable *vtable, MonoDomain *domain, MonoImtBuilderEntry
 			result = imt_trampoline_builder (vtable, domain,
 				(MonoIMTCheckItem**)imt_ir->pdata, imt_ir->len, fail_tramp);
 			for (i = 0; i < imt_ir->len; ++i)
-				g_free (g_ptr_array_index (imt_ir, i));
+				g_free_vb (g_ptr_array_index (imt_ir, i));
 			g_ptr_array_free (imt_ir, TRUE);
 			return result;
 		}
@@ -1447,7 +1447,7 @@ build_imt_slots (MonoClass *klass, MonoVTable *vt, MonoDomain *domain, gpointer*
 						MonoMethod *method = (MonoMethod*)entry->key;
 						char *method_name = mono_method_full_name (method, TRUE);
 						printf ("Added extra entry for method (%p) %s: imt_slot = %d\n", method, method_name, i);
-						g_free (method_name);
+						g_free_vb (method_name);
 #endif
 					}
 					entry->next = imt_builder [i];
@@ -1494,11 +1494,11 @@ build_imt_slots (MonoClass *klass, MonoVTable *vt, MonoDomain *domain, gpointer*
 		MonoImtBuilderEntry* entry = imt_builder [i];
 		while (entry != NULL) {
 			MonoImtBuilderEntry* next = entry->next;
-			g_free (entry);
+			g_free_vb (entry);
 			entry = next;
 		}
 	}
-	g_free (imt_builder);
+	g_free_vb (imt_builder);
 	/* we OR the bitmap since we may build just a single imt slot at a time */
 	vt->imt_collisions_bitmap |= imt_collisions_bitmap;
 }
@@ -1705,12 +1705,12 @@ mono_method_add_generic_virtual_invocation (MonoDomain *domain, MonoVTable *vtab
 
 			while (entries) {
 				MonoImtBuilderEntry *next = entries->next;
-				g_free (entries);
+				g_free_vb (entries);
 				entries = next;
 			}
 
 			for (i = 0; i < sorted->len; ++i)
-				g_free (g_ptr_array_index (sorted, i));
+				g_free_vb (g_ptr_array_index (sorted, i));
 			g_ptr_array_free (sorted, TRUE);
 
 			if (old_thunk != vtable_trampoline && old_thunk != imt_trampoline)
@@ -1956,7 +1956,7 @@ mono_class_create_runtime_vtable (MonoDomain *domain, MonoClass *klass, MonoErro
 			statics_gc_descr = mono_gc_make_descr_from_bitmap (bitmap, max_set + 1);
 			vt->vtable [klass->vtable_size] = mono_gc_alloc_fixed (class_size, statics_gc_descr, MONO_ROOT_SOURCE_STATIC, "managed static variables");
 			if (bitmap != default_bitmap)
-				g_free (bitmap);
+				g_free_vb (bitmap);
 		} else {
 			vt->vtable [klass->vtable_size] = mono_domain_alloc0 (domain, class_size);
 		}
@@ -1999,7 +1999,7 @@ mono_class_create_runtime_vtable (MonoDomain *domain, MonoClass *klass, MonoErro
 					domain->special_static_fields = g_hash_table_new (NULL, NULL);
 				g_hash_table_insert (domain->special_static_fields, field, GUINT_TO_POINTER (offset));
 				if (bitmap != default_bitmap)
-					g_free (bitmap);
+					g_free_vb (bitmap);
 				/* 
 				 * This marks the field as special static to speed up the
 				 * checks in mono_field_static_get/set_value ().
@@ -2279,7 +2279,7 @@ mono_class_proxy_vtable (MonoDomain *domain, MonoRemoteClass *remote_class, Mono
 	pvt->max_interface_id = max_interface_id;
 	bsize = sizeof (guint8) * (max_interface_id/8 + 1 );
 #ifdef COMPRESSED_INTERFACE_BITMAP
-	bitmap = (uint8_t *)g_malloc0 (bsize);
+	bitmap = (uint8_t *)g_malloc0_vb (bsize);
 #else
 	bitmap = (uint8_t *)mono_domain_alloc0 (domain, bsize);
 #endif
@@ -2324,7 +2324,7 @@ mono_class_proxy_vtable (MonoDomain *domain, MonoRemoteClass *remote_class, Mono
 	bcsize = mono_compress_bitmap (NULL, bitmap, bsize);
 	pvt->interface_bitmap = mono_domain_alloc0 (domain, bcsize);
 	mono_compress_bitmap (pvt->interface_bitmap, bitmap, bsize);
-	g_free (bitmap);
+	g_free_vb (bitmap);
 #else
 	pvt->interface_bitmap = bitmap;
 #endif
@@ -2333,7 +2333,7 @@ failure:
 	if (extra_interfaces)
 		g_slist_free (extra_interfaces);
 #ifdef COMPRESSED_INTERFACE_BITMAP
-	g_free (bitmap);
+	g_free_vb (bitmap);
 #endif
 	return NULL;
 }
@@ -2418,18 +2418,18 @@ create_remote_class_key (MonoRemoteClass *remote_class, MonoClass *extra_class)
 	
 	if (remote_class == NULL) {
 		if (mono_class_is_interface (extra_class)) {
-			key = (void **)g_malloc (sizeof(gpointer) * 3);
+			key = (void **)g_malloc_vb (sizeof(gpointer) * 3);
 			key [0] = GINT_TO_POINTER (2);
 			key [1] = mono_defaults.marshalbyrefobject_class;
 			key [2] = extra_class;
 		} else {
-			key = (void **)g_malloc (sizeof(gpointer) * 2);
+			key = (void **)g_malloc_vb (sizeof(gpointer) * 2);
 			key [0] = GINT_TO_POINTER (1);
 			key [1] = extra_class;
 		}
 	} else {
 		if (extra_class != NULL && mono_class_is_interface (extra_class)) {
-			key = (void **)g_malloc (sizeof(gpointer) * (remote_class->interface_count + 3));
+			key = (void **)g_malloc_vb (sizeof(gpointer) * (remote_class->interface_count + 3));
 			key [0] = GINT_TO_POINTER (remote_class->interface_count + 2);
 			key [1] = remote_class->proxy_class;
 
@@ -2445,7 +2445,7 @@ create_remote_class_key (MonoRemoteClass *remote_class, MonoClass *extra_class)
 				key [j] = extra_class;
 		} else {
 			// Replace the old class. The interface list is the same
-			key = (void **)g_malloc (sizeof(gpointer) * (remote_class->interface_count + 2));
+			key = (void **)g_malloc_vb (sizeof(gpointer) * (remote_class->interface_count + 2));
 			key [0] = GINT_TO_POINTER (remote_class->interface_count + 1);
 			key [1] = extra_class != NULL ? extra_class : remote_class->proxy_class;
 			for (i = 0; i < remote_class->interface_count; i++)
@@ -2499,20 +2499,20 @@ mono_remote_class (MonoDomain *domain, MonoStringHandle class_name, MonoClass *p
 	rc = (MonoRemoteClass *)g_hash_table_lookup (domain->proxy_vtable_hash, key);
 
 	if (rc) {
-		g_free (key);
+		g_free_vb (key);
 		mono_domain_unlock (domain);
 		return rc;
 	}
 
 	name = mono_string_to_utf8_mp (domain->mp, MONO_HANDLE_RAW (class_name), error);
 	if (!is_ok (error)) {
-		g_free (key);
+		g_free_vb (key);
 		mono_domain_unlock (domain);
 		return NULL;
 	}
 
 	mp_key = copy_remote_class_key (domain, key);
-	g_free (key);
+	g_free_vb (key);
 	key = mp_key;
 
 	if (mono_class_is_interface (proxy_class)) {
@@ -2554,12 +2554,12 @@ clone_remote_class (MonoDomain *domain, MonoRemoteClass* remote_class, MonoClass
 	key = create_remote_class_key (remote_class, extra_class);
 	rc = (MonoRemoteClass *)g_hash_table_lookup (domain->proxy_vtable_hash, key);
 	if (rc != NULL) {
-		g_free (key);
+		g_free_vb (key);
 		return rc;
 	}
 
 	mp_key = copy_remote_class_key (domain, key);
-	g_free (key);
+	g_free_vb (key);
 	key = mp_key;
 
 	if (mono_class_is_interface (extra_class)) {
@@ -4023,8 +4023,8 @@ free_main_args (void)
 	int i;
 
 	for (i = 0; i < num_main_args; ++i)
-		g_free (main_args [i]);
-	g_free (main_args);
+		g_free_vb (main_args [i]);
+	g_free_vb (main_args);
 	num_main_args = 0;
 	main_args = NULL;
 }
@@ -4106,8 +4106,8 @@ prepare_run_main (MonoMethod *method, int argc, char *argv[])
 			exit (-1);
 		}
 
-		g_free (fullpath);
-		g_free (basename);
+		g_free_vb (fullpath);
+		g_free_vb (basename);
 	} else {
 		utf8_fullpath = mono_utf8_from_external (argv[0]);
 		if(utf8_fullpath == NULL) {
@@ -4153,7 +4153,7 @@ prepare_run_main (MonoMethod *method, int argc, char *argv[])
 			MonoString *arg = mono_string_new_checked (domain, str, &error);
 			mono_error_assert_ok (&error);
 			mono_array_setref (args, i, arg);
-			g_free (str);
+			g_free_vb (str);
 		}
 	} else {
 		args = (MonoArray*)mono_array_new_checked (domain, mono_defaults.string_class, 0, &error);
@@ -4476,7 +4476,7 @@ call_unhandled_exception_delegate (MonoDomain *domain, MonoObject *delegate, Mon
 			mono_error_cleanup (&error);
 		} else {
 			g_warning ("exception inside UnhandledException handler: %s\n", msg);
-			g_free (msg);
+			g_free_vb (msg);
 		}
 	}
 }
@@ -4641,7 +4641,7 @@ prepare_thread_to_exec_main (MonoDomain *domain, MonoMethod *method)
 			MonoString *config_file = mono_string_new_checked (domain, str, &error);
 			mono_error_assert_ok (&error);
 			MONO_OBJECT_SETREF (domain->setup, configuration_file, config_file);
-			g_free (str);
+			g_free_vb (str);
 			mono_domain_set_options_from_config (domain);
 		}
 	}
@@ -6036,7 +6036,7 @@ mono_string_new_utf32_checked (MonoDomain *domain, const mono_unichar4 *text, gi
 
 	memcpy (mono_string_chars (s), utf16_output, utf16_len * 2);
 
-	g_free (utf16_output);
+	g_free_vb (utf16_output);
 	
 	return s;
 }
@@ -6149,7 +6149,7 @@ mono_string_new_len_checked (MonoDomain *domain, const char *text, guint length,
 	else 
 		g_error_free (eg_error);
 
-	g_free (ut);
+	g_free_vb (ut);
 
 	return o;
 }
@@ -6201,7 +6201,7 @@ mono_string_new_checked (MonoDomain *domain, const char *text, MonoError *error)
 		mono_error_set_execution_engine (error, "String conversion error: %s", eg_error->message);
 	}
 	
-	g_free (ut);
+	g_free_vb (ut);
     
 /*FIXME g_utf8_get_char, g_utf8_next_char and g_utf8_validate are not part of eglib.*/
 #if 0
@@ -6908,9 +6908,9 @@ mono_ldstr_utf8 (MonoImage *image, guint32 idx, MonoError *error)
 	/* g_utf16_to_utf8  may not be able to complete the convertion (e.g. NULL values were found, #335488) */
 	if (len2 > written) {
 		/* allocate the total length and copy the part of the string that has been converted */
-		char *as2 = (char *)g_malloc0 (len2);
+		char *as2 = (char *)g_malloc0_vb (len2);
 		memcpy (as2, as, written);
-		g_free (as);
+		g_free_vb (as);
 		as = as2;
 	}
 
@@ -6973,9 +6973,9 @@ mono_string_to_utf8_checked (MonoString *s, MonoError *error)
 	/* g_utf16_to_utf8  may not be able to complete the convertion (e.g. NULL values were found, #335488) */
 	if (s->length > written) {
 		/* allocate the total length and copy the part of the string that has been converted */
-		char *as2 = (char *)g_malloc0 (s->length);
+		char *as2 = (char *)g_malloc0_vb (s->length);
 		memcpy (as2, as, written);
-		g_free (as);
+		g_free_vb (as);
 		as = as2;
 	}
 
@@ -7014,9 +7014,9 @@ mono_string_to_utf8_ignore (MonoString *s)
 	/* g_utf16_to_utf8  may not be able to complete the convertion (e.g. NULL values were found, #335488) */
 	if (s->length > written) {
 		/* allocate the total length and copy the part of the string that has been converted */
-		char *as2 = (char *)g_malloc0 (s->length);
+		char *as2 = (char *)g_malloc0_vb (s->length);
 		memcpy (as2, as, written);
-		g_free (as);
+		g_free_vb (as);
 		as = as2;
 	}
 
@@ -7054,7 +7054,7 @@ mono_string_to_utf8_mp_ignore (MonoMemPool *mp, MonoString *s)
  * mono_string_to_utf16:
  * \param s a \c MonoString
  * \returns a null-terminated array of the UTF-16 chars
- * contained in \p s. The result must be freed with \c g_free().
+ * contained in \p s. The result must be freed with \c g_free_vb().
  * This is a temporary helper until our string implementation
  * is reworked to always include the null-terminating char.
  */
@@ -7068,7 +7068,7 @@ mono_string_to_utf16 (MonoString *s)
 	if (s == NULL)
 		return NULL;
 
-	as = (char *)g_malloc ((s->length * 2) + 2);
+	as = (char *)g_malloc_vb ((s->length * 2) + 2);
 	as [(s->length * 2)] = '\0';
 	as [(s->length * 2) + 1] = '\0';
 
@@ -7084,7 +7084,7 @@ mono_string_to_utf16 (MonoString *s)
  * mono_string_to_utf32:
  * \param s a \c MonoString
  * \returns a null-terminated array of the UTF-32 (UCS-4) chars
- * contained in \p s. The result must be freed with \c g_free().
+ * contained in \p s. The result must be freed with \c g_free_vb().
  */
 mono_unichar4*
 mono_string_to_utf32 (MonoString *s)
@@ -7191,7 +7191,7 @@ mono_string_from_utf32_checked (mono_unichar4 *data, MonoError *error)
 		g_error_free (gerror);
 
 	result = mono_string_from_utf16_checked (utf16_output, error);
-	g_free (utf16_output);
+	g_free_vb (utf16_output);
 	return result;
 }
 
@@ -7223,7 +7223,7 @@ mono_string_to_utf8_internal (MonoMemPool *mp, MonoImage *image, MonoString *s, 
 
 	memcpy (mp_s, r, len);
 
-	g_free (r);
+	g_free_vb (r);
 
 	return mp_s;
 }
@@ -7758,8 +7758,8 @@ mono_print_unhandled_exception (MonoObject *exc)
 				message = g_strdup_printf ("Nested exception detected.\nOriginal Exception: %s\nNested exception:%s\n",
 					original_backtrace, nested_backtrace);
 
-				g_free (original_backtrace);
-				g_free (nested_backtrace);
+				g_free_vb (original_backtrace);
+				g_free_vb (nested_backtrace);
 				free_message = TRUE;
 			} else if (str) {
 				message = mono_string_to_utf8_checked (str, &error);
@@ -7780,7 +7780,7 @@ mono_print_unhandled_exception (MonoObject *exc)
 	g_printerr ("\nUnhandled Exception:\n%s\n", message);
 	
 	if (free_message)
-		g_free (message);
+		g_free_vb (message);
 }
 
 /**
@@ -8081,7 +8081,7 @@ mono_load_remote_field_checked (MonoObject *this_obj, MonoClass *klass, MonoClas
 
 	full_name = mono_type_get_full_name (klass);
 	MonoString *full_name_str = mono_string_new_checked (domain, full_name, error);
-	g_free (full_name);
+	g_free_vb (full_name);
 	return_val_if_nok (error, NULL);
 	mono_array_setref (msg->args, 0, full_name_str);
 	MonoString *field_name = mono_string_new_checked (domain, mono_field_get_name (field), error);

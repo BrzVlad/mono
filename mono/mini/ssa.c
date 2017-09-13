@@ -359,7 +359,7 @@ mono_ssa_compute (MonoCompile *cfg)
 	mono_compile_dominator_info (cfg, MONO_COMP_DOM | MONO_COMP_IDOM | MONO_COMP_DFRONTIER);
 
 	bitsize = mono_bitset_alloc_size (cfg->num_bblocks, 0);
-	buf = buf_start = (guint8 *)g_malloc0 (mono_bitset_alloc_size (cfg->num_bblocks, 0) * cfg->num_varinfo);
+	buf = buf_start = (guint8 *)g_malloc0_vb (mono_bitset_alloc_size (cfg->num_bblocks, 0) * cfg->num_varinfo);
 
 	for (i = 0; i < cfg->num_varinfo; ++i) {
 		vinfo [i].def_in = mono_bitset_mem_new (buf, cfg->num_bblocks, 0);
@@ -459,8 +459,8 @@ mono_ssa_compute (MonoCompile *cfg)
 	}
 
 	/* free the stuff */
-	g_free (vinfo);
-	g_free (buf_start);
+	g_free_vb (vinfo);
+	g_free_vb (buf_start);
 
 	/* Renaming phase */
 
@@ -473,10 +473,10 @@ mono_ssa_compute (MonoCompile *cfg)
 	stack_history = g_new (RenameInfo, stack_history_size);
 	originals = g_new0 (gboolean, cfg->num_varinfo);
 	mono_ssa_rename_vars (cfg, cfg->num_varinfo, cfg->bb_entry, originals, stack, lvreg_stack, lvreg_defined, stack_history, stack_history_size);
-	g_free (stack_history);
-	g_free (originals);
-	g_free (lvreg_stack);
-	g_free (lvreg_defined);
+	g_free_vb (stack_history);
+	g_free_vb (originals);
+	g_free_vb (lvreg_stack);
+	g_free_vb (lvreg_defined);
 
 	if (cfg->verbose_level >= 4)
 		printf ("\nEND COMPUTE SSA.\n\n");
@@ -1290,7 +1290,7 @@ mono_ssa_cprop (MonoCompile *cfg)
 		}
 	}
 
-	g_free (carray);
+	g_free_vb (carray);
 
 	cfg->comp_done |= MONO_COMP_REACHABILITY;
 

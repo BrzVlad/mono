@@ -96,14 +96,14 @@ mono_rand_init (guchar *seed, gint seed_size)
 	if (provider != 0 && seed != NULL) {
 		/* the call we replace the seed with random - this isn't what is
 		 * expected from the class library user */
-		guchar *data = g_malloc (seed_size);
+		guchar *data = g_malloc_vb (seed_size);
 		if (data != NULL) {
 			memcpy (data, seed, seed_size);
 			/* add seeding material to the RNG */
 			mono_rand_win_seed (provider, data, seed_size);
 			/* zeroize and free */
 			memset (data, 0, seed_size);
-			g_free (data);
+			g_free_vb (data);
 		}
 	}
 

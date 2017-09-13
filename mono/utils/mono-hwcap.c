@@ -46,8 +46,8 @@ mono_hwcap_init (void)
 	if (verbose && !strncmp (verbose, "1", 1))
 		mono_hwcap_print ();
 
-	g_free (verbose);
-	g_free (conservative);
+	g_free_vb (verbose);
+	g_free_vb (conservative);
 }
 
 void

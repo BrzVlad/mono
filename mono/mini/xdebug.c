@@ -226,12 +226,12 @@ xdebug_end_emit (MonoImageWriter *w, MonoDwarfWriter *dw, MonoMethod *method)
 		fp = fopen (file_name, "w");
 		fwrite (img, img_size, 1, fp);
 		fclose (fp);
-		g_free (file_name);
+		g_free_vb (file_name);
 	}
 
 	/* Register the image with GDB */
 
-	entry = g_malloc0 (sizeof (struct jit_code_entry));
+	entry = g_malloc0_vb (sizeof (struct jit_code_entry));
 
 	entry->symfile_addr = (const char*)img;
 	psize = (guint64*)&entry->symfile_size1;
@@ -313,7 +313,7 @@ mono_save_xdebug_info (MonoCompile *cfg)
 		mono_img_writer_emit_global_with_size (w, sym, cfg->jit_info->code_size, TRUE);
 		mono_img_writer_emit_label (w, sym);
 		mono_img_writer_emit_bytes (w, cfg->jit_info->code_start, cfg->jit_info->code_size);
-		g_free (sym);
+		g_free_vb (sym);
 #endif
 		
 		mono_loader_unlock ();

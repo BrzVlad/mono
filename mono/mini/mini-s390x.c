@@ -762,7 +762,7 @@ decodeParmString (MonoString *s)
 	char *str = mono_string_to_utf8_checked(s, &error);
 	if (is_ok (&error))  {
 		printf("[STRING:%p:%s], ", s, str);
-		g_free (str);
+		g_free_vb (str);
 	} else {
 		mono_error_cleanup (&error);
 		printf("[STRING:%p:], ", s);
@@ -939,7 +939,7 @@ enter_method (MonoMethod *method, RegParm *rParm, char *sp)
 	fname = mono_method_full_name (method, TRUE);
 	indent (1);
 	printf ("ENTER: %s ", fname);
-	g_free (fname);
+	g_free_vb (fname);
 
 	ip  = (*(guint64 *) (sp+S390_RET_ADDR_OFFSET));
 	printf ("ip: %p sp: %p - ", (gpointer) ip, sp); 
@@ -1034,7 +1034,7 @@ enter_method (MonoMethod *method, RegParm *rParm, char *sp)
 		}
 	}	
 	printf("\n");
-	g_free(cinfo);
+	g_free_vb(cinfo);
 }
 
 /*========================= End of Function ========================*/
@@ -1060,7 +1060,7 @@ leave_method (MonoMethod *method, ...)
 	fname = mono_method_full_name (method, TRUE);
 	indent (-1);
 	printf ("LEAVE: %s", fname);
-	g_free (fname);
+	g_free_vb (fname);
 
 	type = mono_method_signature (method)->ret;
 
@@ -1600,7 +1600,7 @@ get_call_info (MonoCompile *cfg, MonoMemPool *mp, MonoMethodSignature *sig)
 	if (mp)
 		cinfo = mono_mempool_alloc0 (mp, sizeof (CallInfo) + sizeof (ArgInfo) * nParm);
 	else
-		cinfo = g_malloc0 (sizeof (CallInfo) + sizeof (ArgInfo) * nParm);
+		cinfo = g_malloc0_vb (sizeof (CallInfo) + sizeof (ArgInfo) * nParm);
 
 	fr                = 0;
 	gr                = s390_r2;
@@ -5606,7 +5606,7 @@ mono_arch_emit_prolog (MonoCompile *cfg)
 	if (method->save_lmf)
 		cfg->code_size += 200;
 
-	cfg->native_code = code = g_malloc (cfg->code_size);
+	cfg->native_code = code = g_malloc_vb (cfg->code_size);
 
 	mono_emit_unwind_op_def_cfa (cfg, code, STK_BASE, 0);
 	emit_unwind_regs(cfg, code, s390_r6, s390_r14, S390_REG_SAVE_OFFSET);
@@ -6396,7 +6396,7 @@ get_delegate_invoke_impl (MonoTrampInfo **info, gboolean has_target, guint32 par
 	} else {
 		char *name = g_strdup_printf ("delegate_invoke_impl_target_%d", param_count);
 		*info = mono_tramp_info_create (name, start, code - start, NULL, NULL);
-		g_free (name);
+		g_free_vb (name);
 	}
 
 	return start;
@@ -6484,7 +6484,7 @@ mono_arch_get_delegate_invoke_impl (MonoMethodSignature *sig, gboolean has_targe
 		if (mono_aot_only) {
 			char *name = g_strdup_printf ("delegate_invoke_impl_target_%d", sig->param_count);
 			start = mono_aot_get_trampoline (name);
-			g_free (name);
+			g_free_vb (name);
 		} else {
 			MonoTrampInfo *info;
 			start = get_delegate_invoke_impl (&info, FALSE, sig->param_count, FALSE);

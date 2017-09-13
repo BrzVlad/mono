@@ -397,7 +397,7 @@ ves_icall_System_Threading_Mutex_CreateMutex_internal (MonoBoolean owned, MonoSt
 
 		if (mono_w32error_get_last () == ERROR_ALREADY_EXISTS)
 			*created = FALSE;
-		g_free (utf8_name);
+		g_free_vb (utf8_name);
 	}
 
 	return mutex;
@@ -475,7 +475,7 @@ ves_icall_System_Threading_Mutex_OpenMutex_internal (MonoStringHandle name, gint
 	gchar *utf8_name = mono_string_handle_to_utf8 (name, error);
 	return_val_if_nok (error, NULL);
 	gpointer handle = mono_w32mutex_open (utf8_name, rights, err);
-	g_free (utf8_name);
+	g_free_vb (utf8_name);
 	return handle;
 }
 

@@ -1029,7 +1029,7 @@ void
 mono_gc_params_set (const char* options)
 {
 	if (gc_params_options)
-		g_free (gc_params_options);
+		g_free_vb (gc_params_options);
 
 	gc_params_options = g_strdup (options);
 }
@@ -1038,7 +1038,7 @@ void
 mono_gc_debug_set (const char* options)
 {
 	if (gc_debug_options)
-		g_free (gc_debug_options);
+		g_free_vb (gc_debug_options);
 
 	gc_debug_options = g_strdup (options);
 }
@@ -3300,7 +3300,7 @@ sgen_gc_init (void)
 
 	if ((env = g_getenv (MONO_GC_PARAMS_NAME)) || gc_params_options) {
 		params_opts = g_strdup_printf ("%s,%s", gc_params_options ? gc_params_options : "", env ? env : "");
-		g_free (env);
+		g_free_vb (env);
 	}
 
 	if (params_opts) {
@@ -3506,7 +3506,7 @@ sgen_gc_init (void)
 	}
 
 	if (params_opts)
-		g_free (params_opts);
+		g_free_vb (params_opts);
 
 	alloc_nursery (dynamic_nursery, min_nursery_size, max_nursery_size);
 
@@ -3515,7 +3515,7 @@ sgen_gc_init (void)
 
 	if ((env = g_getenv (MONO_GC_DEBUG_NAME)) || gc_debug_options) {
 		debug_opts = g_strdup_printf ("%s,%s", gc_debug_options ? gc_debug_options  : "", env ? env : "");
-		g_free (env);
+		g_free_vb (env);
 	}
 
 	if (debug_opts) {
@@ -3536,7 +3536,7 @@ sgen_gc_init (void)
 					gc_debug_file = fopen (rf, "wb");
 					if (!gc_debug_file)
 						gc_debug_file = stderr;
-					g_free (rf);
+					g_free_vb (rf);
 				}
 			} else if (!strcmp (opt, "print-allowance")) {
 				debug_print_allowance = TRUE;
@@ -3663,7 +3663,7 @@ sgen_gc_init (void)
 	}
 
 	if (debug_opts)
-		g_free (debug_opts);
+		g_free_vb (debug_opts);
 
 	if (check_mark_bits_after_major_collection)
 		nursery_clear_policy = CLEAR_AT_GC;

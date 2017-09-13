@@ -146,9 +146,9 @@ file_data_destroy (MonoFDHandle *fdhandle)
 	g_assert (filehandle);
 
 	if (filehandle->filename)
-		g_free (filehandle->filename);
+		g_free_vb (filehandle->filename);
 
-	g_free (filehandle);
+	g_free_vb (filehandle);
 }
 
 static void
@@ -162,7 +162,7 @@ file_share_release (FileShare *share_info)
 
 	if (share_info->handle_refs == 0) {
 		g_hash_table_remove (file_share_table, share_info);
-		// g_free (share_info);
+		// g_free_vb (share_info);
 	}
 
 	mono_coop_mutex_unlock (&file_share_mutex);
@@ -252,7 +252,7 @@ _wapi_open (const gchar *pathname, gint flags, mode_t mode)
 			MONO_ENTER_GC_SAFE;
 			fd = open (located_filename, flags, mode);
 			MONO_EXIT_GC_SAFE;
-			g_free (located_filename);
+			g_free_vb (located_filename);
 		}
 	} else {
 		MONO_ENTER_GC_SAFE;
@@ -270,7 +270,7 @@ _wapi_open (const gchar *pathname, gint flags, mode_t mode)
 			MONO_ENTER_GC_SAFE;
 			fd = open (located_filename, flags, mode);
 			MONO_EXIT_GC_SAFE;
-			g_free (located_filename);
+			g_free_vb (located_filename);
 		}
 	}
 
@@ -297,7 +297,7 @@ _wapi_access (const gchar *pathname, gint mode)
 		MONO_ENTER_GC_SAFE;
 		ret = access (located_filename, mode);
 		MONO_EXIT_GC_SAFE;
-		g_free (located_filename);
+		g_free_vb (located_filename);
 	}
 
 	return ret;
@@ -323,7 +323,7 @@ _wapi_chmod (const gchar *pathname, mode_t mode)
 		MONO_ENTER_GC_SAFE;
 		ret = chmod (located_filename, mode);
 		MONO_EXIT_GC_SAFE;
-		g_free (located_filename);
+		g_free_vb (located_filename);
 	}
 
 	return ret;
@@ -349,7 +349,7 @@ _wapi_utime (const gchar *filename, const struct utimbuf *buf)
 		MONO_ENTER_GC_SAFE;
 		ret = utime (located_filename, buf);
 		MONO_EXIT_GC_SAFE;
-		g_free (located_filename);
+		g_free_vb (located_filename);
 	}
 
 	return ret;
@@ -375,7 +375,7 @@ _wapi_unlink (const gchar *pathname)
 		MONO_ENTER_GC_SAFE;
 		ret = unlink (located_filename);
 		MONO_EXIT_GC_SAFE;
-		g_free (located_filename);
+		g_free_vb (located_filename);
 	}
 
 	return ret;
@@ -401,8 +401,8 @@ _wapi_rename (const gchar *oldpath, const gchar *newpath)
 			gchar *located_oldpath = mono_portability_find_file (oldpath, TRUE);
 
 			if (located_oldpath == NULL) {
-				g_free (located_oldpath);
-				g_free (located_newpath);
+				g_free_vb (located_oldpath);
+				g_free_vb (located_newpath);
 
 				errno = saved_errno;
 				return -1;
@@ -411,9 +411,9 @@ _wapi_rename (const gchar *oldpath, const gchar *newpath)
 			MONO_ENTER_GC_SAFE;
 			ret = rename (located_oldpath, located_newpath);
 			MONO_EXIT_GC_SAFE;
-			g_free (located_oldpath);
+			g_free_vb (located_oldpath);
 		}
-		g_free (located_newpath);
+		g_free_vb (located_newpath);
 	}
 
 	return ret;
@@ -439,7 +439,7 @@ _wapi_stat (const gchar *path, struct stat *buf)
 		MONO_ENTER_GC_SAFE;
 		ret = stat (located_filename, buf);
 		MONO_EXIT_GC_SAFE;
-		g_free (located_filename);
+		g_free_vb (located_filename);
 	}
 
 	return ret;
@@ -463,7 +463,7 @@ _wapi_lstat (const gchar *path, struct stat *buf)
 		}
 
 		ret = lstat (located_filename, buf);
-		g_free (located_filename);
+		g_free_vb (located_filename);
 	}
 
 	return ret;
@@ -483,7 +483,7 @@ _wapi_mkdir (const gchar *pathname, mode_t mode)
 		MONO_ENTER_GC_SAFE;
 		ret = mkdir (located_filename, mode);
 		MONO_EXIT_GC_SAFE;
-		g_free (located_filename);
+		g_free_vb (located_filename);
 	}
 
 	return ret;
@@ -509,7 +509,7 @@ _wapi_rmdir (const gchar *pathname)
 		MONO_ENTER_GC_SAFE;
 		ret = rmdir (located_filename);
 		MONO_EXIT_GC_SAFE;
-		g_free (located_filename);
+		g_free_vb (located_filename);
 	}
 
 	return ret;
@@ -535,7 +535,7 @@ _wapi_chdir (const gchar *path)
 		MONO_ENTER_GC_SAFE;
 		ret = chdir (located_filename);
 		MONO_EXIT_GC_SAFE;
-		g_free (located_filename);
+		g_free_vb (located_filename);
 	}
 
 	return ret;
@@ -558,7 +558,7 @@ _wapi_basename (const gchar *filename)
 	}
 
 	ret = g_path_get_basename (new_filename);
-	g_free (new_filename);
+	g_free_vb (new_filename);
 
 	return ret;
 }
@@ -580,7 +580,7 @@ _wapi_dirname (const gchar *filename)
 	}
 
 	ret = g_path_get_dirname (new_filename);
-	g_free (new_filename);
+	g_free_vb (new_filename);
 
 	return ret;
 }
@@ -604,7 +604,7 @@ _wapi_g_dir_open (const gchar *path, guint flags, GError **error)
 		MONO_ENTER_GC_SAFE;
 		ret = g_dir_open (located_filename, flags, &tmp_error);
 		MONO_EXIT_GC_SAFE;
-		g_free (located_filename);
+		g_free_vb (located_filename);
 		if (tmp_error == NULL) {
 			g_clear_error (error);
 		}
@@ -742,7 +742,7 @@ _wapi_io_scandir (const gchar *dirname, const gchar *pattern, gchar ***namelist)
 		MONO_EXIT_GC_SAFE;
 		result2 = mono_w32file_unix_glob (dir, pattern2, flags | W32FILE_UNIX_GLOB_APPEND | W32FILE_UNIX_GLOB_UNIQUE, &glob_buf);
 
-		g_free (pattern2);
+		g_free_vb (pattern2);
 
 		if (result != 0) {
 			result = result2;
@@ -979,7 +979,7 @@ static guint32 _wapi_stat_to_file_attributes (const gchar *pathname,
 		}
 	}
 	
-	g_free (filename);
+	g_free_vb (filename);
 	
 	return attrs;
 }
@@ -1012,7 +1012,7 @@ static void _wapi_set_last_path_error_from_errno (const gchar *dir,
 			mono_w32error_set_last (ERROR_PATH_NOT_FOUND);
 		}
 
-		g_free (dirname);
+		g_free_vb (dirname);
 	} else {
 		_wapi_set_last_error_from_errno ();
 	}
@@ -1961,7 +1961,7 @@ mono_w32file_create(const gunichar2 *name, guint32 fileaccess, guint32 sharemode
 	if (fd == -1) {
 		mono_trace (G_LOG_LEVEL_DEBUG, MONO_TRACE_IO_LAYER, "%s: Error opening file %s: %s", __func__, filename, g_strerror(errno));
 		_wapi_set_last_path_error_from_errno (NULL, filename);
-		g_free (filename);
+		g_free_vb (filename);
 
 		return(INVALID_HANDLE_VALUE);
 	}
@@ -1985,7 +1985,7 @@ mono_w32file_create(const gunichar2 *name, guint32 fileaccess, guint32 sharemode
 	if (S_ISFIFO (statbuf.st_mode)) {
 		type = MONO_FDTYPE_PIPE;
 		/* maintain invariant that pipes have no filename */
-		g_free (filename);
+		g_free_vb (filename);
 		filename = NULL;
 	} else if (S_ISCHR (statbuf.st_mode)) {
 		type = MONO_FDTYPE_CONSOLE;
@@ -2095,14 +2095,14 @@ gboolean mono_w32file_delete(const gunichar2 *name)
 	 */
 	if (_wapi_stat (filename, &statbuf) < 0) {
 		_wapi_set_last_path_error_from_errno (NULL, filename);
-		g_free (filename);
+		g_free_vb (filename);
 		return(FALSE);
 	}
 	
 	if (share_allows_open (&statbuf, 0, GENERIC_WRITE,
 			       &shareinfo) == FALSE) {
 		mono_w32error_set_last (ERROR_SHARING_VIOLATION);
-		g_free (filename);
+		g_free_vb (filename);
 		return FALSE;
 	}
 	if (shareinfo)
@@ -2130,7 +2130,7 @@ gboolean mono_w32file_delete(const gunichar2 *name)
 		ret = TRUE;
 	}
 
-	g_free(filename);
+	g_free_vb(filename);
 
 	return(ret);
 }
@@ -2162,7 +2162,7 @@ MoveFile (gunichar2 *name, gunichar2 *dest_name)
 	if(dest_name==NULL) {
 		mono_trace (G_LOG_LEVEL_DEBUG, MONO_TRACE_IO_LAYER, "%s: name is NULL", __func__);
 
-		g_free (utf8_name);
+		g_free_vb (utf8_name);
 		mono_w32error_set_last (ERROR_INVALID_NAME);
 		return(FALSE);
 	}
@@ -2171,7 +2171,7 @@ MoveFile (gunichar2 *name, gunichar2 *dest_name)
 	if (utf8_dest_name == NULL) {
 		mono_trace (G_LOG_LEVEL_DEBUG, MONO_TRACE_IO_LAYER, "%s: unicode conversion returned NULL", __func__);
 
-		g_free (utf8_name);
+		g_free_vb (utf8_name);
 		mono_w32error_set_last (ERROR_INVALID_NAME);
 		return FALSE;
 	}
@@ -2184,8 +2184,8 @@ MoveFile (gunichar2 *name, gunichar2 *dest_name)
 	if (_wapi_stat (utf8_name, &stat_src) < 0) {
 		if (errno != ENOENT || _wapi_lstat (utf8_name, &stat_src) < 0) {
 			_wapi_set_last_path_error_from_errno (NULL, utf8_name);
-			g_free (utf8_name);
-			g_free (utf8_dest_name);
+			g_free_vb (utf8_name);
+			g_free_vb (utf8_dest_name);
 			return FALSE;
 		}
 	}
@@ -2193,8 +2193,8 @@ MoveFile (gunichar2 *name, gunichar2 *dest_name)
 	if (!_wapi_stat (utf8_dest_name, &stat_dest)) {
 		if (stat_dest.st_dev != stat_src.st_dev ||
 		    stat_dest.st_ino != stat_src.st_ino) {
-			g_free (utf8_name);
-			g_free (utf8_dest_name);
+			g_free_vb (utf8_name);
+			g_free_vb (utf8_dest_name);
 			mono_w32error_set_last (ERROR_ALREADY_EXISTS);
 			return FALSE;
 		}
@@ -2239,8 +2239,8 @@ MoveFile (gunichar2 *name, gunichar2 *dest_name)
 		}
 	}
 	
-	g_free (utf8_name);
-	g_free (utf8_dest_name);
+	g_free_vb (utf8_name);
+	g_free_vb (utf8_dest_name);
 
 	if (result != 0 && errno_copy == EXDEV) {
 		gint32 copy_error;
@@ -2274,7 +2274,7 @@ write_file (gint src_fd, gint dest_fd, struct stat *st_src, gboolean report_erro
 	MonoThreadInfo *info = mono_thread_info_current ();
 
 	buf_size = buf_size < 8192 ? 8192 : (buf_size > 65536 ? 65536 : buf_size);
-	buf = (gchar *) g_malloc (buf_size);
+	buf = (gchar *) g_malloc_vb (buf_size);
 
 	for (;;) {
 		MONO_ENTER_GC_SAFE;
@@ -2287,7 +2287,7 @@ write_file (gint src_fd, gint dest_fd, struct stat *st_src, gboolean report_erro
 			if (report_errors)
 				_wapi_set_last_error_from_errno ();
 
-			g_free (buf);
+			g_free_vb (buf);
 			return FALSE;
 		}
 		if (remain == 0) {
@@ -2306,7 +2306,7 @@ write_file (gint src_fd, gint dest_fd, struct stat *st_src, gboolean report_erro
 				if (report_errors)
 					_wapi_set_last_error_from_errno ();
 				mono_trace (G_LOG_LEVEL_DEBUG, MONO_TRACE_IO_LAYER, "%s: write failed.", __func__);
-				g_free (buf);
+				g_free_vb (buf);
 				return FALSE;
 			}
 
@@ -2315,7 +2315,7 @@ write_file (gint src_fd, gint dest_fd, struct stat *st_src, gboolean report_erro
 		}
 	}
 
-	g_free (buf);
+	g_free_vb (buf);
 	return TRUE ;
 }
 
@@ -2349,7 +2349,7 @@ CopyFile (const gunichar2 *name, const gunichar2 *dest_name, gboolean fail_if_ex
 	if(dest_name==NULL) {
 		mono_trace (G_LOG_LEVEL_DEBUG, MONO_TRACE_IO_LAYER, "%s: dest is NULL", __func__);
 
-		g_free (utf8_src);
+		g_free_vb (utf8_src);
 		mono_w32error_set_last (ERROR_INVALID_NAME);
 		return(FALSE);
 	}
@@ -2361,7 +2361,7 @@ CopyFile (const gunichar2 *name, const gunichar2 *dest_name, gboolean fail_if_ex
 
 		mono_w32error_set_last (ERROR_INVALID_PARAMETER);
 
-		g_free (utf8_src);
+		g_free_vb (utf8_src);
 		
 		return(FALSE);
 	}
@@ -2370,8 +2370,8 @@ CopyFile (const gunichar2 *name, const gunichar2 *dest_name, gboolean fail_if_ex
 	if (src_fd < 0) {
 		_wapi_set_last_path_error_from_errno (NULL, utf8_src);
 		
-		g_free (utf8_src);
-		g_free (utf8_dest);
+		g_free_vb (utf8_src);
+		g_free_vb (utf8_dest);
 		
 		return(FALSE);
 	}
@@ -2382,8 +2382,8 @@ CopyFile (const gunichar2 *name, const gunichar2 *dest_name, gboolean fail_if_ex
 	if (syscall_res < 0) {
 		_wapi_set_last_error_from_errno ();
 
-		g_free (utf8_src);
-		g_free (utf8_dest);
+		g_free_vb (utf8_src);
+		g_free_vb (utf8_dest);
 		MONO_ENTER_GC_SAFE;
 		close (src_fd);
 		MONO_EXIT_GC_SAFE;
@@ -2397,8 +2397,8 @@ CopyFile (const gunichar2 *name, const gunichar2 *dest_name, gboolean fail_if_ex
 	if (!_wapi_stat (utf8_dest, &dest_st) && st.st_dev == dest_st.st_dev && 
 			st.st_ino == dest_st.st_ino) {
 
-		g_free (utf8_src);
-		g_free (utf8_dest);
+		g_free_vb (utf8_src);
+		g_free_vb (utf8_dest);
 		MONO_ENTER_GC_SAFE;
 		close (src_fd);
 		MONO_EXIT_GC_SAFE;
@@ -2427,8 +2427,8 @@ CopyFile (const gunichar2 *name, const gunichar2 *dest_name, gboolean fail_if_ex
 	if (dest_fd < 0) {
 		_wapi_set_last_error_from_errno ();
 
-		g_free (utf8_src);
-		g_free (utf8_dest);
+		g_free_vb (utf8_src);
+		g_free_vb (utf8_dest);
 		MONO_ENTER_GC_SAFE;
 		close (src_fd);
 		MONO_EXIT_GC_SAFE;
@@ -2450,8 +2450,8 @@ CopyFile (const gunichar2 *name, const gunichar2 *dest_name, gboolean fail_if_ex
 	if (ret_utime == -1)
 		mono_trace (G_LOG_LEVEL_DEBUG, MONO_TRACE_IO_LAYER, "%s: file [%s] utime failed: %s", __func__, utf8_dest, g_strerror(errno));
 	
-	g_free (utf8_src);
-	g_free (utf8_dest);
+	g_free_vb (utf8_src);
+	g_free_vb (utf8_dest);
 
 	return ret;
 }
@@ -2523,9 +2523,9 @@ ReplaceFile (const gunichar2 *replacedFileName, const gunichar2 *replacementFile
 	ret = TRUE;
 
 replace_cleanup:
-	g_free (utf8_replacedFileName);
-	g_free (utf8_replacementFileName);
-	g_free (utf8_backupFileName);
+	g_free_vb (utf8_replacedFileName);
+	g_free_vb (utf8_replacementFileName);
+	g_free_vb (utf8_backupFileName);
 	if (backup_fd != -1) {
 		MONO_ENTER_GC_SAFE;
 		close (backup_fd);
@@ -3047,9 +3047,9 @@ mono_w32file_find_first (const gunichar2 *pattern, WIN32_FIND_DATA *find_data)
 	 */
 	if (strchr (dir_part, '*') || strchr (dir_part, '?')) {
 		mono_w32error_set_last (ERROR_INVALID_NAME);
-		g_free (dir_part);
-		g_free (entry_part);
-		g_free (utf8_pattern);
+		g_free_vb (dir_part);
+		g_free_vb (entry_part);
+		g_free_vb (utf8_pattern);
 		return(INVALID_HANDLE_VALUE);
 	}
 #endif
@@ -3083,23 +3083,23 @@ mono_w32file_find_first (const gunichar2 *pattern, WIN32_FIND_DATA *find_data)
 		 * FILE_NOT_FOUND
 		 */
 		mono_w32error_set_last (ERROR_FILE_NOT_FOUND);
-		g_free (utf8_pattern);
-		g_free (entry_part);
-		g_free (dir_part);
+		g_free_vb (utf8_pattern);
+		g_free_vb (entry_part);
+		g_free_vb (dir_part);
 		return (INVALID_HANDLE_VALUE);
 	}
 	
 	if (result < 0) {
 		_wapi_set_last_path_error_from_errno (dir_part, NULL);
 		mono_trace (G_LOG_LEVEL_DEBUG, MONO_TRACE_IO_LAYER, "%s: scandir error: %s", __func__, g_strerror (errno));
-		g_free (utf8_pattern);
-		g_free (entry_part);
-		g_free (dir_part);
+		g_free_vb (utf8_pattern);
+		g_free_vb (entry_part);
+		g_free_vb (dir_part);
 		return (INVALID_HANDLE_VALUE);
 	}
 
-	g_free (utf8_pattern);
-	g_free (entry_part);
+	g_free_vb (utf8_pattern);
+	g_free_vb (entry_part);
 	
 	mono_trace (G_LOG_LEVEL_DEBUG, MONO_TRACE_IO_LAYER, "%s: Got %d matches", __func__, result);
 
@@ -3110,9 +3110,9 @@ mono_w32file_find_first (const gunichar2 *pattern, WIN32_FIND_DATA *find_data)
 	handle = mono_w32handle_new (MONO_W32HANDLE_FIND, &find_handle);
 	if (handle == INVALID_HANDLE_VALUE) {
 		g_warning ("%s: error creating find handle", __func__);
-		g_free (dir_part);
-		g_free (entry_part);
-		g_free (utf8_pattern);
+		g_free_vb (dir_part);
+		g_free_vb (entry_part);
+		g_free_vb (utf8_pattern);
 		mono_w32error_set_last (ERROR_GEN_FAILURE);
 		
 		return(INVALID_HANDLE_VALUE);
@@ -3172,7 +3172,7 @@ retry:
 	if (result != 0) {
 		mono_trace (G_LOG_LEVEL_DEBUG, MONO_TRACE_IO_LAYER, "%s: stat failed: %s", __func__, filename);
 
-		g_free (filename);
+		g_free_vb (filename);
 		goto retry;
 	}
 
@@ -3180,7 +3180,7 @@ retry:
 	if (result != 0) {
 		mono_trace (G_LOG_LEVEL_DEBUG, MONO_TRACE_IO_LAYER, "%s: lstat failed: %s", __func__, filename);
 
-		g_free (filename);
+		g_free_vb (filename);
 		goto retry;
 	}
 
@@ -3192,10 +3192,10 @@ retry:
 		 */
 		g_warning ("%s: Bad encoding for '%s'\nConsider using MONO_EXTERNAL_ENCODINGS\n", __func__, filename);
 		
-		g_free (filename);
+		g_free_vb (filename);
 		goto retry;
 	}
-	g_free (filename);
+	g_free_vb (filename);
 	
 	mono_trace (G_LOG_LEVEL_DEBUG, MONO_TRACE_IO_LAYER, "%s: Found [%s]", __func__, utf8_filename);
 	
@@ -3227,8 +3227,8 @@ retry:
 	utf16_basename = g_utf8_to_utf16 (utf8_basename, -1, NULL, &bytes,
 					  NULL);
 	if(utf16_basename==NULL) {
-		g_free (utf8_basename);
-		g_free (utf8_filename);
+		g_free_vb (utf8_basename);
+		g_free_vb (utf8_filename);
 		goto retry;
 	}
 	ret = TRUE;
@@ -3246,9 +3246,9 @@ retry:
 
 	find_data->cAlternateFileName [0] = 0;	/* not used */
 
-	g_free (utf8_basename);
-	g_free (utf8_filename);
-	g_free (utf16_basename);
+	g_free_vb (utf8_basename);
+	g_free_vb (utf8_filename);
+	g_free_vb (utf16_basename);
 
 cleanup:
 	mono_w32handle_unlock_handle (handle);
@@ -3279,7 +3279,7 @@ mono_w32file_find_close (gpointer handle)
 	mono_w32handle_lock_handle (handle);
 	
 	g_strfreev (find_handle->namelist);
-	g_free (find_handle->dir_part);
+	g_free_vb (find_handle->dir_part);
 
 	mono_w32handle_unlock_handle (handle);
 	
@@ -3314,12 +3314,12 @@ mono_w32file_create_directory (const gunichar2 *name)
 	result = _wapi_mkdir (utf8_name, 0777);
 
 	if (result == 0) {
-		g_free (utf8_name);
+		g_free_vb (utf8_name);
 		return TRUE;
 	}
 
 	_wapi_set_last_path_error_from_errno (NULL, utf8_name);
-	g_free (utf8_name);
+	g_free_vb (utf8_name);
 	return FALSE;
 }
 
@@ -3347,11 +3347,11 @@ mono_w32file_remove_directory (const gunichar2 *name)
 	result = _wapi_rmdir (utf8_name);
 	if (result == -1) {
 		_wapi_set_last_path_error_from_errno (NULL, utf8_name);
-		g_free (utf8_name);
+		g_free_vb (utf8_name);
 		
 		return(FALSE);
 	}
-	g_free (utf8_name);
+	g_free_vb (utf8_name);
 
 	return(TRUE);
 }
@@ -3387,20 +3387,20 @@ mono_w32file_get_attributes (const gunichar2 *name)
 
 	if (result != 0) {
 		_wapi_set_last_path_error_from_errno (NULL, utf8_name);
-		g_free (utf8_name);
+		g_free_vb (utf8_name);
 		return (INVALID_FILE_ATTRIBUTES);
 	}
 
 	result = _wapi_lstat (utf8_name, &linkbuf);
 	if (result != 0) {
 		_wapi_set_last_path_error_from_errno (NULL, utf8_name);
-		g_free (utf8_name);
+		g_free_vb (utf8_name);
 		return (INVALID_FILE_ATTRIBUTES);
 	}
 	
 	ret = _wapi_stat_to_file_attributes (utf8_name, &buf, &linkbuf);
 	
-	g_free (utf8_name);
+	g_free_vb (utf8_name);
 
 	return(ret);
 }
@@ -3436,14 +3436,14 @@ mono_w32file_get_attributes_ex (const gunichar2 *name, MonoIOStat *stat)
 	
 	if (result != 0) {
 		_wapi_set_last_path_error_from_errno (NULL, utf8_name);
-		g_free (utf8_name);
+		g_free_vb (utf8_name);
 		return FALSE;
 	}
 
 	result = _wapi_lstat (utf8_name, &linkbuf);
 	if (result != 0) {
 		_wapi_set_last_path_error_from_errno (NULL, utf8_name);
-		g_free (utf8_name);
+		g_free_vb (utf8_name);
 		return(FALSE);
 	}
 
@@ -3455,7 +3455,7 @@ mono_w32file_get_attributes_ex (const gunichar2 *name, MonoIOStat *stat)
 	stat->last_write_time = (((guint64) (buf.st_mtime)) * 10 * 1000 * 1000) + 116444736000000000ULL;
 	stat->length = (stat->attributes & FILE_ATTRIBUTE_DIRECTORY) ? 0 : buf.st_size;
 
-	g_free (utf8_name);
+	g_free_vb (utf8_name);
 	return TRUE;
 }
 
@@ -3495,7 +3495,7 @@ mono_w32file_set_attributes (const gunichar2 *name, guint32 attrs)
 
 	if (result != 0) {
 		_wapi_set_last_path_error_from_errno (NULL, utf8_name);
-		g_free (utf8_name);
+		g_free_vb (utf8_name);
 		return FALSE;
 	}
 
@@ -3531,7 +3531,7 @@ mono_w32file_set_attributes (const gunichar2 *name, guint32 attrs)
 	 * policy)
 	 */
 	
-	g_free (utf8_name);
+	g_free_vb (utf8_name);
 
 	return(TRUE);
 }
@@ -3549,8 +3549,8 @@ mono_w32file_get_cwd (guint32 length, gunichar2 *buffer)
 			if (path == NULL)
 				return 0;
 			utf16_path = mono_unicode_from_external (path, &bytes);
-			g_free (utf16_path);
-			g_free (path);
+			g_free_vb (utf16_path);
+			g_free_vb (path);
 			return (bytes/2)+1;
 		}
 		_wapi_set_last_error_from_errno ();
@@ -3565,7 +3565,7 @@ mono_w32file_get_cwd (guint32 length, gunichar2 *buffer)
 	memset (buffer, '\0', bytes+2);
 	memcpy (buffer, utf16_path, bytes);
 	
-	g_free (utf16_path);
+	g_free_vb (utf16_path);
 
 	return count;
 }
@@ -3589,7 +3589,7 @@ mono_w32file_set_cwd (const gunichar2 *path)
 	else
 		result = TRUE;
 
-	g_free (utf8_path);
+	g_free_vb (utf8_path);
 	return result;
 }
 
@@ -3650,14 +3650,14 @@ mono_w32file_get_logical_drive (guint32 len, gunichar2 *buf)
 	if (n == -1)
 		return 0;
 	size = n * sizeof (struct statfs);
-	stats = (struct statfs *) g_malloc (size);
+	stats = (struct statfs *) g_malloc_vb (size);
 	if (stats == NULL)
 		return 0;
 	MONO_ENTER_GC_SAFE;
 	syscall_res = getfsstat (stats, size, MNT_NOWAIT);
 	MONO_EXIT_GC_SAFE;
 	if (syscall_res == -1){
-		g_free (stats);
+		g_free_vb (stats);
 		return 0;
 	}
 	for (i = 0; i < n; i++){
@@ -3666,13 +3666,13 @@ mono_w32file_get_logical_drive (guint32 len, gunichar2 *buf)
 			memcpy (buf + total, dir, sizeof (gunichar2) * length);
 			buf [total+length] = 0;
 		} 
-		g_free (dir);
+		g_free_vb (dir);
 		total += length + 1;
 	}
 	if (total < len)
 		buf [total] = 0;
 	total++;
-	g_free (stats);
+	g_free_vb (stats);
 	return total;
 }
 #else
@@ -3779,7 +3779,7 @@ mono_w32file_get_logical_drive (guint32 len, gunichar2 *buf)
 				state.field_number = 1;
 				state.buffer_index++;
 				if (state.mountpoint_allocated) {
-					g_free (state.mountpoint_allocated);
+					g_free_vb (state.mountpoint_allocated);
 					state.mountpoint_allocated = NULL;
 				}
 				if (quit) {
@@ -3938,10 +3938,10 @@ append_to_mountpoint (LinuxMountInfoParseState *state)
 	if (state->mountpoint_allocated) {
 		if (state->mountpoint_index >= state->allocated_size) {
 			guint32 newsize = (state->allocated_size << 1) + 1;
-			gchar *newbuf = (gchar *)g_malloc0 (newsize * sizeof (gchar));
+			gchar *newbuf = (gchar *)g_malloc0_vb (newsize * sizeof (gchar));
 
 			memcpy (newbuf, state->mountpoint_allocated, state->mountpoint_index);
-			g_free (state->mountpoint_allocated);
+			g_free_vb (state->mountpoint_allocated);
 			state->mountpoint_allocated = newbuf;
 			state->allocated_size = newsize;
 		}
@@ -3949,7 +3949,7 @@ append_to_mountpoint (LinuxMountInfoParseState *state)
 	} else {
 		if (state->mountpoint_index >= GET_LOGICAL_DRIVE_STRINGS_MOUNTPOINT_BUFFER) {
 			state->allocated_size = (state->mountpoint_index << 1) + 1;
-			state->mountpoint_allocated = (gchar *)g_malloc0 (state->allocated_size * sizeof (gchar));
+			state->mountpoint_allocated = (gchar *)g_malloc0_vb (state->allocated_size * sizeof (gchar));
 			memcpy (state->mountpoint_allocated, state->mountpoint, state->mountpoint_index);
 			state->mountpoint_allocated [state->mountpoint_index++] = ch;
 		} else
@@ -3998,7 +3998,7 @@ add_drive_string (guint32 len, gunichar2 *buf, LinuxMountInfoParseState *state)
 			memcpy (buf + state->total, dir, sizeof (gunichar2) * length);
 			state->total += length;
 		}
-		g_free (dir);
+		g_free_vb (dir);
 	}
 	state->fsname_index = 0;
 	state->fstype_index = 0;
@@ -4064,12 +4064,12 @@ GetLogicalDriveStrings_Mtab (guint32 len, gunichar2 *buf)
 			MONO_ENTER_GC_SAFE;
 			fclose (fp);
 			MONO_EXIT_GC_SAFE;
-			g_free (dir);
+			g_free_vb (dir);
 			return len * 2; /* guess */
 		}
 
 		memcpy (ptr + total, dir, sizeof (gunichar2) * length);
-		g_free (dir);
+		g_free_vb (dir);
 		total += length + 1;
 	}
 
@@ -4114,7 +4114,7 @@ GetLogicalDriveStrings_Mtab (guint32 len, gunichar2 *buf)
 		}
 
 		memcpy (ptr + total, dir, sizeof (gunichar2) * len);
-		g_free (dir);
+		g_free_vb (dir);
 		total += len + 1;
 	}
 
@@ -4178,7 +4178,7 @@ mono_w32file_get_disk_free_space (const gunichar2 *path_name, guint64 *free_byte
 #endif
 	} while(ret == -1 && errno == EINTR);
 
-	g_free(utf8_path_name);
+	g_free_vb(utf8_path_name);
 
 	if (ret == -1) {
 		_wapi_set_last_error_from_errno ();
@@ -4502,7 +4502,7 @@ mono_w32file_get_drive_type(const gunichar2 *root_path_name)
 		}
 	}
 	drive_type = GetDriveTypeFromPath (utf8_root_path_name);
-	g_free (utf8_root_path_name);
+	g_free_vb (utf8_root_path_name);
 
 	return (drive_type);
 }
@@ -4560,10 +4560,10 @@ mono_w32file_get_volume_information (const gunichar2 *path, gunichar2 *volumenam
 			status = TRUE;
 		}
 		if (ret != NULL)
-			g_free (ret);
-		g_free (fstypename);
+			g_free_vb (ret);
+		g_free_vb (fstypename);
 	}
-	g_free (utfpath);
+	g_free_vb (utfpath);
 	return status;
 }
 #endif

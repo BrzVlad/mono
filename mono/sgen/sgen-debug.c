@@ -1019,7 +1019,7 @@ check_reference_for_xdomain (GCObject **ptr, GCObject *obj, MonoDomain *domain)
 			ref, ref->vtable->klass->name_space, ref->vtable->klass->name, str ? str : "");
 	mono_gc_scan_for_specific_ref (obj, TRUE);
 	if (str)
-		g_free (str);
+		g_free_vb (str);
 }
 
 #undef HANDLE_PTR

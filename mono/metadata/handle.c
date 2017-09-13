@@ -88,7 +88,7 @@ new_handle_chunk (void)
 #if defined(HAVE_BOEHM_GC)
 	return (HandleChunk *)GC_MALLOC (sizeof (HandleChunk));
 #elif defined(HAVE_NULL_GC)
-	return (HandleChunk *)g_malloc (sizeof (HandleChunk));
+	return (HandleChunk *)g_malloc_vb (sizeof (HandleChunk));
 #endif
 }
 
@@ -96,7 +96,7 @@ static void
 free_handle_chunk (HandleChunk *chunk)
 {
 #if defined(HAVE_NULL_GC)
-	g_free (chunk);
+	g_free_vb (chunk);
 #endif
 }
 #else
@@ -109,7 +109,7 @@ new_handle_stack (void)
 static void
 free_handle_stack (HandleStack *stack)
 {
-	g_free (stack);
+	g_free_vb (stack);
 }
 
 static HandleChunk*
@@ -121,7 +121,7 @@ new_handle_chunk (void)
 static void
 free_handle_chunk (HandleChunk *chunk)
 {
-	g_free (chunk);
+	g_free_vb (chunk);
 }
 #endif
 

@@ -69,7 +69,7 @@ mono_mb_new_base (MonoClass *klass, MonoWrapperType type)
 
 #ifdef ENABLE_ILGEN
 	mb->code_size = 40;
-	mb->code = (unsigned char *)g_malloc (mb->code_size);
+	mb->code = (unsigned char *)g_malloc_vb (mb->code_size);
 	mb->init_locals = TRUE;
 #endif
 	/* placeholder for the wrapper always at index 1 */
@@ -109,21 +109,21 @@ mono_mb_free (MonoMethodBuilder *mb)
 
 	for (l = mb->locals_list; l; l = l->next) {
 		/* Allocated in mono_mb_add_local () */
-		g_free (l->data);
+		g_free_vb (l->data);
 	}
 	g_list_free (mb->locals_list);
 	if (!mb->dynamic) {
-		g_free (mb->method);
+		g_free_vb (mb->method);
 		if (!mb->no_dup_name)
-			g_free (mb->name);
-		g_free (mb->code);
+			g_free_vb (mb->name);
+		g_free_vb (mb->code);
 	}
 #else
-	g_free (mb->method);
+	g_free_vb (mb->method);
 	if (!mb->no_dup_name)
-		g_free (mb->name);
+		g_free_vb (mb->name);
 #endif
-	g_free (mb);
+	g_free_vb (mb);
 }
 
 /**
@@ -156,7 +156,7 @@ mono_mb_create_method (MonoMethodBuilder *mb, MonoMethodSignature *signature, in
 		method->dynamic = TRUE;
 
 		mw->header = header = (MonoMethodHeader *) 
-			g_malloc0 (MONO_SIZEOF_METHOD_HEADER + mb->locals * sizeof (MonoType *));
+			g_malloc0_vb (MONO_SIZEOF_METHOD_HEADER + mb->locals * sizeof (MonoType *));
 
 		header->code = mb->code;
 
@@ -222,7 +222,7 @@ mono_mb_create_method (MonoMethodBuilder *mb, MonoMethodSignature *signature, in
 		void **data;
 		l = g_list_reverse ((GList *)mw->method_data);
 		if (method_is_dynamic (method))
-			data = (void **)g_malloc (sizeof (gpointer) * (i + 1));
+			data = (void **)g_malloc_vb (sizeof (gpointer) * (i + 1));
 		else
 			data = (void **)mono_image_alloc (image, sizeof (gpointer) * (i + 1));
 		/* store the size in the first element */

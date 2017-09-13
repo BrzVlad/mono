@@ -1794,10 +1794,10 @@ get_enum_by_encoded_name (VerifyContext *ctx, const char **_ptr, const char *end
 	type = mono_reflection_type_from_name (enum_name, ctx->image);
 	if (!type) {
 		ADD_ERROR_NO_RETURN (ctx, g_strdup_printf ("CustomAttribute: Invalid enum class %s", enum_name));
-		g_free (enum_name);
+		g_free_vb (enum_name);
 		return NULL;
 	}
-	g_free (enum_name);
+	g_free_vb (enum_name);
 
 	klass = mono_class_from_mono_type (type);
 	if (!klass || !klass->enumtype) {
@@ -3713,7 +3713,7 @@ verify_typedef_table_global_constraints (VerifyContext *ctx)
 		if (g_hash_table_lookup (unique_types, type)) {
 			ADD_ERROR_NO_RETURN (ctx, g_strdup_printf ("TypeDef table row %d has duplicate for tuple (%s,%s,%x)", i, type->name, type->name_space, type->resolution_scope));
 			g_hash_table_destroy (unique_types);
-			g_free (type);
+			g_free_vb (type);
 			return;
 		}
 		g_hash_table_insert (unique_types, type, GUINT_TO_POINTER (1));
@@ -3741,7 +3741,7 @@ verify_typeref_table_global_constraints (VerifyContext *ctx)
 		if (g_hash_table_lookup (unique_types, type)) {
 			ADD_ERROR_NO_RETURN (ctx, g_strdup_printf ("TypeRef table row %d has duplicate for tuple (%s,%s,%x)", i, type->name, type->name_space, type->resolution_scope));
 			g_hash_table_destroy (unique_types);
-			g_free (type);
+			g_free_vb (type);
 			return;
 		}
 		g_hash_table_insert (unique_types, type, GUINT_TO_POINTER (1));
@@ -3873,7 +3873,7 @@ init_verify_context (VerifyContext *ctx, MonoImage *image, gboolean report_error
 static gboolean
 cleanup_context (VerifyContext *ctx, GSList **error_list)
 {
-	g_free (ctx->sections);
+	g_free_vb (ctx->sections);
 	if (error_list)
 		*error_list = ctx->errors;
 	else
@@ -3884,7 +3884,7 @@ cleanup_context (VerifyContext *ctx, GSList **error_list)
 static gboolean
 cleanup_context_checked (VerifyContext *ctx, MonoError *error)
 {
-	g_free (ctx->sections);
+	g_free_vb (ctx->sections);
 	if (ctx->errors) {
 		MonoVerifyInfo *info = (MonoVerifyInfo *)ctx->errors->data;
 		mono_error_set_bad_image (error, ctx->image, "%s", info->message);

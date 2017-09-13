@@ -76,9 +76,34 @@ struct _MonoMemPool {
 		// Used in "initial block" only: Number of bytes so far allocated (whether used or not) in the whole mempool
 		guint32 allocated;
 	} d;
+
+	gboolean runtime;
+	const char *source;
 };
 
 static long total_bytes_allocated = 0;
+static long total_bytes_allocated_runtime = 0;
+
+typedef struct {
+	const char *source;
+	gint64 allocated;
+} MempoolSource;
+
+MempoolSource mempool_sources [128];
+int num_mempool_sources;
+
+static void report_balance (const char *name, int balance)
+{
+        for (int i = 0; i < num_mempool_sources; i++) {
+                if (strcmp (name, mempool_sources [i].source) == 0) {
+                        mempool_sources [i].allocated += balance;
+                        return;
+                }
+        }
+        mempool_sources [num_mempool_sources].source = name;
+        mempool_sources [num_mempool_sources].allocated = balance;
+        num_mempool_sources ++;
+}
 
 /**
  * mono_mempool_new:
@@ -89,6 +114,19 @@ MonoMemPool *
 mono_mempool_new (void)
 {
 	return mono_mempool_new_size (MONO_MEMPOOL_PAGESIZE);
+}
+
+MonoMemPool *
+mono_mempool_new_runtime (const char *source, int initial_size)
+{
+	if (!initial_size)
+		initial_size = MONO_MEMPOOL_PAGESIZE;
+	MonoMemPool *pool = mono_mempool_new_size (initial_size);
+	pool->runtime = TRUE;
+	pool->source = source;
+	total_bytes_allocated_runtime += initial_size;
+	report_balance (source, initial_size);
+	return pool;
 }
 
 /**
@@ -119,13 +157,15 @@ mono_mempool_new_size (int initial_size)
 		initial_size = MONO_MEMPOOL_MINSIZE;
 #endif
 
-	pool = (MonoMemPool *)g_malloc (initial_size);
+	pool = (MonoMemPool *)g_malloc_vb (initial_size);
 
 	pool->next = NULL;
 	pool->pos = (guint8*)pool + SIZEOF_MEM_POOL; // Start after header
 	pool->end = (guint8*)pool + initial_size;    // End at end of allocated space 
 	pool->d.allocated = pool->size = initial_size;
+	pool->runtime = 0;
 	total_bytes_allocated += initial_size;
+
 	return pool;
 }
 
@@ -152,10 +192,15 @@ mono_mempool_destroy (MonoMemPool *pool)
 
 	total_bytes_allocated -= pool->d.allocated;
 
+	if (pool->runtime) {
+		total_bytes_allocated_runtime -= pool->d.allocated;
+		report_balance (pool->source, -pool->d.allocated);
+	}
+
 	p = pool;
 	while (p) {
 		n = p->next;
-		g_free (p);
+		g_free_vb (p);
 		p = n;
 	}
 }
@@ -238,7 +283,7 @@ mono_backtrace (int size)
 	for (i = 1; i < symbols; ++i) {
 		g_print ("\t%s\n", names [i]);
 	}
-	g_free (names);
+	g_free_vb (names);
 	mono_os_mutex_unlock (&mempool_tracing_lock);
 }
 
@@ -312,19 +357,23 @@ mono_mempool_alloc (MonoMemPool *pool, guint size)
 		// (In individual allocation mode, the constant will be 0 and this path will always be taken)
 		if (size >= MONO_MEMPOOL_PREFER_INDIVIDUAL_ALLOCATION_SIZE) {
 			guint new_size = SIZEOF_MEM_POOL + size;
-			MonoMemPool *np = (MonoMemPool *)g_malloc (new_size);
+			MonoMemPool *np = (MonoMemPool *)g_malloc_vb (new_size);
 
 			np->next = pool->next;
 			np->size = new_size;
 			pool->next = np;
 			pool->d.allocated += new_size;
 			total_bytes_allocated += new_size;
+			if (pool->runtime) {
+				total_bytes_allocated_runtime += new_size;
+				report_balance (pool->source, new_size);
+			}
 
 			rval = (guint8*)np + SIZEOF_MEM_POOL;
 		} else {
 			// Notice: any unused memory at the end of the old head becomes simply abandoned in this case until the mempool is freed (see Bugzilla #35136)
 			guint new_size = get_next_size (pool, size);
-			MonoMemPool *np = (MonoMemPool *)g_malloc (new_size);
+			MonoMemPool *np = (MonoMemPool *)g_malloc_vb (new_size);
 
 			np->next = pool->next;
 			np->size = new_size;
@@ -333,6 +382,10 @@ mono_mempool_alloc (MonoMemPool *pool, guint size)
 			pool->end = (guint8*)np + new_size;
 			pool->d.allocated += new_size;
 			total_bytes_allocated += new_size;
+			if (pool->runtime) {
+				total_bytes_allocated_runtime += new_size;
+				report_balance (pool->source, new_size);
+			}
 
 			rval = pool->pos;
 			pool->pos += size;

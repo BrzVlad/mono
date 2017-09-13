@@ -154,7 +154,7 @@ decode_string_value (guint8 *buf, guint8 **endbuf, guint8 *limit)
 
 	g_assert (length < (1 << 16));
 
-	s = (char *)g_malloc (length + 1);
+	s = (char *)g_malloc_vb (length + 1);
 
 	g_assert (p + length <= limit);
 	memcpy (s, p, length);
@@ -279,7 +279,7 @@ mono_attach_load_agent (MonoDomain *domain, char *agent, char *args, MonoObject 
 	agent_assembly = mono_assembly_open_predicate (agent, FALSE, FALSE, NULL, NULL, &open_status);
 	if (!agent_assembly) {
 		fprintf (stderr, "Cannot open agent assembly '%s': %s.\n", agent, mono_image_strerror (open_status));
-		g_free (agent);
+		g_free_vb (agent);
 		return 2;
 	}
 
@@ -291,7 +291,7 @@ mono_attach_load_agent (MonoDomain *domain, char *agent, char *args, MonoObject 
 	entry = mono_image_get_entry_point (image);
 	if (!entry) {
 		g_print ("Assembly '%s' doesn't have an entry point.\n", mono_image_get_filename (image));
-		g_free (agent);
+		g_free_vb (agent);
 		return 1;
 	}
 
@@ -299,7 +299,7 @@ mono_attach_load_agent (MonoDomain *domain, char *agent, char *args, MonoObject 
 	if (method == NULL){
 		g_print ("The entry point method of assembly '%s' could not be loaded due to %s\n", agent, mono_error_get_message (&error));
 		mono_error_cleanup (&error);
-		g_free (agent);
+		g_free_vb (agent);
 		return 1;
 	}
 	
@@ -308,7 +308,7 @@ mono_attach_load_agent (MonoDomain *domain, char *agent, char *args, MonoObject 
 	if (main_args == NULL) {
 		g_print ("Could not allocate main method args due to %s\n", mono_error_get_message (&error));
 		mono_error_cleanup (&error);
-		g_free (agent);
+		g_free_vb (agent);
 		return 1;
 	}
 
@@ -317,7 +317,7 @@ mono_attach_load_agent (MonoDomain *domain, char *agent, char *args, MonoObject 
 		if (!is_ok (&error)) {
 			g_print ("Could not allocate main method arg string due to %s\n", mono_error_get_message (&error));
 			mono_error_cleanup (&error);
-			g_free (agent);
+			g_free_vb (agent);
 			return 1;
 		}
 		mono_array_set (main_args, MonoString*, 0, args_str);
@@ -329,11 +329,11 @@ mono_attach_load_agent (MonoDomain *domain, char *agent, char *args, MonoObject 
 	if (!is_ok (&error)) {
 		g_print ("The entry point method of assembly '%s' could not be executed due to %s\n", agent, mono_error_get_message (&error));
 		mono_error_cleanup (&error);
-		g_free (agent);
+		g_free_vb (agent);
 		return 1;
 	}
 
-	g_free (agent);
+	g_free_vb (agent);
 
 	return 0;
 }
@@ -452,8 +452,8 @@ ipc_connect (void)
 
 	server_uri = g_strdup_printf ("unix://%s/.mono-%"PRIdMAX"?/vm", directory, (intmax_t) getpid ());
 
-	g_free (filename);
-	g_free (directory);
+	g_free_vb (filename);
+	g_free_vb (directory);
 }
 
 static void
@@ -560,7 +560,7 @@ receiver_thread (void *arg)
 			content_len = decode_int (p, &p, p_end);
 
 			/* Read message body */
-			body = (guint8 *)g_malloc (content_len);
+			body = (guint8 *)g_malloc_vb (content_len);
 			res = read (conn_fd, body, content_len);
 			
 			p = body;
@@ -577,7 +577,7 @@ receiver_thread (void *arg)
 			printf ("attach: Loading agent '%s'.\n", agent_name);
 			mono_attach_load_agent (mono_domain_get (), agent_name, agent_args, &exc);
 
-			g_free (body);
+			g_free_vb (body);
 
 			// FIXME: Send back a result
 		}

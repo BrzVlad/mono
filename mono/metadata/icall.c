@@ -1479,7 +1479,7 @@ ves_icall_System_Type_internal_from_name (MonoStringHandle name,
 	}
 	
 leave:
-	g_free (str);
+	g_free_vb (str);
 	if (!is_ok (error)) {
 		if (!throwOnError)
 			mono_error_cleanup (error);
@@ -1514,7 +1514,7 @@ ves_icall_Mono_RuntimeGPtrArrayHandle_GPtrArrayFree (GPtrArray *ptr_array)
 ICALL_EXPORT void
 ves_icall_Mono_SafeStringMarshal_GFree (void *c_str)
 {
-	g_free (c_str);
+	g_free_vb (c_str);
 }
 
 ICALL_EXPORT char*
@@ -1892,7 +1892,7 @@ leave:
 	for (int i = mono_method_signature (method)->param_count; i >= 0; i--)
 		if (mspecs [i])
 			mono_metadata_free_marshal_spec (mspecs [i]);
-	g_free (mspecs);
+	g_free_vb (mspecs);
 
 	return res;
 }
@@ -2160,7 +2160,7 @@ ves_icall_MonoField_GetRawConstantValue (MonoReflectionField *rfield)
 		t = g_new0 (MonoType, 1);
 		t->type = def_type;
 		klass = mono_class_from_mono_type (t);
-		g_free (t);
+		g_free_vb (t);
 		o = mono_object_new_checked (domain, klass, &error);
 		if (!mono_error_ok (&error)) {
 			mono_error_set_pending_exception (&error);
@@ -2722,7 +2722,7 @@ ves_icall_RuntimeType_get_Name (MonoReflectionTypeHandle reftype, MonoError *err
 		char *n = g_strdup_printf ("%s&", klass->name);
 		MonoStringHandle res = mono_string_new_handle (domain, n, error);
 
-		g_free (n);
+		g_free_vb (n);
 
 		return res;
 	} else {
@@ -2893,7 +2893,7 @@ ves_icall_RuntimeType_MakeGenericType (MonoReflectionTypeHandle reftype, MonoArr
 	}
 
 	MonoType *geninst = mono_reflection_bind_generic_parameters (reftype, count, types, error);
-	g_free (types);
+	g_free_vb (types);
 	if (!geninst) {
 		return MONO_HANDLE_CAST (MonoReflectionType, NULL_HANDLE);
 	}
@@ -3236,9 +3236,9 @@ ves_icall_InternalInvoke (MonoReflectionMethod *method, MonoObject *this_arg, Mo
 				char *target_name = mono_type_get_full_name (m->klass);
 				char *msg = g_strdup_printf ("Object of type '%s' doesn't match target type '%s'", this_name, target_name);
 				mono_gc_wbarrier_generic_store (exc, (MonoObject*) mono_exception_from_name_msg (mono_defaults.corlib, "System.Reflection", "TargetException", msg));
-				g_free (msg);
-				g_free (target_name);
-				g_free (this_name);
+				g_free_vb (msg);
+				g_free_vb (target_name);
+				g_free_vb (this_name);
 				return NULL;
 			}
 			m = mono_object_get_virtual_method (this_arg, m);
@@ -3366,7 +3366,7 @@ internal_execute_field_getter (MonoDomain *domain, MonoObject *this_arg, MonoArr
 	do {
 		MonoClassField* field = mono_class_get_field_from_name (k, str);
 		if (field) {
-			g_free (str);
+			g_free_vb (str);
 			MonoClass *field_klass =  mono_class_from_mono_type (field->type);
 			MonoObject *result;
 			if (field_klass->valuetype) {
@@ -3384,7 +3384,7 @@ internal_execute_field_getter (MonoDomain *domain, MonoObject *this_arg, MonoArr
 		k = k->parent;
 	} while (k);
 
-	g_free (str);
+	g_free_vb (str);
 	g_assert_not_reached ();
 }
 
@@ -3414,7 +3414,7 @@ internal_execute_field_setter (MonoDomain *domain, MonoObject *this_arg, MonoArr
 	do {
 		MonoClassField* field = mono_class_get_field_from_name (k, str);
 		if (field) {
-			g_free (str);
+			g_free_vb (str);
 			MonoClass *field_klass =  mono_class_from_mono_type (field->type);
 			MonoObject *val = (MonoObject *)mono_array_get (params, gpointer, 2);
 
@@ -3435,7 +3435,7 @@ internal_execute_field_setter (MonoDomain *domain, MonoObject *this_arg, MonoArr
 		k = k->parent;
 	} while (k);
 
-	g_free (str);
+	g_free_vb (str);
 	g_assert_not_reached ();
 }
 
@@ -4007,13 +4007,13 @@ handle_parent:
 	if (!(bflags & BFLAGS_DeclaredOnly) && (klass = klass->parent))
 		goto handle_parent;
 	if (method_slots != method_slots_default)
-		g_free (method_slots);
+		g_free_vb (method_slots);
 
 	return array;
 
 loader_error:
 	if (method_slots != method_slots_default)
-		g_free (method_slots);
+		g_free_vb (method_slots);
 	g_ptr_array_free (array, TRUE);
 
 	g_assert (mono_class_has_failure (klass));
@@ -4441,7 +4441,7 @@ ves_icall_System_Reflection_Assembly_InternalGetType (MonoReflectionAssemblyHand
 
 	/*g_print ("requested type %s in %s\n", str, assembly->assembly->aname.name);*/
 	if (!mono_reflection_parse_type (str, &info)) {
-		g_free (str);
+		g_free_vb (str);
 		mono_reflection_free_type_info (&info);
 		if (throwOnError) {
 			mono_error_set_argument (error, "name", "failed to parse the type");
@@ -4452,7 +4452,7 @@ ves_icall_System_Reflection_Assembly_InternalGetType (MonoReflectionAssemblyHand
 	}
 
 	if (info.assembly.name) {
-		g_free (str);
+		g_free_vb (str);
 		mono_reflection_free_type_info (&info);
 		if (throwOnError) {
 			/* 1.0 and 2.0 throw different exceptions */
@@ -4471,7 +4471,7 @@ ves_icall_System_Reflection_Assembly_InternalGetType (MonoReflectionAssemblyHand
 		if (image) {
 			type = mono_reflection_get_type_checked (image, image, &info, ignoreCase, &type_resolve, error);
 			if (!is_ok (error)) {
-				g_free (str);
+				g_free_vb (str);
 				mono_reflection_free_type_info (&info);
 				goto fail;
 			}
@@ -4492,7 +4492,7 @@ ves_icall_System_Reflection_Assembly_InternalGetType (MonoReflectionAssemblyHand
 				for (i = 0; i < n; ++i) {
 					type = get_type_from_module_builder_module (modules, i, &info, ignoreCase, &type_resolve, error);
 					if (!is_ok (error)) {
-						g_free (str);
+						g_free_vb (str);
 						mono_reflection_free_type_info (&info);
 						goto fail;
 					}
@@ -4509,7 +4509,7 @@ ves_icall_System_Reflection_Assembly_InternalGetType (MonoReflectionAssemblyHand
 					type = get_type_from_module_builder_loaded_modules (loaded_modules, i, &info, ignoreCase, &type_resolve, error);
 
 					if (!is_ok (error)) {
-						g_free (str);
+						g_free_vb (str);
 						mono_reflection_free_type_info (&info);
 						goto fail;
 					}
@@ -4521,13 +4521,13 @@ ves_icall_System_Reflection_Assembly_InternalGetType (MonoReflectionAssemblyHand
 		else {
 			type = mono_reflection_get_type_checked (assembly->image, assembly->image, &info, ignoreCase, &type_resolve, error);
 			if (!is_ok (error)) {
-				g_free (str);
+				g_free_vb (str);
 				mono_reflection_free_type_info (&info);
 				goto fail;
 			}
 		}
 	}
-	g_free (str);
+	g_free_vb (str);
 	mono_reflection_free_type_info (&info);
 
 	if (!type) {
@@ -4576,14 +4576,14 @@ replace_shadow_path (MonoDomain *domain, gchar *dirname, gchar **filename)
 		if (!g_file_get_contents (shadow_ini_file, &content, &len, NULL) ||
 			!g_file_test (content, G_FILE_TEST_IS_REGULAR)) {
 			if (content) {
-				g_free (content);
+				g_free_vb (content);
 				content = NULL;
 			}
 		}
-		g_free (shadow_ini_file);
+		g_free_vb (shadow_ini_file);
 		if (content != NULL) {
 			if (*filename)
-				g_free (*filename);
+				g_free_vb (*filename);
 			*filename = content;
 			return TRUE;
 		}
@@ -4609,7 +4609,7 @@ ves_icall_System_Reflection_Assembly_get_code_base (MonoReflectionAssemblyHandle
 	}
 
 	replace_shadow_path (domain, dirname, &absolute);
-	g_free (dirname);
+	g_free_vb (dirname);
 
 	mono_icall_make_platform_path (absolute);
 
@@ -4621,12 +4621,12 @@ ves_icall_System_Reflection_Assembly_get_code_base (MonoReflectionAssemblyHandle
 		uri = g_strconcat (prepend, absolute, NULL);
 	}
 
-	g_free (absolute);
+	g_free_vb (absolute);
 
 	MonoStringHandle res;
 	if (uri) {
 		res = mono_string_new_handle (domain, uri, error);
-		g_free (uri);
+		g_free_vb (uri);
 	} else {
 		res = MONO_HANDLE_NEW (MonoString, NULL);
 	}
@@ -4654,7 +4654,7 @@ ves_icall_System_Reflection_Assembly_load_with_partial_name (MonoStringHandle mn
 		goto leave;
 	MonoAssembly *res = mono_assembly_load_with_partial_name (name, &status);
 
-	g_free (name);
+	g_free_vb (name);
 
 	if (res == NULL)
 		goto leave;
@@ -4761,7 +4761,7 @@ ves_icall_System_Reflection_Assembly_GetAotId (MonoError *error)
 	if (guid == NULL)
 		return NULL;
 	MonoStringHandle res = mono_string_new_handle (mono_domain_get (), guid, error);
-	g_free (guid);
+	g_free_vb (guid);
 	return res;
 }
 
@@ -4774,7 +4774,7 @@ create_referenced_assembly_name (MonoDomain *domain, MonoImage *image, MonoTable
 	mono_assembly_get_assemblyref (image, i, aname);
 	aname->hash_alg = ASSEMBLY_HASH_SHA1 /* SHA1 (default) */;
 	/* name and culture are pointers into the image tables, but we need
-	 * real malloc'd strings (so that we can g_free() them later from
+	 * real malloc'd strings (so that we can g_free_vb() them later from
 	 * Mono.RuntimeMarshal.FreeAssemblyName) */
 	aname->name = g_strdup (aname->name);
 	aname->culture = g_strdup  (aname->culture);
@@ -4849,7 +4849,7 @@ ves_icall_System_Reflection_Assembly_GetManifestResourceInternal (MonoReflection
 		if (strcmp (val, n) == 0)
 			break;
 	}
-	g_free (n);
+	g_free_vb (n);
 	if (i == table->rows)
 		return NULL;
 	/* FIXME */
@@ -4903,7 +4903,7 @@ get_manifest_resource_info_internal (MonoReflectionAssemblyHandle assembly_h, Mo
 		if (strcmp (val, n) == 0)
 			break;
 	}
-	g_free (n);
+	g_free_vb (n);
 	if (i == table->rows)
 		goto leave;
 
@@ -4971,7 +4971,7 @@ add_filename_to_files_array (MonoDomain *domain, MonoAssembly * assembly, MonoTa
 	const char *val = mono_metadata_string_heap (assembly->image, mono_metadata_decode_row_col (table, i, MONO_FILE_NAME));
 	char *n = g_concat_dir_and_file (assembly->basedir, val);
 	MonoStringHandle str = mono_string_new_handle (domain, n, error);
-	g_free (n);
+	g_free_vb (n);
 	if (!is_ok (error))
 		goto leave;
 	MONO_HANDLE_ARRAY_SETREF (dest, dest_idx, str);
@@ -4997,16 +4997,16 @@ ves_icall_System_Reflection_Assembly_GetFilesInternal (MonoReflectionAssemblyHan
 		for (i = 0; i < table->rows; ++i) {
 			const char *val = mono_metadata_string_heap (assembly->image, mono_metadata_decode_row_col (table, i, MONO_FILE_NAME));
 			if (strcmp (val, n) == 0) {
-				g_free (n);
+				g_free_vb (n);
 				n = g_concat_dir_and_file (assembly->basedir, val);
 				MonoStringHandle fn = mono_string_new_handle (domain, n, error);
-				g_free (n);
+				g_free_vb (n);
 				if (!is_ok (error))
 					goto fail;
 				return MONO_HANDLE_CAST (MonoObject, fn);
 			}
 		}
-		g_free (n);
+		g_free_vb (n);
 		return NULL_HANDLE;
 	}
 
@@ -5289,12 +5289,12 @@ ves_icall_System_RuntimeType_getFullName (MonoReflectionTypeHandle object, gbool
 		return NULL_HANDLE_STRING;
 
 	if (full_name && (type->type == MONO_TYPE_VAR || type->type == MONO_TYPE_MVAR)) {
-		g_free (name);
+		g_free_vb (name);
 		return NULL_HANDLE_STRING;
 	}
 
 	res = mono_string_new_handle (domain, name, error);
-	g_free (name);
+	g_free_vb (name);
 
 	return res;
 }
@@ -5337,7 +5337,7 @@ ves_icall_System_Reflection_Assembly_get_fullName (MonoReflectionAssemblyHandle 
 
 	name = mono_stringify_assembly_name (&mass->aname);
 	MonoStringHandle res = mono_string_new_handle (domain, name, error);
-	g_free (name);
+	g_free_vb (name);
 	return res;
 }
 
@@ -5364,7 +5364,7 @@ ves_icall_System_Reflection_Assembly_InternalGetAssemblyName (MonoStringHandle f
 
 	dirname = g_path_get_dirname (filename);
 	replace_shadow_path (mono_domain_get (), dirname, &filename);
-	g_free (dirname);
+	g_free_vb (dirname);
 
 	image = mono_image_open_full (filename, &status, TRUE);
 
@@ -5373,14 +5373,14 @@ ves_icall_System_Reflection_Assembly_InternalGetAssemblyName (MonoStringHandle f
 			mono_error_set_bad_image_name (error, g_strdup (filename), "%s", "");
 		else
 			mono_error_set_assembly_load (error, g_strdup (filename), "%s", "");
-		g_free (filename);
+		g_free_vb (filename);
 		return;
 	}
 
 	res = mono_assembly_fill_assembly_name_full (image, name, TRUE);
 	if (!res) {
 		mono_image_close (image);
-		g_free (filename);
+		g_free_vb (filename);
 		mono_error_set_argument (error, "assemblyFile", "The file does not contain a manifest");
 		return;
 	}
@@ -5395,14 +5395,14 @@ ves_icall_System_Reflection_Assembly_InternalGetAssemblyName (MonoStringHandle f
 		const gchar *prepend = mono_icall_get_file_path_prefix (codebase);
 
 		result = g_strconcat (prepend, codebase, NULL);
-		g_free (codebase);
+		g_free_vb (codebase);
 		codebase = result;
 	}
 	MONO_HANDLE_ASSIGN (normalized_codebase, mono_string_new_handle (mono_domain_get (), codebase, error));
-	g_free (codebase);
+	g_free_vb (codebase);
 
 	mono_image_close (image);
-	g_free (filename);
+	g_free_vb (filename);
 }
 
 ICALL_EXPORT MonoBoolean
@@ -5651,7 +5651,7 @@ ves_icall_Mono_RuntimeMarshal_FreeAssemblyName (MonoAssemblyName *aname, gboolea
 {
 	mono_assembly_name_free (aname);
 	if (free_struct)
-		g_free (aname);
+		g_free_vb (aname);
 }
 
 ICALL_EXPORT gboolean
@@ -6492,14 +6492,14 @@ mono_icall_get_machine_name (MonoError *error)
 	if (n == -1)
 #endif
 	n = 512;
-	buf = g_malloc (n+1);
+	buf = g_malloc_vb (n+1);
 	
 	if (gethostname (buf, n) == 0){
 		buf [n] = 0;
 		result = mono_string_new_handle (mono_domain_get (), buf, error);
 	} else
 		result = MONO_HANDLE_CAST (MonoString, NULL_HANDLE);
-	g_free (buf);
+	g_free_vb (buf);
 	
 	return result;
 #else
@@ -6596,7 +6596,7 @@ ves_icall_System_Environment_GetEnvironmentVariable_native (const gchar *utf8_na
 		return NULL_HANDLE_STRING;
 	
 	MonoStringHandle res = mono_string_new_handle (mono_domain_get (), value, error);
-	g_free (value);
+	g_free_vb (value);
 	return res;
 }
 
@@ -6695,20 +6695,20 @@ mono_icall_set_environment_variable (MonoString *name, MonoString *value)
 
 	if ((value == NULL) || (mono_string_length (value) == 0) || (mono_string_chars (value)[0] == 0)) {
 		g_unsetenv (utf8_name);
-		g_free (utf8_name);
+		g_free_vb (utf8_name);
 		return;
 	}
 
 	utf8_value = mono_string_to_utf8_checked (value, &error);
 	if (!mono_error_ok (&error)) {
-		g_free (utf8_name);
+		g_free_vb (utf8_name);
 		mono_error_set_pending_exception (&error);
 		return;
 	}
 	g_setenv (utf8_name, utf8_value, TRUE);
 
-	g_free (utf8_name);
-	g_free (utf8_value);
+	g_free_vb (utf8_name);
+	g_free_vb (utf8_value);
 }
 #endif /* !HOST_WIN32 */
 
@@ -6778,8 +6778,8 @@ mono_icall_get_logical_drives (void)
 		size = (guint) mono_w32file_get_logical_drive (initial_size, ptr);
 		if (size > initial_size) {
 			if (ptr != buf)
-				g_free (ptr);
-			ptr = (gunichar2 *)g_malloc0 ((size + 1) * sizeof (gunichar2));
+				g_free_vb (ptr);
+			ptr = (gunichar2 *)g_malloc0_vb ((size + 1) * sizeof (gunichar2));
 			initial_size = size;
 			size++;
 		}
@@ -6813,7 +6813,7 @@ mono_icall_get_logical_drives (void)
 
 leave:
 	if (ptr != buf)
-		g_free (ptr);
+		g_free_vb (ptr);
 
 	return result;
 }
@@ -6913,7 +6913,7 @@ ves_icall_System_Text_EncodingHelper_InternalCodePage (gint32 *int_code_page, Mo
 	
 	if (strstr (codepage, "utf_8") != NULL)
 		*int_code_page |= 0x10000000;
-	g_free (codepage);
+	g_free_vb (codepage);
 	
 	if (want_name && *int_code_page == -1)
 		return mono_string_new_handle (mono_domain_get (), cset, error);
@@ -7143,7 +7143,7 @@ ves_icall_System_Configuration_DefaultConfig_get_machine_config_path (MonoError 
 	mono_icall_make_platform_path (path);
 
 	MonoStringHandle mcpath = mono_string_new_handle (mono_domain_get (), path, error);
-	g_free (path);
+	g_free_vb (path);
 
 	mono_error_assert_ok (error);
 
@@ -7177,20 +7177,20 @@ ves_icall_System_Configuration_InternalConfigurationHost_get_bundled_app_config 
 	config_ext_length = strlen (".config");
 	if (config_file_path_length <= config_ext_length) {
 		if (config_file_name != config_file_path)
-			g_free (config_file_name);
+			g_free_vb (config_file_name);
 		return MONO_HANDLE_CAST (MonoString, NULL_HANDLE);
 	}
 
 	len = config_file_path_length - config_ext_length;
-	module = (gchar *)g_malloc0 (len + 1);
+	module = (gchar *)g_malloc0_vb (len + 1);
 	memcpy (module, config_file_path, len);
 	// Get the config file from the module name
 	app_config = mono_config_string_for_assembly_file (module);
 	// Clean-up
-	g_free (module);
+	g_free_vb (module);
 	if (config_file_name != config_file_path)
-		g_free (config_file_name);
-	g_free (config_file_path);
+		g_free_vb (config_file_name);
+	g_free_vb (config_file_path);
 
 	if (!app_config)
 		return MONO_HANDLE_CAST (MonoString, NULL_HANDLE);
@@ -7242,7 +7242,7 @@ ves_icall_System_Web_Util_ICalls_get_machine_install_dir (MonoError *error)
 	mono_icall_make_platform_path (path);
 
 	MonoStringHandle ipath = mono_string_new_handle (mono_domain_get (), path, error);
-	g_free (path);
+	g_free_vb (path);
 
 	return ipath;
 }
@@ -7267,11 +7267,11 @@ ves_icall_get_resources_ptr (MonoReflectionAssemblyHandle assembly, gpointer *re
 
 	*result = mono_image_rva_map (image, entry->rde_data_offset);
 	if (!(*result)) {
-		g_free (entry);
+		g_free_vb (entry);
 		return FALSE;
 	}
 	*size = entry->rde_size;
-	g_free (entry);
+	g_free_vb (entry);
 	return TRUE;
 }
 
@@ -7660,7 +7660,7 @@ ves_icall_ParameterInfo_GetTypeModifiers (MonoReflectionParameterHandle param, M
 	} else {
 		char *type_name = mono_type_get_full_name (member_class);
 		mono_error_set_not_supported (error, "Custom modifiers on a ParamInfo with member %s are not supported", type_name);
-		g_free (type_name);
+		g_free_vb (type_name);
 		return MONO_HANDLE_CAST (MonoArray, NULL_HANDLE);
 	}
 
@@ -7808,7 +7808,7 @@ ves_icall_Mono_Runtime_GetDisplayName (MonoError *error)
 	error_init (error);
 	info = mono_get_runtime_callbacks ()->get_runtime_build_info ();
 	display_name = mono_string_new_handle (mono_domain_get (), info, error);
-	g_free (info);
+	g_free_vb (info);
 	return display_name;
 }
 
@@ -8376,7 +8376,7 @@ mono_lookup_internal_call_full (MonoMethod *method, mono_bool *uses_handles)
 	memcpy (sigstart + 1, tmpsig, siglen);
 	sigstart [siglen + 1] = ')';
 	sigstart [siglen + 2] = 0;
-	g_free (tmpsig);
+	g_free_vb (tmpsig);
 	
 	mono_icall_lock ();
 
@@ -8484,9 +8484,9 @@ mono_lookup_icall_symbol (MonoMethod *m)
 	if (!inited) {
 		gboolean changed;
 
-		functions_sorted = g_malloc (G_N_ELEMENTS (icall_functions) * sizeof (gpointer));
+		functions_sorted = g_malloc_vb (G_N_ELEMENTS (icall_functions) * sizeof (gpointer));
 		memcpy (functions_sorted, icall_functions, G_N_ELEMENTS (icall_functions) * sizeof (gpointer));
-		symbols_sorted = g_malloc (G_N_ELEMENTS (icall_functions) * sizeof (gpointer));
+		symbols_sorted = g_malloc_vb (G_N_ELEMENTS (icall_functions) * sizeof (gpointer));
 		memcpy (symbols_sorted, icall_symbols, G_N_ELEMENTS (icall_functions) * sizeof (gpointer));
 		/* Bubble sort the two arrays */
 		changed = TRUE;

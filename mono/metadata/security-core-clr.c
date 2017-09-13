@@ -163,8 +163,8 @@ set_type_load_exception_type (const char *format, MonoClass *klass)
 	char *parent_name = mono_type_get_full_name (klass->parent);
 	char *message = mono_image_strdup_printf (klass->image, format, type_name, parent_name);
 
-	g_free (parent_name);
-	g_free (type_name);
+	g_free_vb (parent_name);
+	g_free_vb (type_name);
 	
 	mono_trace (G_LOG_LEVEL_WARNING, MONO_TRACE_SECURITY, "%s", message);
 	mono_class_set_type_load_failure (klass, "%s", message);
@@ -186,8 +186,8 @@ set_type_load_exception_methods (const char *format, MonoMethod *override, MonoM
 	char *base_name = get_method_full_name (base);
 	char *message = mono_image_strdup_printf (override->klass->image, format, method_name, base_name);
 
-	g_free (base_name);
-	g_free (method_name);
+	g_free_vb (base_name);
+	g_free_vb (method_name);
 
 	mono_trace (G_LOG_LEVEL_WARNING, MONO_TRACE_SECURITY, "%s", message);
 	mono_class_set_type_load_failure (override->klass, "%s", message);
@@ -560,12 +560,12 @@ get_argument_exception (const char *format, MonoMethod *caller, MonoMethod *call
 	char *caller_name = get_method_full_name (caller);
 	char *callee_name = get_method_full_name (callee);
 	char *message = g_strdup_printf (format, caller_name, callee_name);
-	g_free (callee_name);
-	g_free (caller_name);
+	g_free_vb (callee_name);
+	g_free_vb (caller_name);
 
 	mono_trace (G_LOG_LEVEL_WARNING, MONO_TRACE_SECURITY, "%s", message);
 	ex = mono_get_exception_argument ("method", message);
-	g_free (message);
+	g_free_vb (message);
 
 	return ex;
 }
@@ -585,12 +585,12 @@ get_field_access_exception (const char *format, MonoMethod *caller, MonoClassFie
 	char *caller_name = get_method_full_name (caller);
 	char *field_name = mono_field_full_name (field);
 	char *message = g_strdup_printf (format, caller_name, field_name);
-	g_free (field_name);
-	g_free (caller_name);
+	g_free_vb (field_name);
+	g_free_vb (caller_name);
 
 	mono_trace (G_LOG_LEVEL_WARNING, MONO_TRACE_SECURITY, "%s", message);
 	ex = mono_get_exception_field_access_msg (message);
-	g_free (message);
+	g_free_vb (message);
 
 	return ex;
 }
@@ -610,12 +610,12 @@ get_method_access_exception (const char *format, MonoMethod *caller, MonoMethod 
 	char *caller_name = get_method_full_name (caller);
 	char *callee_name = get_method_full_name (callee);
 	char *message = g_strdup_printf (format, caller_name, callee_name);
-	g_free (callee_name);
-	g_free (caller_name);
+	g_free_vb (callee_name);
+	g_free_vb (caller_name);
 
 	mono_trace (G_LOG_LEVEL_WARNING, MONO_TRACE_SECURITY, "%s", message);
 	ex = mono_get_exception_method_access_msg (message);
-	g_free (message);
+	g_free_vb (message);
 
 	return ex;
 }

@@ -1059,13 +1059,13 @@ ves_icall_System_Net_Sockets_Socket_LocalEndPoint_internal (gsize sock, gint32 a
 		*werror = WSAEAFNOSUPPORT;
 		return NULL;
 	}
-	sa = (salen <= 128) ? (gchar *)alloca (salen) : (gchar *)g_malloc0 (salen);
+	sa = (salen <= 128) ? (gchar *)alloca (salen) : (gchar *)g_malloc0_vb (salen);
 
 	ret = mono_w32socket_getsockname (sock, (struct sockaddr *)sa, &salen);
 	if (ret == SOCKET_ERROR) {
 		*werror = mono_w32socket_get_last_error ();
 		if (salen > 128)
-			g_free (sa);
+			g_free_vb (sa);
 		return NULL_HANDLE;
 	}
 	
@@ -1073,7 +1073,7 @@ ves_icall_System_Net_Sockets_Socket_LocalEndPoint_internal (gsize sock, gint32 a
 
 	MonoObjectHandle result = create_object_handle_from_sockaddr ((struct sockaddr *)sa, salen, werror, error);
 	if (salen > 128)
-		g_free (sa);
+		g_free_vb (sa);
 	return result;
 }
 
@@ -1092,14 +1092,14 @@ ves_icall_System_Net_Sockets_Socket_RemoteEndPoint_internal (gsize sock, gint32 
 		*werror = WSAEAFNOSUPPORT;
 		return MONO_HANDLE_NEW (MonoObject, NULL);
 	}
-	sa = (salen <= 128) ? (gchar *)alloca (salen) : (gchar *)g_malloc0 (salen);
+	sa = (salen <= 128) ? (gchar *)alloca (salen) : (gchar *)g_malloc0_vb (salen);
 	/* Note: linux returns just 2 for AF_UNIX. Always. */
 
 	ret = mono_w32socket_getpeername (sock, (struct sockaddr *)sa, &salen);
 	if (ret == SOCKET_ERROR) {
 		*werror = mono_w32socket_get_last_error ();
 		if (salen > 128)
-			g_free (sa);
+			g_free_vb (sa);
 		return MONO_HANDLE_NEW (MonoObject, NULL);
 	}
 	
@@ -1107,7 +1107,7 @@ ves_icall_System_Net_Sockets_Socket_RemoteEndPoint_internal (gsize sock, gint32 
 
 	MonoObjectHandle result = create_object_handle_from_sockaddr ((struct sockaddr *)sa, salen, werror, error);
 	if (salen > 128)
-		g_free (sa);
+		g_free_vb (sa);
 	return result;
 }
 
@@ -1258,7 +1258,7 @@ ves_icall_System_Net_Sockets_Socket_Bind_internal (gsize sock, MonoObjectHandle 
 	if (ret == SOCKET_ERROR)
 		*werror = mono_w32socket_get_last_error ();
 
-	g_free (sa);
+	g_free_vb (sa);
 }
 
 enum {
@@ -1301,7 +1301,7 @@ ves_icall_System_Net_Sockets_Socket_Poll_internal (gsize sock, gint mode,
 	do {
 		mono_thread_info_install_interrupt (abort_syscall, (gpointer) (gsize) mono_native_thread_id_get (), &interrupted);
 		if (interrupted) {
-			g_free (pfds);
+			g_free_vb (pfds);
 			*werror = WSAEINTR;
 			return FALSE;
 		}
@@ -1314,7 +1314,7 @@ ves_icall_System_Net_Sockets_Socket_Poll_internal (gsize sock, gint mode,
 
 		mono_thread_info_uninstall_interrupt (&interrupted);
 		if (interrupted) {
-			g_free (pfds);
+			g_free_vb (pfds);
 			*werror = WSAEINTR;
 			return FALSE;
 		}
@@ -1333,7 +1333,7 @@ ves_icall_System_Net_Sockets_Socket_Poll_internal (gsize sock, gint mode,
 
 		if (ret == -1 && errno == EINTR) {
 			if (mono_thread_test_state (thread, ThreadState_AbortRequested)) {
-				g_free (pfds);
+				g_free_vb (pfds);
 				return FALSE;
 			}
 
@@ -1346,11 +1346,11 @@ ves_icall_System_Net_Sockets_Socket_Poll_internal (gsize sock, gint mode,
 
 	if (ret == -1) {
 		*werror = mono_w32socket_convert_error (errno);
-		g_free (pfds);
+		g_free_vb (pfds);
 		return FALSE;
 	}
 
-	g_free (pfds);
+	g_free_vb (pfds);
 	return ret != 0;
 }
 
@@ -1386,7 +1386,7 @@ ves_icall_System_Net_Sockets_Socket_Connect_internal (gsize sock, MonoObjectHand
 	if (interrupted)
 		*werror = WSAEINTR;
 
-	g_free (sa);
+	g_free_vb (sa);
 }
 
 #if G_HAVE_API_SUPPORT(HAVE_CLASSIC_WINAPI_SUPPORT | HAVE_UWP_WINAPI_SUPPORT)
@@ -1551,7 +1551,7 @@ ves_icall_System_Net_Sockets_Socket_ReceiveFrom_internal (gsize sock, MonoArrayH
 
 	mono_thread_info_install_interrupt (abort_syscall, (gpointer) (gsize) mono_native_thread_id_get (), &interrupted);
 	if (interrupted) {
-		g_free (sa);
+		g_free_vb (sa);
 		*werror = WSAEINTR;
 		return 0;
 	}
@@ -1572,7 +1572,7 @@ ves_icall_System_Net_Sockets_Socket_ReceiveFrom_internal (gsize sock, MonoArrayH
 		*werror = WSAEINTR;
 
 	if (*werror) {
-		g_free(sa);
+		g_free_vb(sa);
 		return 0;
 	}
 
@@ -1583,14 +1583,14 @@ ves_icall_System_Net_Sockets_Socket_ReceiveFrom_internal (gsize sock, MonoArrayH
 	if (sa_size) {
 		MONO_HANDLE_ASSIGN (sockaddr, create_object_handle_from_sockaddr (sa, sa_size, werror, error));
 		if (!is_ok (error)) {
-			g_free (sa);
+			g_free_vb (sa);
 			return 0;
 		}
 	} else {
 		MONO_HANDLE_ASSIGN (sockaddr, MONO_HANDLE_NEW (MonoObject, NULL));
 	}
 
-	g_free (sa);
+	g_free_vb (sa);
 	
 	return ret;
 }
@@ -1719,14 +1719,14 @@ ves_icall_System_Net_Sockets_Socket_SendTo_internal (gsize sock, MonoArrayHandle
 
 	sendflags = convert_socketflags (flags);
 	if (sendflags == -1) {
-		g_free (sa);
+		g_free_vb (sa);
 		*werror = WSAEOPNOTSUPP;
 		return 0;
 	}
 
 	mono_thread_info_install_interrupt (abort_syscall, (gpointer) (gsize) mono_native_thread_id_get (), &interrupted);
 	if (interrupted) {
-		g_free (sa);
+		g_free_vb (sa);
 		*werror = WSAEINTR;
 		return 0;
 	}
@@ -1745,7 +1745,7 @@ ves_icall_System_Net_Sockets_Socket_SendTo_internal (gsize sock, MonoArrayHandle
 	if (interrupted)
 		*werror = WSAEINTR;
 
-	g_free(sa);
+	g_free_vb(sa);
 
 	if (*werror)
 		return 0;
@@ -1847,7 +1847,7 @@ ves_icall_System_Net_Sockets_Socket_Select_internal (MonoArrayHandle sockets, gi
 	for (i = 0; i < count; i++) {
 		if (!collect_pollfds_from_array (sockets, i, nfds, pfds, &idx, &mode)) {
 			/* The socket array was bogus */
-			g_free (pfds);
+			g_free_vb (pfds);
 			*werror = WSAEFAULT;
 			return;
 		}
@@ -1858,7 +1858,7 @@ ves_icall_System_Net_Sockets_Socket_Select_internal (MonoArrayHandle sockets, gi
 	do {
 		mono_thread_info_install_interrupt (abort_syscall, (gpointer) (gsize) mono_native_thread_id_get (), &interrupted);
 		if (interrupted) {
-			g_free (pfds);
+			g_free_vb (pfds);
 			*werror = WSAEINTR;
 			return;
 		}
@@ -1871,7 +1871,7 @@ ves_icall_System_Net_Sockets_Socket_Select_internal (MonoArrayHandle sockets, gi
 
 		mono_thread_info_uninstall_interrupt (&interrupted);
 		if (interrupted) {
-			g_free (pfds);
+			g_free_vb (pfds);
 			*werror = WSAEINTR;
 			return;
 		}
@@ -1888,7 +1888,7 @@ ves_icall_System_Net_Sockets_Socket_Select_internal (MonoArrayHandle sockets, gi
 
 		if (ret == -1 && errno == EINTR) {
 			if (mono_thread_test_state (thread, ThreadState_AbortRequested)) {
-				g_free (pfds);
+				g_free_vb (pfds);
 				MONO_HANDLE_ASSIGN (sockets, MONO_HANDLE_NEW (MonoObject, NULL));
 				return;
 			}
@@ -1902,12 +1902,12 @@ ves_icall_System_Net_Sockets_Socket_Select_internal (MonoArrayHandle sockets, gi
 	
 	if (ret == -1) {
 		*werror = mono_w32socket_convert_error (errno);
-		g_free (pfds);
+		g_free_vb (pfds);
 		return;
 	}
 
 	if (ret == 0) {
-		g_free (pfds);
+		g_free_vb (pfds);
 		MONO_HANDLE_ASSIGN (sockets, MONO_HANDLE_NEW (MonoObject, NULL));
 		return;
 	}
@@ -1916,7 +1916,7 @@ ves_icall_System_Net_Sockets_Socket_Select_internal (MonoArrayHandle sockets, gi
 	socks_size = ((uintptr_t)ret) + 3; /* space for the NULL delimiters */
 	MonoArrayHandle socks = MONO_HANDLE_NEW (MonoArray, mono_array_new_full_checked (mono_domain_get (), sock_arr_class, &socks_size, NULL, error));
 	if (!is_ok (error)) {
-		g_free (pfds);
+		g_free_vb (pfds);
 		return;
 	}
 
@@ -1926,7 +1926,7 @@ ves_icall_System_Net_Sockets_Socket_Select_internal (MonoArrayHandle sockets, gi
 	}
 
 	MONO_HANDLE_ASSIGN (sockets, socks);
-	g_free (pfds);
+	g_free_vb (pfds);
 }
 
 static MonoObjectHandle
@@ -2559,8 +2559,8 @@ addrinfo_add_local_ips (MonoDomain *domain, MonoArrayHandleOut h_addr_list, Mono
 	}
 
 leave:
-	g_free (local_in);
-	g_free (local_in6);
+	g_free_vb (local_in);
+	g_free_vb (local_in6);
 	HANDLE_FUNCTION_RETURN_VAL (addr_index);
 }
 
@@ -2665,7 +2665,7 @@ ves_icall_System_Net_Dns_GetHostByName_internal (MonoStringHandle host, MonoStri
 		add_info_ok = FALSE;
 #endif
 
-	g_free(hostname);
+	g_free_vb(hostname);
 
 	if (add_info_ok) {
 		MonoBoolean result = addrinfo_to_IPHostEntry_handles (info, h_name, h_aliases, h_addr_list, add_local_ips, error);
@@ -2703,11 +2703,11 @@ ves_icall_System_Net_Dns_GetHostByAddr_internal (MonoStringHandle addr, MonoStri
 	}
 #endif
 	else {
-		g_free (address);
+		g_free_vb (address);
 		return FALSE;
 	}
 
-	g_free (address);
+	g_free_vb (address);
 
 	switch (family) {
 	case AF_INET: {

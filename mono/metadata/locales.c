@@ -189,7 +189,7 @@ ves_icall_System_Globalization_CalendarData_fill_calendar_data (MonoCalendarData
 		return FALSE;
 	ne = (const CultureInfoNameEntry *)mono_binary_search (n, culture_name_entries, NUM_CULTURE_ENTRIES,
 			sizeof (CultureInfoNameEntry), culture_name_locator);
-	g_free (n);
+	g_free_vb (n);
 	if (ne == NULL) {
 		return FALSE;
 	}
@@ -478,7 +478,7 @@ get_darwin_locale (void)
 					len += bytes_converted + 1;
 				}
 
-				darwin_locale = (char *) g_malloc (len + 1);
+				darwin_locale = (char *) g_malloc_vb (len + 1);
 				CFStringGetBytes (locale_language, CFRangeMake (0, CFStringGetLength (locale_language)), kCFStringEncodingMacRoman, 0, FALSE, (UInt8 *) darwin_locale, len, &bytes_converted);
 
 				darwin_locale[bytes_converted] = '-';
@@ -498,9 +498,9 @@ get_darwin_locale (void)
 
 			if (locale_cfstr) {
 				len = CFStringGetMaximumSizeForEncoding (CFStringGetLength (locale_cfstr), kCFStringEncodingMacRoman) + 1;
-				darwin_locale = (char *) g_malloc (len);
+				darwin_locale = (char *) g_malloc_vb (len);
 				if (!CFStringGetCString (locale_cfstr, darwin_locale, len, kCFStringEncodingMacRoman)) {
-					g_free (darwin_locale);
+					g_free_vb (darwin_locale);
 					CFRelease (locale);
 					darwin_locale = NULL;
 					return NULL;
@@ -538,7 +538,7 @@ get_posix_locale (void)
 
 	/* Skip English-only locale 'C' */
 	if (strcmp (locale, "C") == 0) {
-		g_free (locale);
+		g_free_vb (locale);
 		return NULL;
 	}
 
@@ -576,7 +576,7 @@ get_current_locale_name (void)
 		*p = '-';
 
 	ret = g_ascii_strdown (locale, -1);
-	g_free (locale);
+	g_free_vb (locale);
 
 	return ret;
 }
@@ -594,7 +594,7 @@ ves_icall_System_Globalization_CultureInfo_get_current_locale_name (MonoError *e
 
 	domain = mono_domain_get ();
 	MonoStringHandle ret = mono_string_new_handle (domain, locale, error);
-	g_free (locale);
+	g_free_vb (locale);
 
 	return ret;
 }
@@ -633,10 +633,10 @@ ves_icall_System_Globalization_CultureInfo_construct_internal_locale_from_name (
 
 	if (ne == NULL) {
 		/*g_print ("ne (%s) is null\n", n);*/
-		g_free (n);
+		g_free_vb (n);
 		return FALSE;
 	}
-	g_free (n);
+	g_free_vb (n);
 
 	if (!construct_culture (this_obj, &culture_entries [ne->culture_entry_index], &error)) {
 		mono_error_set_pending_exception (&error);
@@ -654,7 +654,7 @@ ves_icall_System_Globalization_CultureInfo_construct_internal_locale_from_specif
 
 	locale = mono_string_to_utf8 (name);
 	ret = construct_culture_from_specific_name (ci, locale);
-	g_free (locale);
+	g_free_vb (locale);
 
 	return ret;
 }
@@ -691,10 +691,10 @@ ves_icall_System_Globalization_RegionInfo_construct_internal_region_from_name (M
 
 	if (ne == NULL) {
 		/*g_print ("ne (%s) is null\n", n);*/
-		g_free (n);
+		g_free_vb (n);
 		return FALSE;
 	}
-	g_free (n);
+	g_free_vb (n);
 
 	MonoBoolean result = construct_region (this_obj, &region_entries [ne->region_entry_index], &error);
 	mono_error_set_pending_exception (&error);

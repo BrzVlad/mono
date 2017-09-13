@@ -101,7 +101,7 @@ mono_llvm_load (const char* bpath)
 
 	if (!llvm_lib) {
 		g_warning ("llvm load failed: %s\n", err);
-		g_free (err);
+		g_free_vb (err);
 		return FALSE;
 	}
 
@@ -130,7 +130,7 @@ mono_llvm_load (const char* bpath)
 	return TRUE;
 symbol_error:
 	g_warning ("llvm symbol load failed: %s\n", err);
-	g_free (err);
+	g_free_vb (err);
 	return FALSE;
 }
 

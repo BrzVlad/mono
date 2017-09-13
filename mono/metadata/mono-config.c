@@ -300,8 +300,8 @@ dllmap_start (gpointer user_data,
 	DllInfo *info = (DllInfo *)user_data;
 	
 	if (strcmp (element_name, "dllmap") == 0) {
-		g_free (info->dll);
-		g_free (info->target);
+		g_free_vb (info->dll);
+		g_free_vb (info->target);
 		info->dll = info->target = NULL;
 		info->ignore = FALSE;
 		for (i = 0; attribute_names [i]; ++i) {
@@ -314,10 +314,10 @@ dllmap_start (gpointer user_data,
 					size_t libdir_len = strlen (libdir);
 					char *result;
 					
-					result = (char *)g_malloc (libdir_len-strlen("$mono_libdir")+strlen(attribute_values[i])+1);
+					result = (char *)g_malloc_vb (libdir_len-strlen("$mono_libdir")+strlen(attribute_values[i])+1);
 					strncpy (result, attribute_values[i], p-attribute_values[i]);
 					strcpy (result+(p-attribute_values[i]), libdir);
-					g_free (libdir);
+					g_free_vb (libdir);
 					strcat (result, p+strlen("$mono_libdir"));
 					info->target = result;
 				} else 
@@ -360,9 +360,9 @@ dllmap_finish (gpointer user_data)
 {
 	DllInfo *info = (DllInfo *)user_data;
 
-	g_free (info->dll);
-	g_free (info->target);
-	g_free (info);
+	g_free_vb (info->dll);
+	g_free_vb (info->target);
+	g_free_vb (info);
 }
 
 static const MonoParseHandler
@@ -469,7 +469,7 @@ mono_config_cleanup (void)
 {
 	if (config_handlers)
 		g_hash_table_destroy (config_handlers);
-	g_free (mono_cfg_dir);
+	g_free_vb (mono_cfg_dir);
 }
 
 /* FIXME: error handling */
@@ -509,7 +509,7 @@ mono_config_parse_file_with_context (ParseState *state, const char *filename)
 	if (state->user_data == NULL)
 		state->user_data = (gpointer) filename;
 	mono_config_parse_xml_with_context (state, text + offset, len - offset);
-	g_free (text);
+	g_free_vb (text);
 	return 1;
 }
 
@@ -616,26 +616,26 @@ mono_config_for_assembly (MonoImage *assembly)
 
 	cfg_name = g_strdup_printf ("%s.config", mono_image_get_filename (assembly));
 	mono_config_parse_file_with_context (&state, cfg_name);
-	g_free (cfg_name);
+	g_free_vb (cfg_name);
 
 	cfg_name = g_strdup_printf ("%s.config", mono_image_get_name (assembly));
 
 	for (i = 0; (aname = get_assembly_filename (assembly, i)) != NULL; ++i) {
 		cfg = g_build_filename (mono_get_config_dir (), "mono", "assemblies", aname, cfg_name, NULL);
 		got_it += mono_config_parse_file_with_context (&state, cfg);
-		g_free (cfg);
+		g_free_vb (cfg);
 
 #ifdef TARGET_WIN32
 		const char *home = g_get_home_dir ();
 		cfg = g_build_filename (home, ".mono", "assemblies", aname, cfg_name, NULL);
 		got_it += mono_config_parse_file_with_context (&state, cfg);
-		g_free (cfg);
+		g_free_vb (cfg);
 #endif
-		g_free (aname);
+		g_free_vb (aname);
 		if (got_it)
 			break;
 	}
-	g_free (cfg_name);
+	g_free_vb (cfg_name);
 }
 
 /**
@@ -666,13 +666,13 @@ mono_config_parse (const char *filename) {
 
 	mono_cfg = g_build_filename (mono_get_config_dir (), "mono", "config", NULL);
 	mono_config_parse_file (mono_cfg);
-	g_free (mono_cfg);
+	g_free_vb (mono_cfg);
 
 #if !defined(TARGET_WIN32)
 	home = g_get_home_dir ();
 	user_cfg = g_strconcat (home, G_DIR_SEPARATOR_S, ".mono/config", NULL);
 	mono_config_parse_file (user_cfg);
-	g_free (user_cfg);
+	g_free_vb (user_cfg);
 #endif
 }
 
@@ -729,8 +729,8 @@ assembly_binding_end (gpointer user_data, const char *element_name)
 	if (!strcmp (element_name, "dependentAssembly")) {
 		if (pud->info_parsed && pud->info) {
 			pud->info_parsed (pud->info, pud->user_data);
-			g_free (pud->info->name);
-			g_free (pud->info->culture);
+			g_free_vb (pud->info->name);
+			g_free_vb (pud->info->culture);
 		}
 	}
 }

@@ -143,7 +143,7 @@ lock_free_mempool_free (LockFreeMempool *mp)
 		mono_vfree (chunk, mono_pagesize (), MONO_MEM_ACCOUNT_DOMAIN);
 		chunk = next;
 	}
-	g_free (mp);
+	g_free_vb (mp);
 }
 
 /*
@@ -400,7 +400,7 @@ mono_domain_create (void)
 
 	MONO_PROFILER_RAISE (domain_loading, (domain));
 
-	domain->mp = mono_mempool_new ();
+	domain->mp = mono_mempool_new_runtime (G_STRLOC, 0);
 	domain->code_mp = mono_code_manager_new ();
 	domain->lock_free_mp = lock_free_mempool_new ();
 	domain->env = mono_g_hash_table_new_type ((GHashFunc)mono_string_hash, (GCompareFunc)mono_string_equal, MONO_HASH_KEY_VALUE_GC, MONO_ROOT_SOURCE_DOMAIN, "domain environment variables table");
@@ -562,7 +562,7 @@ mono_init_internal (const char *filename, const char *exe_filename, const char *
 			char *corlib_file = g_build_filename (mono_assembly_getrootdir (), "mono", current_runtime->framework_version, "mscorlib.dll", NULL);
 			g_print ("The assembly mscorlib.dll was not found or could not be loaded.\n");
 			g_print ("It should have been installed in the `%s' directory.\n", corlib_file);
-			g_free (corlib_file);
+			g_free_vb (corlib_file);
 			break;
 		}
 		case MONO_IMAGE_IMAGE_INVALID:
@@ -1139,7 +1139,7 @@ mono_domain_free (MonoDomain *domain, gboolean force)
 	domain->ephemeron_tombstone = NULL;
 	domain->entry_assembly = NULL;
 
-	g_free (domain->friendly_name);
+	g_free_vb (domain->friendly_name);
 	domain->friendly_name = NULL;
 	g_ptr_array_free (domain->class_vtable_array, TRUE);
 	domain->class_vtable_array = NULL;
@@ -1773,10 +1773,10 @@ app_config_parse (const char *exe_filename)
 		config_filename = g_strconcat (exe_filename, ".config", NULL);
 
 		if (!g_file_get_contents (config_filename, &text, &len, NULL)) {
-			g_free (config_filename);
+			g_free_vb (config_filename);
 			return NULL;
 		}
-		g_free (config_filename);
+		g_free_vb (config_filename);
 	}
 
 	app_config = g_new0 (AppConfigInfo, 1);
@@ -1786,23 +1786,23 @@ app_config_parse (const char *exe_filename)
 		g_markup_parse_context_end_parse (context, NULL);
 	}
 	g_markup_parse_context_free (context);
-	g_free (text);
+	g_free_vb (text);
 	return app_config;
 }
 
 static void 
-app_config_free (AppConfigInfo* app_config)
+app_config_free_vb (AppConfigInfo* app_config)
 {
 	char *rt;
 	GSList *list = app_config->supported_runtimes;
 	while (list != NULL) {
 		rt = (char*)list->data;
-		g_free (rt);
+		g_free_vb (rt);
 		list = g_slist_next (list);
 	}
 	g_slist_free (app_config->supported_runtimes);
-	g_free (app_config->required_runtime);
-	g_free (app_config);
+	g_free_vb (app_config->required_runtime);
+	g_free_vb (app_config);
 }
 
 
@@ -1857,7 +1857,7 @@ get_runtimes_from_exe (const char *exe_file, MonoImage **exe_image, const MonoRu
 				list = g_slist_next (list);
 			}
 			runtimes [n] = NULL;
-			app_config_free (app_config);
+			app_config_free_vb (app_config);
 			return;
 		}
 		
@@ -1865,10 +1865,10 @@ get_runtimes_from_exe (const char *exe_file, MonoImage **exe_image, const MonoRu
 		if (app_config->required_runtime != NULL) {
 			runtimes [0] = get_runtime_by_version (app_config->required_runtime);
 			runtimes [1] = NULL;
-			app_config_free (app_config);
+			app_config_free_vb (app_config);
 			return;
 		}
-		app_config_free (app_config);
+		app_config_free_vb (app_config);
 	}
 	
 	/* Look for a runtime with the exact version */

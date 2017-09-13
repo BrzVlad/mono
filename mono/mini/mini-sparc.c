@@ -488,7 +488,7 @@ get_call_info (MonoCompile *cfg, MonoMethodSignature *sig, gboolean is_pinvoke)
 	CallInfo *cinfo;
 	MonoType *ret_type;
 
-	cinfo = g_malloc0 (sizeof (CallInfo) + (sizeof (ArgInfo) * n));
+	cinfo = g_malloc0_vb (sizeof (CallInfo) + (sizeof (ArgInfo) * n));
 
 	gr = 0;
 	fr = 0;
@@ -760,7 +760,7 @@ mono_arch_get_global_int_regs (MonoCompile *cfg)
 	for (i = sparc_l0; i < sparc_l7; ++i)
 		regs = g_list_prepend (regs, GUINT_TO_POINTER (i));
 
-	g_free (cinfo);
+	g_free_vb (cinfo);
 
 	return regs;
 }
@@ -1020,7 +1020,7 @@ mono_arch_allocate_vars (MonoCompile *cfg)
 
 	cfg->stack_offset = offset;
 
-	g_free (cinfo);
+	g_free_vb (cinfo);
 }
 
 void
@@ -1328,7 +1328,7 @@ mono_arch_emit_call (MonoCompile *cfg, MonoCallInst *call)
 
 	call->stack_usage = cinfo->stack_usage + extra_space;
 
-	g_free (cinfo);
+	g_free_vb (cinfo);
 }
 
 void
@@ -2218,7 +2218,7 @@ emit_load_volatile_arguments (MonoCompile *cfg, guint32 *code)
 				NOT_IMPLEMENTED;
 	}
 
-	g_free (cinfo);
+	g_free_vb (cinfo);
 
 	return code;
 }
@@ -3761,7 +3761,7 @@ mono_arch_instrument_prolog (MonoCompile *cfg, void *func, void *p, gboolean ena
 		}
 	}
 
-	g_free (cinfo);
+	g_free_vb (cinfo);
 
 	return code;
 }
@@ -3881,7 +3881,7 @@ mono_arch_emit_prolog (MonoCompile *cfg)
 	guint32 i, offset;
 
 	cfg->code_size = 256;
-	cfg->native_code = g_malloc (cfg->code_size);
+	cfg->native_code = g_malloc_vb (cfg->code_size);
 	code = (guint32*)cfg->native_code;
 
 	/* FIXME: Generate intermediate code instead */
@@ -4052,7 +4052,7 @@ mono_arch_emit_prolog (MonoCompile *cfg)
 				NOT_IMPLEMENTED;
 	}
 
-	g_free (cinfo);
+	g_free_vb (cinfo);
 
 	if (cfg->method->save_lmf) {
 		gint32 lmf_offset = STACK_BIAS - cfg->arch.lmf_offset;
@@ -4408,7 +4408,7 @@ mono_arch_get_argument_info (MonoMethodSignature *csig, int param_count, MonoJit
 		arg_info [k + 1].size = mono_type_size (csig->params [k], &align);
 	}
 
-	g_free (cinfo);
+	g_free_vb (cinfo);
 
 	return 0;
 }

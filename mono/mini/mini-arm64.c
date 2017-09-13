@@ -154,7 +154,7 @@ mono_arch_get_delegate_invoke_impls (void)
 		code = get_delegate_invoke_impl (FALSE, i, &code_len);
 		tramp_name = g_strdup_printf ("delegate_invoke_impl_target_%d", i);
 		res = g_slist_prepend (res, mono_tramp_info_create (tramp_name, code, code_len, NULL, NULL));
-		g_free (tramp_name);
+		g_free_vb (tramp_name);
 	}
 
 	return res;
@@ -200,7 +200,7 @@ mono_arch_get_delegate_invoke_impl (MonoMethodSignature *sig, gboolean has_targe
 		if (mono_aot_only) {
 			char *name = g_strdup_printf ("delegate_invoke_impl_target_%d", sig->param_count);
 			start = mono_aot_get_trampoline (name);
-			g_free (name);
+			g_free_vb (name);
 		} else {
 			start = get_delegate_invoke_impl (FALSE, sig->param_count, NULL);
 		}
@@ -1308,7 +1308,7 @@ get_call_info (MonoMemPool *mp, MonoMethodSignature *sig)
 	if (mp)
 		cinfo = mono_mempool_alloc0 (mp, sizeof (CallInfo) + (sizeof (ArgInfo) * n));
 	else
-		cinfo = g_malloc0 (sizeof (CallInfo) + (sizeof (ArgInfo) * n));
+		cinfo = g_malloc0_vb (sizeof (CallInfo) + (sizeof (ArgInfo) * n));
 
 	cinfo->nargs = n;
 	cinfo->pinvoke = sig->pinvoke;
@@ -1435,7 +1435,7 @@ mono_arch_dyn_call_prepare (MonoMethodSignature *sig)
 	cinfo = get_call_info (NULL, sig);
 
 	if (!dyn_call_supported (cinfo, sig)) {
-		g_free (cinfo);
+		g_free_vb (cinfo);
 		return NULL;
 	}
 
@@ -1468,9 +1468,9 @@ mono_arch_dyn_call_free (MonoDynCallInfo *info)
 {
 	ArchDynCallInfo *ainfo = (ArchDynCallInfo*)info;
 
-	g_free (ainfo->cinfo);
-	g_free (ainfo->param_types);
-	g_free (ainfo);
+	g_free_vb (ainfo->cinfo);
+	g_free_vb (ainfo->param_types);
+	g_free_vb (ainfo);
 }
 
 static double
@@ -2559,8 +2559,8 @@ mono_arch_tail_call_supported (MonoCompile *cfg, MonoMethodSignature *caller_sig
 	if ((c1->ret.storage != ArgNone && c1->ret.storage != ArgInIReg) || c1->ret.storage != c2->ret.storage)
 		res = FALSE;
 
-	g_free (c1);
-	g_free (c2);
+	g_free_vb (c1);
+	g_free_vb (c2);
 
 	return res;
 }
@@ -4673,7 +4673,7 @@ mono_arch_emit_prolog (MonoCompile *cfg)
 
 	sig = mono_method_signature (method);
 	cfg->code_size = 256 + sig->param_count * 64;
-	code = cfg->native_code = g_malloc (cfg->code_size);
+	code = cfg->native_code = g_malloc_vb (cfg->code_size);
 
 	/* This can be unaligned */
 	cfg->stack_offset = ALIGN_TO (cfg->stack_offset, MONO_ARCH_FRAME_ALIGNMENT);
@@ -5172,7 +5172,7 @@ mono_arch_get_seq_point_info (MonoDomain *domain, guint8 *code)
 		ji = mono_jit_info_table_find (domain, (char*)code);
 		g_assert (ji);
 
-		info = g_malloc0 (sizeof (SeqPointInfo) + (ji->code_size / 4) * sizeof(guint8*));
+		info = g_malloc0_vb (sizeof (SeqPointInfo) + (ji->code_size / 4) * sizeof(guint8*));
 
 		info->ss_tramp_addr = &ss_trampoline;
 

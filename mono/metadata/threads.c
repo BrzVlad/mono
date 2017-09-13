@@ -403,7 +403,7 @@ static void ensure_synch_cs_set (MonoInternalThread *thread)
 					       synch_cs, NULL) != NULL) {
 		/* Another thread must have installed this CS */
 		mono_coop_mutex_destroy (synch_cs);
-		g_free (synch_cs);
+		g_free_vb (synch_cs);
 	}
 }
 
@@ -855,7 +855,7 @@ mono_thread_detach_internal (MonoInternalThread *thread)
 
 	g_assert (thread->suspended);
 	mono_os_event_destroy (thread->suspended);
-	g_free (thread->suspended);
+	g_free_vb (thread->suspended);
 	thread->suspended = NULL;
 
 	if (mono_thread_cleanup_fn)
@@ -921,7 +921,7 @@ static guint32 WINAPI start_wrapper_internal(StartInfo *start_info, gsize *stack
 
 		if (InterlockedDecrement (&start_info->ref) == 0) {
 			mono_coop_sem_destroy (&start_info->registered);
-			g_free (start_info);
+			g_free_vb (start_info);
 		}
 
 		return 0;
@@ -956,7 +956,7 @@ static guint32 WINAPI start_wrapper_internal(StartInfo *start_info, gsize *stack
 
 	if (InterlockedDecrement (&start_info->ref) == 0) {
 		mono_coop_sem_destroy (&start_info->registered);
-		g_free (start_info);
+		g_free_vb (start_info);
 	}
 
 	/* start_info is not valid anymore */
@@ -974,7 +974,7 @@ static guint32 WINAPI start_wrapper_internal(StartInfo *start_info, gsize *stack
 		char *tname = g_utf16_to_utf8 (internal->name, internal->name_len, NULL, NULL, NULL);
 		MONO_PROFILER_RAISE (thread_name, (internal->tid, tname));
 		mono_native_thread_set_name (MONO_UINT_TO_NATIVE_THREAD_ID (internal->tid), tname);
-		g_free (tname);
+		g_free_vb (tname);
 	}
 
 	/* start_func is set only for unmanaged start functions */
@@ -1150,7 +1150,7 @@ create_thread (MonoThread *thread, MonoInternalThread *internal, MonoObject *sta
 done:
 	if (InterlockedDecrement (&start_info->ref) == 0) {
 		mono_coop_sem_destroy (&start_info->registered);
-		g_free (start_info);
+		g_free_vb (start_info);
 	}
 
 	return ret;
@@ -1432,13 +1432,13 @@ ves_icall_System_Threading_InternalThread_Thread_free_internal (MonoInternalThre
 		MonoCoopMutex *synch_cs = this_obj->synch_cs;
 		this_obj->synch_cs = NULL;
 		mono_coop_mutex_destroy (synch_cs);
-		g_free (synch_cs);
+		g_free_vb (synch_cs);
 	}
 
 	if (this_obj->name) {
 		void *name = this_obj->name;
 		this_obj->name = NULL;
-		g_free (name);
+		g_free_vb (name);
 	}
 }
 
@@ -1605,7 +1605,7 @@ mono_thread_set_name_internal (MonoInternalThread *this_obj, MonoString *name, g
 		return;
 	}
 	if (this_obj->name) {
-		g_free (this_obj->name);
+		g_free_vb (this_obj->name);
 		this_obj->name_len = 0;
 	}
 	if (name) {
@@ -2870,7 +2870,7 @@ free_context (void *user_data)
 
 	mono_gchandle_free (data->gc_handle);
 	mono_free_static_data (data->static_data);
-	g_free (data);
+	g_free_vb (data);
 }
 
 void
@@ -3577,7 +3577,7 @@ dump_thread (MonoInternalThread *thread, ThreadDumpUserData *ud)
 		name = g_utf16_to_utf8 (thread->name, thread->name_len, NULL, NULL, &error);
 		g_assert (!error);
 		g_string_append_printf (text, "\n\"%s\"", name);
-		g_free (name);
+		g_free_vb (name);
 	}
 	else if (thread->threadpool_thread) {
 		g_string_append (text, "\n\"<threadpool thread>\"");
@@ -3595,7 +3595,7 @@ dump_thread (MonoInternalThread *thread, ThreadDumpUserData *ud)
 		if (method) {
 			gchar *location = mono_debug_print_stack_frame (method, frame->native_offset, frame->domain);
 			g_string_append_printf (text, "  %s\n", location);
-			g_free (location);
+			g_free_vb (location);
 		} else {
 			g_string_append_printf (text, "  at <unknown> <0x%05x>\n", frame->native_offset);
 		}
@@ -3633,7 +3633,7 @@ mono_threads_perform_thread_dump (void)
 	for (tindex = 0; tindex < nthreads; ++tindex)
 		dump_thread (thread_array [tindex], &ud);
 
-	g_free (ud.frames);
+	g_free_vb (ud.frames);
 
 	thread_dump_requested = FALSE;
 }
@@ -3732,7 +3732,7 @@ mono_threads_get_thread_dump (MonoArray **out_threads, MonoArray **out_stack_fra
 	}
 
 leave:
-	g_free (ud.frames);
+	g_free_vb (ud.frames);
 	return is_ok (error);
 }
 
@@ -3775,8 +3775,8 @@ ref_stack_destroy (gpointer ptr)
 	RefStack *rs = (RefStack *)ptr;
 
 	if (rs != NULL) {
-		g_free (rs->refs);
-		g_free (rs);
+		g_free_vb (rs->refs);
+		g_free_vb (rs);
 	}
 }
 
@@ -4067,7 +4067,7 @@ mono_alloc_static_data (gpointer **static_data_ptr, guint32 offset, gboolean thr
 			continue;
 
 		if (mono_gc_user_markers_supported ())
-			static_data [i] = g_malloc0 (static_data_size [i]);
+			static_data [i] = g_malloc0_vb (static_data_size [i]);
 		else
 			static_data [i] = mono_gc_alloc_fixed (static_data_size [i], MONO_GC_DESCRIPTOR_NULL,
 				threadlocal ? MONO_ROOT_SOURCE_THREAD_STATIC : MONO_ROOT_SOURCE_CONTEXT_STATIC,
@@ -4093,7 +4093,7 @@ mono_free_static_data (gpointer* static_data)
 		static_data [i] = NULL;
 		mono_memory_write_barrier ();
 		if (mono_gc_user_markers_supported ())
-			g_free (p);
+			g_free_vb (p);
 		else
 			mono_gc_free_fixed (p);
 	}
@@ -4258,7 +4258,7 @@ mono_alloc_special_static_data (guint32 static_type, guint32 size, guint32 align
 
 	if (item) {
 		offset = item->offset;
-		g_free (item);
+		g_free_vb (item);
 	} else {
 		offset = mono_alloc_static_data_slot (info, size, align);
 	}

@@ -192,9 +192,9 @@ parse_optimizations (guint32 opt, const char* p, gboolean cpu_opts)
 			}
 		}
 
-		g_free (arg);
+		g_free_vb (arg);
 	}
-	g_free (parts);
+	g_free_vb (parts);
 
 	return opt;
 }
@@ -352,7 +352,7 @@ mini_regression_step (MonoImage *image, int verbose, int *total_run, int *total,
 	mono_set_defaults (verbose, opt_flags);
 	n = mono_opt_descr (opt_flags);
 	g_print ("Test run: image=%s, opts=%s\n", mono_image_get_filename (image), n);
-	g_free (n);
+	g_free_vb (n);
 	cfailed = failed = run = code_size = 0;
 	comp_time = elapsed = 0.0;
 
@@ -502,7 +502,7 @@ mini_regression (MonoImage *image, int verbose, int *total_run)
 
 			method_name = mono_method_full_name (mono_current_single_method, TRUE);
 			g_print ("Current single method: %s\n", method_name);
-			g_free (method_name);
+			g_free_vb (method_name);
 
 			mini_regression_step (image, verbose, total_run, &total,
 					0,
@@ -705,8 +705,8 @@ free_jit_info_data (ThreadData *td, JitInfoData *free)
 		while (free->next != NULL) {
 			JitInfoData *next = free->next->next;
 
-			//g_free (free->next->ji);
-			g_free (free->next);
+			//g_free_vb (free->next->ji);
+			g_free_vb (free->next);
 			free->next = next;
 
 			--td->num_frees;
@@ -932,7 +932,7 @@ compile_all_methods_thread_main_inner (CompileAllThreadArgs *args)
 		if (!sig) {
 			char * desc = mono_method_full_name (method, TRUE);
 			g_print ("Could not retrieve method signature for %s\n", desc);
-			g_free (desc);
+			g_free_vb (desc);
 			fail_count ++;
 			continue;
 		}
@@ -944,7 +944,7 @@ compile_all_methods_thread_main_inner (CompileAllThreadArgs *args)
 		if (verbose) {
 			char * desc = mono_method_full_name (method, TRUE);
 			g_print ("Compiling %d %s\n", count, desc);
-			g_free (desc);
+			g_free_vb (desc);
 		}
 		cfg = mini_method_compile (method, mono_get_optimizations_for_method (method, args->opts), mono_get_root_domain (), (JitFlags)JIT_FLAG_DISCARD_RESULTS, 0, -1);
 		if (cfg->exception_type != MONO_EXCEPTION_NONE) {
@@ -1128,7 +1128,7 @@ load_agent (MonoDomain *domain, char *desc)
 	agent_assembly = mono_assembly_open_predicate (agent, FALSE, FALSE, NULL, NULL, &open_status);
 	if (!agent_assembly) {
 		fprintf (stderr, "Cannot open agent assembly '%s': %s.\n", agent, mono_image_strerror (open_status));
-		g_free (agent);
+		g_free_vb (agent);
 		return 2;
 	}
 
@@ -1140,7 +1140,7 @@ load_agent (MonoDomain *domain, char *desc)
 	entry = mono_image_get_entry_point (image);
 	if (!entry) {
 		g_print ("Assembly '%s' doesn't have an entry point.\n", mono_image_get_filename (image));
-		g_free (agent);
+		g_free_vb (agent);
 		return 1;
 	}
 
@@ -1148,7 +1148,7 @@ load_agent (MonoDomain *domain, char *desc)
 	if (method == NULL){
 		g_print ("The entry point method of assembly '%s' could not be loaded due to %s\n", agent, mono_error_get_message (&error));
 		mono_error_cleanup (&error);
-		g_free (agent);
+		g_free_vb (agent);
 		return 1;
 	}
 	
@@ -1167,7 +1167,7 @@ load_agent (MonoDomain *domain, char *desc)
 	if (!main_args) {
 		g_print ("Could not allocate array for main args of assembly '%s' due to %s\n", agent, mono_error_get_message (&error));
 		mono_error_cleanup (&error);
-		g_free (agent);
+		g_free_vb (agent);
 		return 1;
 	}
 	
@@ -1178,11 +1178,11 @@ load_agent (MonoDomain *domain, char *desc)
 	if (!is_ok (&error)) {
 		g_print ("The entry point method of assembly '%s' could not execute due to %s\n", agent, mono_error_get_message (&error));
 		mono_error_cleanup (&error);
-		g_free (agent);
+		g_free_vb (agent);
 		return 1;
 	}
 
-	g_free (agent);
+	g_free_vb (agent);
 	return 0;
 }
 
@@ -1634,7 +1634,7 @@ mono_main (int argc, char* argv[])
 			char *full_opts = g_strdup_printf ("-all,%s", argv [i] + 16);
 			action = DO_SINGLE_METHOD_REGRESSION;
 			mono_single_method_regression_opt = parse_optimizations (opt, full_opts, TRUE);
-			g_free (full_opts);
+			g_free_vb (full_opts);
 		} else if (strcmp (argv [i], "--verbose") == 0 || strcmp (argv [i], "-v") == 0) {
 			mini_verbose++;
 		} else if (strcmp (argv [i], "--version") == 0 || strcmp (argv [i], "-V") == 0) {
@@ -1642,11 +1642,11 @@ mono_main (int argc, char* argv[])
 			char *gc_descr;
 
 			g_print ("Mono JIT compiler version %s\nCopyright (C) 2002-2014 Novell, Inc, Xamarin Inc and Contributors. www.mono-project.com\n", build);
-			g_free (build);
+			g_free_vb (build);
 			g_print (info);
 			gc_descr = mono_gc_get_description ();
 			g_print ("\tGC:            %s\n", gc_descr);
-			g_free (gc_descr);
+			g_free_vb (gc_descr);
 			return 0;
 		} else if (strcmp (argv [i], "--help") == 0 || strcmp (argv [i], "-h") == 0) {
 			mini_usage ();
@@ -1682,7 +1682,7 @@ mono_main (int argc, char* argv[])
 			}
 			char *opt_string = g_strndup (param, sep - param);
 			guint32 opt = parse_optimizations (0, opt_string, FALSE);
-			g_free (opt_string);
+			g_free_vb (opt_string);
 			mono_set_bisect_methods (opt, sep + 1);
 		} else if (strcmp (argv [i], "--gc=sgen") == 0) {
 			switch_gc (argv, "sgen");
@@ -1787,7 +1787,7 @@ mono_main (int argc, char* argv[])
 			while (*splitted) {
 				char *tmp = *splitted;
 				mono_aot_paths = g_list_append (mono_aot_paths, g_strdup (tmp));
-				g_free (tmp);
+				g_free_vb (tmp);
 				splitted++;
 			}
 		} else if (strncmp (argv [i], "--compile-all=", 14) == 0) {
@@ -1962,6 +1962,8 @@ mono_main (int argc, char* argv[])
 	}
 #endif
 
+	mono_counters_enable (-1);
+
 	if (!argv [i]) {
 		mini_usage ();
 		return 1;
@@ -1977,7 +1979,7 @@ mono_main (int argc, char* argv[])
 		runtime_path = mono_w32process_get_path (getpid ());
 		if (runtime_path) {
 			mono_w32process_set_cli_launcher (runtime_path);
-			g_free (runtime_path);
+			g_free_vb (runtime_path);
 		}
 	}
 #endif
@@ -2579,7 +2581,7 @@ mono_parse_env_options (int *ref_argc, char **ref_argv [])
 	if (env_options == NULL)
 		return;
 	ret = mono_parse_options_from (env_options, ref_argc, ref_argv);
-	g_free (env_options);
+	g_free_vb (env_options);
 	if (ret == NULL)
 		return;
 	fprintf (stderr, "%s", ret);

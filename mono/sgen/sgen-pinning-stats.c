@@ -137,7 +137,7 @@ lookup_vtable_entry (SgenHashTable *hash_table, GCVTable vtable, gpointer empty_
 	gpointer entry = sgen_hash_table_lookup (hash_table, name);
 
 	if (entry) {
-		g_free (name);
+		g_free_vb (name);
 	} else {
 		sgen_hash_table_replace (hash_table, name, empty_entry, NULL);
 		entry = sgen_hash_table_lookup (hash_table, name);

@@ -224,10 +224,10 @@ mono_save_seq_point_info (MonoCompile *cfg)
 		}
 	}
 
-	g_free (seq_points);
+	g_free_vb (seq_points);
 
 	if (has_debug_data)
-		g_free (next);
+		g_free_vb (next);
 
 	cfg->seq_point_info = mono_seq_point_info_new (array->len, TRUE, array->data, has_debug_data, &seq_info_size);
 	mono_jit_stats.allocated_seq_points_size += seq_info_size;

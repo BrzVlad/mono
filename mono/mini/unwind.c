@@ -465,7 +465,7 @@ mono_unwind_ops_encode_full (GSList *unwind_ops, guint32 *out_len, gboolean enab
 	
 	g_assert (p - buf < 4096);
 	*out_len = p - buf;
-	res = (guint8 *)g_malloc (p - buf);
+	res = (guint8 *)g_malloc_vb (p - buf);
 	memcpy (res, buf, p - buf);
 	return res;
 }
@@ -671,12 +671,12 @@ mono_unwind_cleanup (void)
 	for (i = 0; i < cached_info_next; ++i) {
 		MonoUnwindInfo *cached = cached_info [i];
 
-		g_free (cached);
+		g_free_vb (cached);
 	}
-	g_free (cached_info);
+	g_free_vb (cached_info);
 
 	for (GSList *cursor = cached_info_list; cursor != NULL; cursor = cursor->next)
-		g_free (cursor->data);
+		g_free_vb (cursor->data);
 
 	g_slist_free (cached_info_list);
 }
@@ -713,7 +713,7 @@ mono_cache_unwind_info (guint8 *unwind_info, guint32 unwind_info_len)
 		}
 	}
 
-	info = (MonoUnwindInfo *)g_malloc (sizeof (MonoUnwindInfo) + unwind_info_len);
+	info = (MonoUnwindInfo *)g_malloc_vb (sizeof (MonoUnwindInfo) + unwind_info_len);
 	info->len = unwind_info_len;
 	memcpy (&info->info, unwind_info, unwind_info_len);
 
@@ -1075,9 +1075,9 @@ mono_unwind_decode_fde (guint8 *fde, guint32 *out_len, guint32 *code_len, MonoJi
 			decode_lsda (lsda, code, NULL, NULL, &len, this_reg, this_offset);
 
 			if (ex_info)
-				*ex_info = (MonoJitExceptionInfo *)g_malloc0 (len * sizeof (MonoJitExceptionInfo));
+				*ex_info = (MonoJitExceptionInfo *)g_malloc0_vb (len * sizeof (MonoJitExceptionInfo));
 			if (type_info)
-				*type_info = (gpointer *)g_malloc0 (len * sizeof (gpointer));
+				*type_info = (gpointer *)g_malloc0_vb (len * sizeof (gpointer));
 
 			decode_lsda (lsda, code, ex_info ? *ex_info : NULL, type_info ? *type_info : NULL, ex_info_len, this_reg, this_offset);
 		}
@@ -1089,7 +1089,7 @@ mono_unwind_decode_fde (guint8 *fde, guint32 *out_len, guint32 *code_len, MonoJi
 	g_assert (return_reg == DWARF_PC_REG);
 
 	buf_len = (cie + cie_len + 4 - cie_cfi) + (fde + fde_len + 4 - fde_cfi);
-	buf = (guint8 *)g_malloc0 (buf_len);
+	buf = (guint8 *)g_malloc0_vb (buf_len);
 
 	i = 0;
 	p = cie_cfi;

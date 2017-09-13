@@ -277,10 +277,10 @@ globextend(const gchar *path, mono_w32file_unix_glob_t *pglob, size_t *limitp)
 	newsize = sizeof(*pathv) * (2 + pglob->gl_pathc + pglob->gl_offs);
 	/* FIXME: Can just use realloc(). */
 	pathv = (char **)(pglob->gl_pathv ? g_realloc ((char *)pglob->gl_pathv, newsize) :
-	    g_malloc (newsize));
+	    g_malloc_vb (newsize));
 	if (pathv == NULL) {
 		if (pglob->gl_pathv) {
-			g_free (pglob->gl_pathv);
+			g_free_vb (pglob->gl_pathv);
 			pglob->gl_pathv = NULL;
 		}
 		return(W32FILE_UNIX_GLOB_NOSPACE);
@@ -300,7 +300,7 @@ globextend(const gchar *path, mono_w32file_unix_glob_t *pglob, size_t *limitp)
 	*limitp += len;
 	if ((copy = (char *)malloc(len)) != NULL) {
 		if (g_Ctoc(path, copy, len)) {
-			g_free (copy);
+			g_free_vb (copy);
 			return(W32FILE_UNIX_GLOB_NOSPACE);
 		}
 		pathv[pglob->gl_offs + pglob->gl_pathc++] = copy;
@@ -370,8 +370,8 @@ mono_w32file_unix_globfree(mono_w32file_unix_glob_t *pglob)
 		pp = pglob->gl_pathv + pglob->gl_offs;
 		for (i = pglob->gl_pathc; i--; ++pp)
 			if (*pp)
-				g_free (*pp);
-		g_free (pglob->gl_pathv);
+				g_free_vb (*pp);
+		g_free_vb (pglob->gl_pathv);
 		pglob->gl_pathv = NULL;
 	}
 }

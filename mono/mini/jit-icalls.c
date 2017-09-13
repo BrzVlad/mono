@@ -1918,8 +1918,8 @@ mono_throw_method_access (MonoMethod *caller, MonoMethod *callee)
 	error_init (&error);
 	mono_error_set_generic_error (&error, "System", "MethodAccessException", "Method `%s' is inaccessible from method `%s'", callee_name, caller_name);
 	mono_error_set_pending_exception (&error);
-	g_free (callee_name);
-	g_free (caller_name);
+	g_free_vb (callee_name);
+	g_free_vb (caller_name);
 }
 
 void

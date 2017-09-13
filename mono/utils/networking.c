@@ -30,12 +30,12 @@ mono_free_address_info (MonoAddressInfo *ai)
 	MonoAddressEntry *cur = ai->entries, *next;
 	while (cur) {
 		next = cur->next;
-		g_free ((void*)cur->canonical_name);
-		g_free (cur);
+		g_free_vb ((void*)cur->canonical_name);
+		g_free_vb (cur);
 		cur = next;
 	}
 	g_strfreev (ai->aliases);
-	g_free (ai);
+	g_free_vb (ai);
 }
 
 

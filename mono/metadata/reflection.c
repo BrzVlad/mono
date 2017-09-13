@@ -152,7 +152,7 @@ mono_custom_attrs_free (MonoCustomAttrInfo *ainfo)
 	MONO_REQ_GC_NEUTRAL_MODE;
 
 	if (ainfo && !ainfo->cached)
-		g_free (ainfo);
+		g_free_vb (ainfo);
 }
 
 gboolean
@@ -288,7 +288,7 @@ module_object_construct (MonoDomain *domain, MonoClass *unused_klass, MonoImage 
 	if (!is_ok (error))
 		goto fail;
 
-	g_free (basename);
+	g_free_vb (basename);
 
 	guint32 token = 0;
 	if (image->assembly->image == image) {
@@ -524,7 +524,7 @@ mono_type_get_object_checked (MonoDomain *domain, MonoType *type, MonoError *err
 		char * full_name = mono_type_get_full_name (klass);
 		/* I would have expected ReflectionTypeLoadException, but evidently .NET throws TLE in this case. */
 		mono_error_set_type_load_class (error, klass, "TypeBuilder.CreateType() not called for generic class %s", full_name);
-		g_free (full_name);
+		g_free_vb (full_name);
 		mono_domain_unlock (domain);
 		mono_loader_unlock ();
 		return NULL;
@@ -1066,9 +1066,9 @@ param_objects_construct (MonoDomain *domain, MonoClass *refclass, MonoMethodSign
 	}
 
 leave:
-	g_free (names);
-	g_free (blobs);
-	g_free (types);
+	g_free_vb (names);
+	g_free_vb (blobs);
+	g_free_vb (types);
 
 	if (sig && mspecs) {
 		for (i = sig->param_count; i >= 0; i--) {
@@ -1076,7 +1076,7 @@ leave:
 				mono_metadata_free_marshal_spec (mspecs [i]);
 		}
 	}
-	g_free (mspecs);
+	g_free_vb (mspecs);
 
 	if (!is_ok (error))
 		return NULL;
@@ -1922,7 +1922,7 @@ mono_reflection_get_type_internal (MonoImage *rootimage, MonoImage* image, MonoT
 
 				nested_name = g_strdup (lastp + 1);
 				nspace_len = lastp - (char*)mod->data;
-				nested_nspace = (char *)g_malloc (nspace_len + 1);
+				nested_nspace = (char *)g_malloc_vb (nspace_len + 1);
 				memcpy (nested_nspace, mod->data, nspace_len);
 				nested_nspace [nspace_len] = '\0';
 
@@ -1950,8 +1950,8 @@ mono_reflection_get_type_internal (MonoImage *rootimage, MonoImage* image, MonoT
 				}
 			}
 			if (lastp) {
-				g_free (nested_name);
-				g_free (nested_nspace);
+				g_free_vb (nested_name);
+				g_free_vb (nested_nspace);
 			}
 			if (match)
 				break;
@@ -1974,7 +1974,7 @@ mono_reflection_get_type_internal (MonoImage *rootimage, MonoImage* image, MonoT
 
 			type_args [i] = _mono_reflection_get_type_from_info (subinfo, rootimage, ignorecase, error);
 			if (!type_args [i]) {
-				g_free (type_args);
+				g_free_vb (type_args);
 				goto leave;
 			}
 		}
@@ -1986,7 +1986,7 @@ mono_reflection_get_type_internal (MonoImage *rootimage, MonoImage* image, MonoT
 		instance = mono_reflection_bind_generic_parameters (
 			the_type, info->type_arguments->len, type_args, error);
 
-		g_free (type_args);
+		g_free_vb (type_args);
 		if (!instance)
 			goto leave;
 
@@ -2193,7 +2193,7 @@ mono_reflection_free_type_info (MonoTypeNameParse *info)
 
 			mono_reflection_free_type_info (subinfo);
 			/*We free the subinfo since it is allocated by _mono_reflection_parse_type*/
-			g_free (subinfo);
+			g_free_vb (subinfo);
 		}
 
 		g_ptr_array_free (info->type_arguments, TRUE);
@@ -2243,13 +2243,13 @@ mono_reflection_type_from_name_checked (char *name, MonoImage *image, MonoError 
 	if (mono_reflection_parse_type (tmp, &info)) {
 		type = _mono_reflection_get_type_from_info (&info, image, FALSE, error);
 		if (!is_ok (error)) {
-			g_free (tmp);
+			g_free_vb (tmp);
 			mono_reflection_free_type_info (&info);
 			return NULL;
 		}
 	}
 
-	g_free (tmp);
+	g_free_vb (tmp);
 	mono_reflection_free_type_info (&info);
 	return type;
 }
@@ -2460,7 +2460,7 @@ generic_inst_from_type_array_handle (MonoArrayHandle types, MonoError *error)
 	}
 	ginst = mono_metadata_get_generic_inst (count, type_argv);
 leave:
-	g_free (type_argv);
+	g_free_vb (type_argv);
 	HANDLE_FUNCTION_RETURN_VAL (ginst);
 }
 

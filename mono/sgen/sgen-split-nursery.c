@@ -377,7 +377,7 @@ init_nursery (SgenFragmentAllocator *allocator, char *start, char *end)
 	sgen_fragment_allocator_add (&collector_allocator, promotion_barrier, end);
 
 	region_age_size = (end - start) >> SGEN_TO_SPACE_GRANULE_BITS;
-	region_age = (char *)g_malloc0 (region_age_size);
+	region_age = (char *)g_malloc0_vb (region_age_size);
 }
 
 static gboolean

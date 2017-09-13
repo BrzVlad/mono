@@ -608,7 +608,7 @@ mono_cominterop_init (void)
 	if (com_provider_env && !strcmp(com_provider_env, "MS"))
 		com_provider = MONO_COM_MS;
 	if (com_provider_env)
-		g_free (com_provider_env);
+		g_free_vb (com_provider_env);
 
 	register_icall (cominterop_get_method_interface, "cominterop_get_method_interface", "ptr ptr", FALSE);
 	register_icall (cominterop_get_function_pointer, "cominterop_get_function_pointer", "ptr ptr int32", FALSE);
@@ -926,7 +926,7 @@ cominterop_get_native_wrapper_adjusted (MonoMethod *method)
 	for (i = sig_native->param_count; i >= 0; i--)
 		if (mspecs [i])
 			mono_metadata_free_marshal_spec (mspecs [i]);
-	g_free (mspecs);
+	g_free_vb (mspecs);
 
 	return res;
 }
@@ -2138,7 +2138,7 @@ cominterop_get_ccw_checked (MonoObject* object, MonoClass* itf, MonoError *error
 			for (param_index = sig_adjusted->param_count; param_index >= 0; param_index--)
 				if (mspecs [param_index])
 					mono_metadata_free_marshal_spec (mspecs [param_index]);
-			g_free (mspecs);
+			g_free_vb (mspecs);
 			return_val_if_nok (error, NULL);
 		}
 
@@ -2174,7 +2174,7 @@ mono_marshal_free_ccw_entry (gpointer key, gpointer value, gpointer user_data)
 {
 	g_hash_table_remove (ccw_interface_hash, value);
 	g_assert (value);
-	g_free (value);
+	g_free_vb (value);
 	return TRUE;
 }
 
@@ -2231,7 +2231,7 @@ mono_marshal_free_ccw (MonoObject* object)
 				ves_icall_System_Runtime_InteropServices_Marshal_ReleaseInternal (ccw_iter->free_marshaler);
 #endif
 
-			g_free (ccw_iter);
+			g_free_vb (ccw_iter);
 		}
 		else
 			ccw_list_item = g_list_next (ccw_list_item);
@@ -2371,7 +2371,7 @@ cominterop_get_managed_wrapper_adjusted (MonoMethod *method)
 	for (i = sig_native->param_count; i >= 0; i--)
 		if (mspecs [i])
 			mono_metadata_free_marshal_spec (mspecs [i]);
-	g_free (mspecs);
+	g_free_vb (mspecs);
 
 	return res;
 }
@@ -2768,7 +2768,7 @@ mono_ptr_to_bstr(gpointer ptr, int slen)
 #else
 	if (com_provider == MONO_COM_DEFAULT) {
 		/* allocate len + 1 utf16 characters plus 4 byte integer for length*/
-		char *ret = (char *)g_malloc((slen + 1) * sizeof(gunichar2) + sizeof(guint32));
+		char *ret = (char *)g_malloc_vb((slen + 1) * sizeof(gunichar2) + sizeof(guint32));
 		if (ret == NULL)
 			return NULL;
 		memcpy(ret + sizeof(guint32), ptr, slen * sizeof(gunichar2));
@@ -2785,7 +2785,7 @@ mono_ptr_to_bstr(gpointer ptr, int slen)
 		str = g_utf16_to_ucs4(ptr, len,
 			NULL, NULL, NULL);
 		ret = sys_alloc_string_len_ms(str, len);
-		g_free(str);
+		g_free_vb(str);
 		return ret;
 	}
 	else {
@@ -2833,7 +2833,7 @@ mono_string_from_bstr_checked (gpointer bstr, MonoError *error)
 
 		utf16 = g_ucs4_to_utf16 ((const gunichar *)bstr, sys_string_len_ms (bstr), NULL, &written, NULL);
 		str = mono_string_new_utf16_checked (mono_domain_get (), utf16, written, error);
-		g_free (utf16);
+		g_free_vb (utf16);
 		res = str;
 	} else {
 		g_assert_not_reached ();
@@ -2852,7 +2852,7 @@ mono_free_bstr (gpointer bstr)
 	SysFreeString ((BSTR)bstr);
 #else
 	if (com_provider == MONO_COM_DEFAULT) {
-		g_free (((char *)bstr) - 4);
+		g_free_vb (((char *)bstr) - 4);
 	} else if (com_provider == MONO_COM_MS && init_com_provider_ms ()) {
 		sys_free_string_ms ((gunichar *)bstr);
 	} else {
@@ -3231,7 +3231,7 @@ mono_marshal_safearray_begin (gpointer safearray, MonoArray **result, gpointer *
 
 		if (dim > 0) {
 
-			*indices = g_malloc (dim * sizeof(int));
+			*indices = g_malloc_vb (dim * sizeof(int));
 
 			sizes = (uintptr_t *)alloca (dim * sizeof(uintptr_t));
 			bounds = (intptr_t *)alloca (dim * sizeof(intptr_t));
@@ -3372,7 +3372,7 @@ gboolean mono_marshal_safearray_next (gpointer safearray, gpointer indices)
 static inline void
 mono_marshal_win_safearray_end (gpointer safearray, gpointer indices)
 {
-	g_free(indices);
+	g_free_vb(indices);
 	SafeArrayDestroy (safearray);
 }
 #endif /* G_HAVE_API_SUPPORT(HAVE_CLASSIC_WINAPI_SUPPORT | HAVE_UWP_WINAPI_SUPPORT) */
@@ -3388,7 +3388,7 @@ mono_marshal_safearray_end (gpointer safearray, gpointer indices)
 static void
 mono_marshal_safearray_end (gpointer safearray, gpointer indices)
 {
-	g_free(indices);
+	g_free_vb(indices);
 	if (com_provider == MONO_COM_MS && init_com_provider_ms ()) {
 		safe_array_destroy_ms (safearray);
 	} else {
@@ -3446,7 +3446,7 @@ mono_marshal_safearray_create (MonoArray *input, gpointer *newsafearray, gpointe
 	max_array_length = mono_array_length (input);
 	dim = ((MonoObject *)input)->vtable->klass->rank;
 
-	*indices = g_malloc (dim * sizeof (int));
+	*indices = g_malloc_vb (dim * sizeof (int));
 	bounds = (SAFEARRAYBOUND *)alloca (dim * sizeof (SAFEARRAYBOUND));
 	(*(int*)empty) = (max_array_length == 0);
 
@@ -3507,7 +3507,7 @@ mono_marshal_safearray_set_value (gpointer safearray, gpointer indices, gpointer
 static 
 void mono_marshal_safearray_free_indices (gpointer indices)
 {
-	g_free (indices);
+	g_free_vb (indices);
 }
 
 #else /* DISABLE_COM */
@@ -3550,7 +3550,7 @@ mono_ptr_to_bstr (gpointer ptr, int slen)
 #else
 	{
 		/* allocate len + 1 utf16 characters plus 4 byte integer for length*/
-		char *ret = g_malloc ((slen + 1) * sizeof(gunichar2) + sizeof(guint32));
+		char *ret = g_malloc_vb ((slen + 1) * sizeof(gunichar2) + sizeof(guint32));
 		if (ret == NULL)
 			return NULL;
 		memcpy (ret + sizeof(guint32), ptr, slen * sizeof(gunichar2));
@@ -3605,7 +3605,7 @@ mono_free_bstr (gpointer bstr)
 #ifdef HOST_WIN32
 	SysFreeString ((BSTR)bstr);
 #else
-	g_free (((char *)bstr) - 4);
+	g_free_vb (((char *)bstr) - 4);
 #endif
 }
 

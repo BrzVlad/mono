@@ -57,10 +57,10 @@ mono_trace_init (void)
 		mono_trace_set_logheader_string(header);
 		mono_trace_set_logdest_string(dest);
 
-		g_free (mask);
-		g_free (level);
-		g_free (header);
-		g_free (dest);
+		g_free_vb (mask);
+		g_free_vb (level);
+		g_free_vb (header);
+		g_free_vb (dest);
 	}
 }
 
@@ -74,7 +74,7 @@ mono_trace_cleanup (void)
 {
 	if(level_stack != NULL) {
 		while(!g_queue_is_empty (level_stack)) {
-			g_free (g_queue_pop_head (level_stack));
+			g_free_vb (g_queue_pop_head (level_stack));
 		}
 
 		logCallback.closer();
@@ -105,7 +105,7 @@ mono_tracev_inner (GLogLevelFlags level, MonoTraceMask mask, const char *format,
 	if (g_vasprintf (&log_message, format, args) < 0)
 		return;
 	logCallback.writer (mono_log_domain, level, logCallback.header, log_message);
-	g_free (log_message);
+	g_free_vb (log_message);
 }
 
 /**
@@ -208,7 +208,7 @@ mono_trace_push (GLogLevelFlags level, MonoTraceMask mask)
 	if(level_stack == NULL)
 		g_error("%s: cannot use mono_trace_push without calling mono_trace_init first.", __func__);
 	else {
-		MonoLogLevelEntry *entry = (MonoLogLevelEntry *) g_malloc(sizeof(MonoLogLevelEntry));
+		MonoLogLevelEntry *entry = (MonoLogLevelEntry *) g_malloc_vb(sizeof(MonoLogLevelEntry));
 		entry->level	= mono_internal_current_level;
 		entry->mask		= mono_internal_current_mask;
 
@@ -240,7 +240,7 @@ mono_trace_pop (void)
 			mono_internal_current_level = entry->level;
 			mono_internal_current_mask  = entry->mask;
 
-			g_free (entry);
+			g_free_vb (entry);
 		}
 	}
 }
@@ -388,7 +388,7 @@ static void
 legacy_closer(void)
 {
 	if (logCallback.user_data != NULL) {
-		g_free (logCallback.user_data); /* This is a UserSuppliedLoggerUserData struct */
+		g_free_vb (logCallback.user_data); /* This is a UserSuppliedLoggerUserData struct */
 		logCallback.opener = NULL;	
 		logCallback.writer = NULL;
 		logCallback.closer = NULL;
@@ -414,7 +414,7 @@ mono_trace_set_log_handler (MonoLogCallback callback, void *user_data)
 
 	if (logCallback.closer != NULL)
 		logCallback.closer();
-	UserSuppliedLoggerUserData *ll = g_malloc (sizeof (UserSuppliedLoggerUserData));
+	UserSuppliedLoggerUserData *ll = g_malloc_vb (sizeof (UserSuppliedLoggerUserData));
 	ll->legacy_callback = callback;
 	ll->user_data = user_data;
 	logCallback.opener = legacy_opener;

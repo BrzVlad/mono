@@ -56,7 +56,7 @@ void mono_portability_helpers_init (void)
                                 mono_io_portability_helpers |= (PORTABILITY_DRIVE | PORTABILITY_CASE);
 			}
                 }
-		g_free (env);
+		g_free_vb (env);
 	}
 }
 
@@ -122,7 +122,7 @@ static inline void do_mono_profiler_iomap (GString **report, const char *pathnam
 	}
 
 	MONO_PROFILER_RAISE (iomap_report, (rep, pathname, new_pathname));
-	g_free (rep);
+	g_free_vb (rep);
 }
 
 gchar *mono_portability_find_file (const gchar *pathname, gboolean last_exists)
@@ -223,21 +223,21 @@ static inline gchar *mono_portability_find_file_internal (GString **report, cons
 	 */
 
 	if (!(IS_PORTABILITY_CASE)) {
-		g_free (new_pathname);
+		g_free_vb (new_pathname);
 		return(NULL);
 	}
 
 	components = g_strsplit (new_pathname, "/", 0);
 	if (components == NULL) {
 		/* This shouldn't happen */
-		g_free (new_pathname);
+		g_free_vb (new_pathname);
 		return(NULL);
 	}
 	
 	while(components[num_components] != NULL) {
 		num_components++;
 	}
-	g_free (new_pathname);
+	g_free_vb (new_pathname);
 	
 	if (num_components == 0){
 		return NULL;
@@ -289,7 +289,7 @@ static inline gchar *mono_portability_find_file_internal (GString **report, cons
 				g_message ("%s: opendir 3 error: %s", __func__,
 					   g_strerror (errno));
 #endif
-				g_free (entry);
+				g_free_vb (entry);
 				g_strfreev (new_components);
 				g_strfreev (components);
 				return(NULL);
@@ -361,7 +361,7 @@ static inline gchar *mono_portability_find_file_internal (GString **report, cons
 			path_so_far = g_strjoinv ("/", new_components);
 
 			scanning = opendir (path_so_far);
-			g_free (path_so_far);
+			g_free_vb (path_so_far);
 			if (scanning == NULL) {
 				g_strfreev (new_components);
 				g_strfreev (components);
@@ -390,7 +390,7 @@ static inline gchar *mono_portability_find_file_internal (GString **report, cons
 		return(new_pathname);
 	}
 
-	g_free (new_pathname);
+	g_free_vb (new_pathname);
 	return(NULL);
 }
 

@@ -836,7 +836,7 @@ parse_address (char *address, char **host, int *port)
 		return 1;
 
 	size_t len = pos - address;
-	*host = (char *)g_malloc (len + 1);
+	*host = (char *)g_malloc_vb (len + 1);
 	memcpy (*host, address, len);
 	(*host) [len] = '\0';
 
@@ -892,7 +892,7 @@ mono_debugger_agent_parse_options (char *options)
 	extra = g_getenv ("MONO_SDB_ENV_OPTIONS");
 	if (extra) {
 		options = g_strdup_printf ("%s,%s", options, extra);
-		g_free (extra);
+		g_free_vb (extra);
 	}
 
 	agent_config.enabled = TRUE;
@@ -1706,7 +1706,7 @@ decode_string (guint8 *buf, guint8 **endbuf, guint8 *limit)
 		return NULL;
 	}
 
-	s = (char *)g_malloc (len + 1);
+	s = (char *)g_malloc_vb (len + 1);
 	g_assert (s);
 
 	memcpy (s, buf, len);
@@ -1724,7 +1724,7 @@ decode_string (guint8 *buf, guint8 **endbuf, guint8 *limit)
 static inline void
 buffer_init (Buffer *buf, int size)
 {
-	buf->buf = (guint8 *)g_malloc (size);
+	buf->buf = (guint8 *)g_malloc_vb (size);
 	buf->p = buf->buf;
 	buf->end = buf->buf + size;
 }
@@ -1820,7 +1820,7 @@ buffer_add_buffer (Buffer *buf, Buffer *data)
 static inline void
 buffer_free (Buffer *buf)
 {
-	g_free (buf->buf);
+	g_free_vb (buf->buf);
 }
 
 static gboolean
@@ -1949,7 +1949,7 @@ free_objref (gpointer value)
 
 	mono_gchandle_free (o->handle);
 
-	g_free (o);
+	g_free_vb (o);
 }
 
 static void
@@ -2188,7 +2188,7 @@ ids_cleanup (void)
 	for (i = 0; i < ID_NUM; ++i) {
 		if (ids [i]) {
 			for (j = 0; j < ids [i]->len; ++j)
-				g_free (g_ptr_array_index (ids [i], j));
+				g_free_vb (g_ptr_array_index (ids [i], j));
 			g_ptr_array_free (ids [i], TRUE);
 		}
 		ids [i] = NULL;
@@ -2214,23 +2214,23 @@ mono_debugger_agent_free_domain_info (MonoDomain *domain)
 		g_hash_table_iter_init (&iter, info->source_files);
 		while (g_hash_table_iter_next (&iter, NULL, (void**)&file_names)) {
 			for (i = 0; i < file_names->len; ++i)
-				g_free (g_ptr_array_index (file_names, i));
+				g_free_vb (g_ptr_array_index (file_names, i));
 			g_ptr_array_free (file_names, TRUE);
 		}
 
 		g_hash_table_iter_init (&iter, info->source_file_to_class);
 		while (g_hash_table_iter_next (&iter, (void**)&basename, (void**)&l)) {
-			g_free (basename);
+			g_free_vb (basename);
 			g_slist_free (l);
 		}
 
 		g_hash_table_iter_init (&iter, info->source_file_to_class_ignorecase);
 		while (g_hash_table_iter_next (&iter, (void**)&basename, (void**)&l)) {
-			g_free (basename);
+			g_free_vb (basename);
 			g_slist_free (l);
 		}
 
-		g_free (info);
+		g_free_vb (info);
 	}
 
 	domain_jit_info (domain)->agent_info = NULL;
@@ -2364,7 +2364,7 @@ decode_typeid (guint8 *buf, guint8 **endbuf, guint8 *limit, MonoDomain **domain,
 
 		s = mono_type_full_name (&klass->byval_arg);
 		DEBUG_PRINTF (2, "[dbg]   recv class [%s]\n", s);
-		g_free (s);
+		g_free_vb (s);
 	}
 	return klass;
 }
@@ -2392,7 +2392,7 @@ decode_methodid (guint8 *buf, guint8 **endbuf, guint8 *limit, MonoDomain **domai
 
 		s = mono_method_full_name (m, TRUE);
 		DEBUG_PRINTF (2, "[dbg]   recv method [%s]\n", s);
-		g_free (s);
+		g_free_vb (s);
 	}
 	return m;
 }
@@ -2427,7 +2427,7 @@ buffer_add_typeid (Buffer *buf, MonoDomain *domain, MonoClass *klass)
 			DEBUG_PRINTF (2, "[dbg]   send class [%s]\n", s);
 		else
 			DEBUG_PRINTF (2, "[%p]   send class [%s]\n", (gpointer) (gsize) mono_native_thread_id_get (), s);
-		g_free (s);
+		g_free_vb (s);
 	}
 }
 
@@ -2440,7 +2440,7 @@ buffer_add_methodid (Buffer *buf, MonoDomain *domain, MonoMethod *method)
 
 		s = mono_method_full_name (method, 1);
 		DEBUG_PRINTF (2, "[dbg]   send method [%s]\n", s);
-		g_free (s);
+		g_free_vb (s);
 	}
 }
 
@@ -2923,9 +2923,9 @@ free_frames (StackFrame **frames, int nframes)
 	for (i = 0; i < nframes; ++i) {
 		if (frames [i]->jit)
 			mono_debug_free_method_jit_info (frames [i]->jit);
-		g_free (frames [i]);
+		g_free_vb (frames [i]);
 	}
-	g_free (frames);
+	g_free_vb (frames);
 }
 
 static void
@@ -3370,11 +3370,11 @@ dbg_path_get_basename (const char *filename)
 		r = strrchr (copy, '\\');
 
 		if (r == NULL){
-			g_free (copy);
+			g_free_vb (copy);
 			return g_strdup ("/");
 		}
 		r = g_strdup (&r[1]);
-		g_free (copy);
+		g_free_vb (copy);
 		return r;
 	}
 
@@ -3525,10 +3525,10 @@ create_event_list (EventKind event, GPtrArray *reqs, MonoJitInfo *ji, EventInfo 
 
 									if (g_hash_table_lookup (mod->data.source_files, s3))
 										found = TRUE;
-									g_free (s2);
-									g_free (s3);
+									g_free_vb (s2);
+									g_free_vb (s3);
 								}
-								g_free (s);
+								g_free_vb (s);
 							}
 							g_ptr_array_free (source_file_list, TRUE);
 						}
@@ -3541,7 +3541,7 @@ create_event_list (EventKind event, GPtrArray *reqs, MonoJitInfo *ji, EventInfo 
 					s = mono_type_full_name (&ei->klass->byval_arg);
 					if (!g_hash_table_lookup (mod->data.type_names, s))
 						filtered = TRUE;
-					g_free (s);
+					g_free_vb (s);
 				} else if (mod->kind == MOD_KIND_STEP) {
 					if ((mod->data.filter & STEP_FILTER_STATIC_CTOR) && ji &&
 						(jinfo_get_method (ji)->flags & METHOD_ATTRIBUTE_SPECIAL_NAME) &&
@@ -4255,11 +4255,11 @@ insert_breakpoint (MonoSeqPointInfo *seq_points, MonoDomain *domain, MonoJitInfo
 		if (error) {
 			mono_error_set_error (error, MONO_ERROR_GENERIC, "%s", s);
 			g_warning ("%s", s);
-			g_free (s);
+			g_free_vb (s);
 			return;
 		} else {
 			g_warning ("%s", s);
-			g_free (s);
+			g_free_vb (s);
 			return;
 		}
 	}
@@ -4544,7 +4544,7 @@ clear_breakpoint (MonoBreakpoint *bp)
 
 		remove_breakpoint (inst);
 
-		g_free (inst);
+		g_free_vb (inst);
 	}
 
 	mono_loader_lock ();
@@ -4552,7 +4552,7 @@ clear_breakpoint (MonoBreakpoint *bp)
 	mono_loader_unlock ();
 
 	g_ptr_array_free (bp->children, TRUE);
-	g_free (bp);
+	g_free_vb (bp);
 }
 
 static void
@@ -4568,14 +4568,14 @@ breakpoints_cleanup (void)
 		if (req->event_kind == EVENT_KIND_BREAKPOINT) {
 			clear_breakpoint ((MonoBreakpoint *)req->info);
 			g_ptr_array_remove_index_fast (event_requests, i);
-			g_free (req);
+			g_free_vb (req);
 		} else {
 			i ++;
 		}
 	}
 
 	for (i = 0; i < breakpoints->len; ++i)
-		g_free (g_ptr_array_index (breakpoints, i));
+		g_free_vb (g_ptr_array_index (breakpoints, i));
 
 	g_ptr_array_free (breakpoints, TRUE);
 	g_hash_table_destroy (bp_locs);
@@ -4611,7 +4611,7 @@ clear_breakpoints_for_domain (MonoDomain *domain)
 			if (inst->domain == domain) {
 				remove_breakpoint (inst);
 
-				g_free (inst);
+				g_free_vb (inst);
 
 				g_ptr_array_remove_index_fast (bp->children, j);
 			} else {
@@ -4647,7 +4647,7 @@ ensure_jit (StackFrame* frame)
 			/* This could happen for aot images with no jit debug info */
 			s = mono_method_full_name (frame->api_method, TRUE);
 			DEBUG_PRINTF(1, "[dbg] No debug information found for '%s'.\n", s);
-			g_free (s);
+			g_free_vb (s);
 			return FALSE;
 		}
 	}
@@ -5486,15 +5486,15 @@ is_last_non_empty (SeqPoint* sp, MonoSeqPointInfo *info)
 	for (int i = 0; i < sp->next_len; i++) {
 		if (next [i].flags & MONO_SEQ_POINT_FLAG_NONEMPTY_STACK) {
 			if (!is_last_non_empty (&next [i], info)) {
-				g_free (next);
+				g_free_vb (next);
 				return FALSE;
 			}
 		} else {
-			g_free (next);
+			g_free_vb (next);
 			return FALSE;
 		}
 	}
-	g_free (next);
+	g_free_vb (next);
 	return TRUE;
 }
 
@@ -5656,7 +5656,7 @@ ss_start (SingleStepReq *ss_req, MonoMethod *method, SeqPoint* sp, MonoSeqPointI
 
 				ss_bp_add_one (ss_req, &ss_req_bp_count, &ss_req_bp_cache, method, next_sp->il_offset);
 			}
-			g_free (next);
+			g_free_vb (next);
 		}
 
 		if (parent_sp) {
@@ -5668,7 +5668,7 @@ ss_start (SingleStepReq *ss_req, MonoMethod *method, SeqPoint* sp, MonoSeqPointI
 
 				ss_bp_add_one (ss_req, &ss_req_bp_count, &ss_req_bp_cache, parent_sp_method, next_sp->il_offset);
 			}
-			g_free (next);
+			g_free_vb (next);
 		}
 
 		if (ss_req->nframes == 0)
@@ -5838,7 +5838,7 @@ ss_create (MonoInternalThread *thread, StepSize size, StepDepth depth, StepFilte
 
 					if (loc) {
 						ss_req->last_line = loc->row;
-						g_free (loc);
+						g_free_vb (loc);
 					}
 				}
 			}
@@ -5875,7 +5875,7 @@ ss_destroy (SingleStepReq *req)
 
 	ss_stop (ss_req);
 
-	g_free (ss_req);
+	g_free_vb (ss_req);
 	ss_req = NULL;
 }
 
@@ -5930,8 +5930,8 @@ mono_debugger_agent_debug_log (int level, MonoString *category, MonoString *mess
 
 	process_event (EVENT_KIND_USER_LOG, &ei, 0, NULL, events, suspend_policy);
 
-	g_free (ei.category);
-	g_free (ei.message);
+	g_free_vb (ei.category);
+	g_free_vb (ei.message);
 }
 
 gboolean
@@ -6012,7 +6012,7 @@ mono_debugger_agent_handle_exception (MonoException *exc, MonoContext *throw_ctx
 			if (!strcmp (ex_type, "") || !strcmp (ex_type, f))
 				found = TRUE;
 
-			g_free (f);
+			g_free_vb (f);
 		}
 
 		if (found) {
@@ -6374,8 +6374,8 @@ decode_vtype (MonoType *t, MonoDomain *domain, guint8 *addr, guint8 *buf, guint8
 		char *name = mono_type_full_name (t);
 		char *name2 = mono_type_full_name (&klass->byval_arg);
 		DEBUG_PRINTF (1, "[%p] Expected value of type %s, got %s.\n", (gpointer) (gsize) mono_native_thread_id_get (), name, name2);
-		g_free (name);
-		g_free (name2);
+		g_free_vb (name);
+		g_free_vb (name2);
 		return ERR_INVALID_ARGUMENT;
 	}
 
@@ -6410,7 +6410,7 @@ decode_value_internal (MonoType *t, int type, MonoDomain *domain, guint8 *addr, 
 		!(t->type == MONO_TYPE_VALUETYPE && type == MONO_TYPE_OBJECT)) {
 		char *name = mono_type_full_name (t);
 		DEBUG_PRINTF (1, "[%p] Expected value of type %s, got 0x%0x.\n", (gpointer) (gsize) mono_native_thread_id_get (), name, type);
-		g_free (name);
+		g_free_vb (name);
 		return ERR_INVALID_ARGUMENT;
 	}
 
@@ -6541,22 +6541,22 @@ decode_value_internal (MonoType *t, int type, MonoDomain *domain, guint8 *addr, 
 
 				/* Decode the vtype into a temporary buffer, then box it. */
 				vtype_buf_size = mono_class_value_size (klass, NULL);
-				vtype_buf = (guint8 *)g_malloc0 (vtype_buf_size);
+				vtype_buf = (guint8 *)g_malloc0_vb (vtype_buf_size);
 				g_assert (vtype_buf);
 
 				buf = buf2;
 				err = decode_vtype (NULL, domain, vtype_buf, buf, &buf, limit);
 				if (err != ERR_NONE) {
-					g_free (vtype_buf);
+					g_free_vb (vtype_buf);
 					return err;
 				}
 				*(MonoObject**)addr = mono_value_box_checked (d, klass, vtype_buf, &error);
 				mono_error_cleanup (&error);
-				g_free (vtype_buf);
+				g_free_vb (vtype_buf);
 			} else {
 				char *name = mono_type_full_name (t);
 				DEBUG_PRINTF (1, "[%p] Expected value of type %s, got 0x%0x.\n", (gpointer) (gsize) mono_native_thread_id_get (), name, type);
-				g_free (name);
+				g_free_vb (name);
 				return ERR_INVALID_ARGUMENT;
 			}
 		} else {
@@ -6592,10 +6592,10 @@ decode_value (MonoType *t, MonoDomain *domain, guint8 *addr, guint8 *buf, guint8
 		 * Then try decoding as a primitive value or null.
 		 */
 		if (targ->type == type) {
-			nullable_buf = (guint8 *)g_malloc (mono_class_instance_size (mono_class_from_mono_type (targ)));
+			nullable_buf = (guint8 *)g_malloc_vb (mono_class_instance_size (mono_class_from_mono_type (targ)));
 			err = decode_value_internal (targ, type, domain, nullable_buf, buf, endbuf, limit);
 			if (err != ERR_NONE) {
-				g_free (nullable_buf);
+				g_free_vb (nullable_buf);
 				return err;
 			}
 			MonoObject *boxed = mono_value_box_checked (domain, mono_class_from_mono_type (targ), nullable_buf, &error);
@@ -6604,7 +6604,7 @@ decode_value (MonoType *t, MonoDomain *domain, guint8 *addr, guint8 *buf, guint8
 				return ERR_INVALID_OBJECT;
 			}
 			mono_nullable_init (addr, boxed, mono_class_from_mono_type (t));
-			g_free (nullable_buf);
+			g_free_vb (nullable_buf);
 			*endbuf = buf;
 			return ERR_NONE;
 		} else if (type == VALUE_TYPE_ID_NULL) {
@@ -6845,7 +6845,7 @@ clear_event_request (int req_id, int etype)
 			if (req->event_kind == EVENT_KIND_METHOD_EXIT)
 				clear_breakpoint ((MonoBreakpoint *)req->info);
 			g_ptr_array_remove_index_fast (event_requests, i);
-			g_free (req);
+			g_free_vb (req);
 			break;
 		}
 	}
@@ -6878,7 +6878,7 @@ clear_assembly_from_modifier (EventRequest *req, Modifier *m, MonoAssembly *asse
 				if (m->data.assemblies [i] != assembly)
 					newassemblies [pos ++] = m->data.assemblies [i];
 			g_assert (pos == count - match_count);
-			g_free (m->data.assemblies);
+			g_free_vb (m->data.assemblies);
 			m->data.assemblies = newassemblies;
 		}
 	}
@@ -7330,8 +7330,8 @@ invoke_method (void)
 
 	mono_loader_unlock ();
 
-	g_free (invoke->p);
-	g_free (invoke);
+	g_free_vb (invoke->p);
+	g_free_vb (invoke);
 
 	suspend_current ();
 }
@@ -7397,8 +7397,8 @@ vm_commands (int command, int id, guint8 *p, guint8 *end, Buffer *buf)
 		buffer_add_string (buf, version); /* vm version */
 		buffer_add_int (buf, MAJOR_VERSION);
 		buffer_add_int (buf, MINOR_VERSION);
-		g_free (build_info);
-		g_free (version);
+		g_free_vb (build_info);
+		g_free_vb (version);
 		break;
 	}
 	case CMD_VM_SET_PROTOCOL_VERSION: {
@@ -7493,7 +7493,7 @@ vm_commands (int command, int id, guint8 *p, guint8 *end, Buffer *buf)
 			mono_loader_unlock ();
 
 			args = g_new0 (gpointer, 1);
-			args [0] = g_malloc (sizeof (int));
+			args [0] = g_malloc_vb (sizeof (int));
 			*(int*)(args [0]) = exit_code;
 
 			tls->pending_invoke = g_new0 (InvokeData, 1);
@@ -7571,7 +7571,7 @@ vm_commands (int command, int id, guint8 *p, guint8 *end, Buffer *buf)
 		tls->pending_invoke = g_new0 (InvokeData, 1);
 		tls->pending_invoke->id = id;
 		tls->pending_invoke->flags = flags;
-		tls->pending_invoke->p = (guint8 *)g_malloc (end - p);
+		tls->pending_invoke->p = (guint8 *)g_malloc_vb (end - p);
 		memcpy (tls->pending_invoke->p, p, end - p);
 		tls->pending_invoke->endp = tls->pending_invoke->p + (end - p);
 		tls->pending_invoke->suspend_count = suspend_count;
@@ -7699,8 +7699,8 @@ vm_commands (int command, int id, guint8 *p, guint8 *end, Buffer *buf)
 							g_hash_table_insert (info->source_file_to_class_ignorecase, s3, class_list);
 						}
 
-						g_free (s2);
-						g_free (s3);
+						g_free_vb (s2);
+						g_free_vb (s3);
 					}
 				}
 			}
@@ -7710,7 +7710,7 @@ vm_commands (int command, int id, guint8 *p, guint8 *end, Buffer *buf)
 
 				s = strdup_tolower (basename);
 				class_list = (GSList *)g_hash_table_lookup (info->source_file_to_class_ignorecase, s);
-				g_free (s);
+				g_free_vb (s);
 			} else {
 				class_list = (GSList *)g_hash_table_lookup (info->source_file_to_class, basename);
 			}
@@ -7724,8 +7724,8 @@ vm_commands (int command, int id, guint8 *p, guint8 *end, Buffer *buf)
 		}
 		mono_loader_unlock ();
 
-		g_free (fname);
-		g_free (basename);
+		g_free_vb (fname);
+		g_free_vb (basename);
 
 		buffer_add_int (buf, res_classes->len);
 		for (i = 0; i < res_classes->len; ++i)
@@ -7747,7 +7747,7 @@ vm_commands (int command, int id, guint8 *p, guint8 *end, Buffer *buf)
 		ignore_case = decode_byte (p, &p, end);
 
 		if (!mono_reflection_parse_type (name, &info)) {
-			g_free (name);
+			g_free_vb (name);
 			mono_reflection_free_type_info (&info);
 			return ERR_INVALID_ARGUMENT;
 		}
@@ -7783,7 +7783,7 @@ vm_commands (int command, int id, guint8 *p, guint8 *end, Buffer *buf)
 		}
 		mono_loader_unlock ();
 
-		g_free (name);
+		g_free_vb (name);
 		mono_reflection_free_type_info (&info);
 
 		buffer_add_int (buf, res_classes->len);
@@ -7829,7 +7829,7 @@ event_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 		suspend_policy = decode_byte (p, &p, end);
 		nmodifiers = decode_byte (p, &p, end);
 
-		req = (EventRequest *)g_malloc0 (sizeof (EventRequest) + (nmodifiers * sizeof (Modifier)));
+		req = (EventRequest *)g_malloc0_vb (sizeof (EventRequest) + (nmodifiers * sizeof (Modifier)));
 		req->id = InterlockedIncrement (&event_request_id);
 		req->event_kind = event_kind;
 		req->suspend_policy = suspend_policy;
@@ -7862,7 +7862,7 @@ event_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 
 				err = get_object (id, (MonoObject**)&req->modifiers [i].data.thread);
 				if (err != ERR_NONE) {
-					g_free (req);
+					g_free_vb (req);
 					return err;
 				}
 			} else if (mod == MOD_KIND_EXCEPTION_ONLY) {
@@ -7881,7 +7881,7 @@ event_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 					req->modifiers [i].data.exc_class = exc_class;
 
 					if (!mono_class_is_assignable_from (mono_defaults.exception_class, exc_class)) {
-						g_free (req);
+						g_free_vb (req);
 						return ERR_INVALID_ARGUMENT;
 					}
 				}
@@ -7894,7 +7894,7 @@ event_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 				for (j = 0; j < n; ++j) {
 					req->modifiers [i].data.assemblies [j] = decode_assemblyid (p, &p, end, &domain, &err);
 					if (err != ERR_NONE) {
-						g_free (req->modifiers [i].data.assemblies);
+						g_free_vb (req->modifiers [i].data.assemblies);
 						return err;
 					}
 				}
@@ -7911,7 +7911,7 @@ event_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 					if (s) {
 						s2 = strdup_tolower (s);
 						g_hash_table_insert (modifier->data.source_files, s2, s2);
-						g_free (s);
+						g_free_vb (s);
 					}
 				}
 			} else if (mod == MOD_KIND_TYPE_NAME_ONLY) {
@@ -7927,7 +7927,7 @@ event_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 						g_hash_table_insert (modifier->data.type_names, s, s);
 				}
 			} else {
-				g_free (req);
+				g_free_vb (req);
 				return ERR_NOT_IMPLEMENTED;
 			}
 		}
@@ -7937,7 +7937,7 @@ event_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 
 			req->info = set_breakpoint (method, location, req, &error);
 			if (!mono_error_ok (&error)) {
-				g_free (req);
+				g_free_vb (req);
 				DEBUG_PRINTF (1, "[dbg] Failed to set breakpoint: %s\n", mono_error_get_message (&error));
 				mono_error_cleanup (&error);
 				return ERR_NO_SEQ_POINT_AT_IL_OFFSET;
@@ -7947,13 +7947,13 @@ event_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 
 			err = get_object (step_thread_id, (MonoObject**)&step_thread);
 			if (err != ERR_NONE) {
-				g_free (req);
+				g_free_vb (req);
 				return err;
 			}
 
 			err = ss_create (THREAD_TO_INTERNAL (step_thread), size, depth, filter, req);
 			if (err != ERR_NONE) {
-				g_free (req);
+				g_free_vb (req);
 				return err;
 			}
 		} else if (req->event_kind == EVENT_KIND_METHOD_ENTRY) {
@@ -7964,7 +7964,7 @@ event_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 		} else if (req->event_kind == EVENT_KIND_TYPE_LOAD) {
 		} else {
 			if (req->nmodifiers) {
-				g_free (req);
+				g_free_vb (req);
 				return ERR_NOT_IMPLEMENTED;
 			}
 		}
@@ -8022,7 +8022,7 @@ event_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 				clear_breakpoint ((MonoBreakpoint *)req->info);
 
 				g_ptr_array_remove_index_fast (event_requests, i);
-				g_free (req);
+				g_free_vb (req);
 			} else {
 				i ++;
 			}
@@ -8233,13 +8233,13 @@ assembly_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 			if (!is_ok (&error)) {
 				mono_error_cleanup (&error); /* FIXME don't swallow the error */
 				mono_reflection_free_type_info (&info);
-				g_free (s);
+				g_free_vb (s);
 				return ERR_INVALID_ARGUMENT;
 			}
 		}
 		buffer_add_typeid (buf, domain, t ? mono_class_from_mono_type (t) : NULL);
 		mono_reflection_free_type_info (&info);
-		g_free (s);
+		g_free_vb (s);
 
 		mono_domain_set (d, TRUE);
 
@@ -8258,7 +8258,7 @@ assembly_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 		  (mass->aname.flags & ASSEMBLYREF_RETARGETABLE_FLAG) ? ", Retargetable=Yes" : "");
 
 		buffer_add_string (buf, name);
-		g_free (name);
+		g_free_vb (name);
 		break;
 	}
 	default:
@@ -8285,7 +8285,7 @@ module_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 		buffer_add_string (buf, image->name); // fqname
 		buffer_add_string (buf, mono_image_get_guid (image)); // guid
 		buffer_add_assemblyid (buf, domain, image->assembly); // assembly
-		g_free (basename);
+		g_free_vb (basename);
 		break;			
 	}
 	default:
@@ -8402,7 +8402,7 @@ buffer_add_cattrs (Buffer *buf, MonoDomain *domain, MonoImage *image, MonoClass 
 			} else {
 				buffer_add_int (buf, 0);
 			}
-			g_free (arginfo);
+			g_free_vb (arginfo);
 		}
 	}
 
@@ -8449,7 +8449,7 @@ type_commands_internal (int command, MonoClass *klass, MonoDomain *domain, guint
 		// FIXME: byref
 		name = mono_type_get_name_full (&klass->byval_arg, MONO_TYPE_NAME_FORMAT_FULL_NAME);
 		buffer_add_string (buf, name);
-		g_free (name);
+		g_free_vb (name);
 		buffer_add_assemblyid (buf, domain, klass->image->assembly);
 		buffer_add_moduleid (buf, domain, klass->image);
 		buffer_add_typeid (buf, domain, klass->parent);
@@ -8695,12 +8695,12 @@ type_commands_internal (int command, MonoClass *klass, MonoDomain *domain, guint
 				return ERR_INVALID_FIELDID;
 
 			vtable = mono_class_vtable (domain, f->parent);
-			val = (guint8 *)g_malloc (mono_class_instance_size (mono_class_from_mono_type (f->type)));
+			val = (guint8 *)g_malloc_vb (mono_class_instance_size (mono_class_from_mono_type (f->type)));
 			mono_field_static_get_value_for_thread (thread ? thread : mono_thread_internal_current (), vtable, f, val, &error);
 			if (!is_ok (&error))
 				return ERR_INVALID_FIELDID;
 			buffer_add_value (buf, f->type, val, domain);
-			g_free (val);
+			g_free_vb (val);
 		}
 		break;
 	}
@@ -8737,17 +8737,17 @@ type_commands_internal (int command, MonoClass *klass, MonoDomain *domain, guint
 			// FIXME: Check for literal/const
 
 			vtable = mono_class_vtable (domain, f->parent);
-			val = (guint8 *)g_malloc (mono_class_instance_size (mono_class_from_mono_type (f->type)));
+			val = (guint8 *)g_malloc_vb (mono_class_instance_size (mono_class_from_mono_type (f->type)));
 			err = decode_value (f->type, domain, val, p, &p, end);
 			if (err != ERR_NONE) {
-				g_free (val);
+				g_free_vb (val);
 				return err;
 			}
 			if (MONO_TYPE_IS_REFERENCE (f->type))
 				mono_field_static_set_value (vtable, f, *(gpointer*)val);
 			else
 				mono_field_static_set_value (vtable, f, val);
-			g_free (val);
+			g_free_vb (val);
 		}
 		break;
 	}
@@ -8776,9 +8776,9 @@ type_commands_internal (int command, MonoClass *klass, MonoDomain *domain, guint
 			} else {
 				base = dbg_path_get_basename (source_file);
 				buffer_add_string (buf, base);
-				g_free (base);
+				g_free_vb (base);
 			}
-			g_free (source_file);
+			g_free_vb (source_file);
 		}
 		g_ptr_array_free (files, TRUE);
 		break;
@@ -8813,7 +8813,7 @@ type_commands_internal (int command, MonoClass *klass, MonoDomain *domain, guint
 		}
 
 		g_ptr_array_free (array, TRUE);
-		g_free (name);
+		g_free_vb (name);
 		break;
 	}
 	case CMD_TYPE_GET_INTERFACES: {
@@ -9000,9 +9000,9 @@ method_commands_internal (int command, MonoMethod *method, MonoDomain *domain, g
 				buffer_add_int (buf, sp->end_column);
 			}
 		}
-		g_free (source_file);
-		g_free (source_files);
-		g_free (sym_seq_points);
+		g_free_vb (source_file);
+		g_free_vb (source_files);
+		g_free_vb (sym_seq_points);
 		g_ptr_array_free (source_file_list, TRUE);
 		mono_metadata_free_mh (header);
 		break;
@@ -9029,7 +9029,7 @@ method_commands_internal (int command, MonoMethod *method, MonoDomain *domain, g
 		mono_method_get_param_names (method, (const char **) names);
 		for (i = 0; i < sig->param_count; ++i)
 			buffer_add_string (buf, names [i]);
-		g_free (names);
+		g_free_vb (names);
 
 		break;
 	}
@@ -9107,7 +9107,7 @@ method_commands_internal (int command, MonoMethod *method, MonoDomain *domain, g
 
 		if (locals)
 			mono_debug_free_locals (locals);
-		g_free (locals_map);
+		g_free_vb (locals_map);
 
 		break;
 	}
@@ -9236,7 +9236,7 @@ method_commands_internal (int command, MonoMethod *method, MonoDomain *domain, g
 
 			buffer_add_byte (buf, TOKEN_TYPE_STRING);
 			buffer_add_string (buf, s2);
-			g_free (s2);
+			g_free_vb (s2);
 			break;
 		}
 		default: {
@@ -9278,7 +9278,7 @@ method_commands_internal (int command, MonoMethod *method, MonoDomain *domain, g
 				mono_error_assert_ok (&error);
 				buffer_add_byte (buf, TOKEN_TYPE_STRING);
 				buffer_add_string (buf, s);
-				g_free (s);
+				g_free_vb (s);
 			} else {
 				g_assert_not_reached ();
 			}
@@ -9323,17 +9323,17 @@ method_commands_internal (int command, MonoMethod *method, MonoDomain *domain, g
 		for (i = 0; i < type_argc; ++i) {
 			klass = decode_typeid (p, &p, end, &d, &err);
 			if (err != ERR_NONE) {
-				g_free (type_argv);
+				g_free_vb (type_argv);
 				return err;
 			}
 			if (domain != d) {
-				g_free (type_argv);
+				g_free_vb (type_argv);
 				return ERR_INVALID_ARGUMENT;
 			}
 			type_argv [i] = &klass->byval_arg;
 		}
 		ginst = mono_metadata_get_generic_inst (type_argc, type_argv);
-		g_free (type_argv);
+		g_free_vb (type_argv);
 		tmp_context.class_inst = mono_class_is_ginst (method->klass) ? mono_class_get_generic_class (method->klass)->context.class_inst : NULL;
 		tmp_context.method_inst = ginst;
 
@@ -9403,7 +9403,7 @@ thread_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 			g_assert (name);
 			buffer_add_int (buf, len);
 			buffer_add_data (buf, (guint8*)name, len);
-			g_free (s);
+			g_free_vb (s);
 		}
 		break;
 	}
@@ -9864,7 +9864,7 @@ string_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 			s = mono_string_to_utf8_checked (str, &error);
 			mono_error_assert_ok (&error);
 			buffer_add_string (buf, s);
-			g_free (s);
+			g_free_vb (s);
 		}
 		break;
 	case CMD_STRING_REF_GET_LENGTH:
@@ -9957,14 +9957,14 @@ object_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 
 				g_assert (f->type->attrs & FIELD_ATTRIBUTE_STATIC);
 				vtable = mono_class_vtable (obj->vtable->domain, f->parent);
-				val = (guint8 *)g_malloc (mono_class_instance_size (mono_class_from_mono_type (f->type)));
+				val = (guint8 *)g_malloc_vb (mono_class_instance_size (mono_class_from_mono_type (f->type)));
 				mono_field_static_get_value_checked (vtable, f, val, &error);
 				if (!is_ok (&error)) {
 					mono_error_cleanup (&error); /* FIXME report the error */
 					return ERR_INVALID_OBJECT;
 				}
 				buffer_add_value (buf, f->type, val, obj->vtable->domain);
-				g_free (val);
+				g_free_vb (val);
 			} else {
 				guint8 *field_value = NULL;
 
@@ -10015,14 +10015,14 @@ object_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 				g_assert (f->type->attrs & FIELD_ATTRIBUTE_STATIC);
 				vtable = mono_class_vtable (obj->vtable->domain, f->parent);
 
-				val = (guint8 *)g_malloc (mono_class_instance_size (mono_class_from_mono_type (f->type)));
+				val = (guint8 *)g_malloc_vb (mono_class_instance_size (mono_class_from_mono_type (f->type)));
 				err = decode_value (f->type, obj->vtable->domain, val, p, &p, end);
 				if (err != ERR_NONE) {
-					g_free (val);
+					g_free_vb (val);
 					return err;
 				}
 				mono_field_static_set_value (vtable, f, val);
-				g_free (val);
+				g_free_vb (val);
 			} else {
 				err = decode_value (f->type, obj->vtable->domain, (guint8*)obj + f->offset, p, &p, end);
 				if (err != ERR_NONE)
@@ -10389,7 +10389,7 @@ debugger_thread (void *arg)
 			DEBUG_PRINTF (1, "[dbg] Command %s(%s) [%d][at=%lx].\n", command_set_to_string (command_set), cmd_str, id, (long)mono_100ns_ticks () / 10000);
 		}
 
-		data = (guint8 *)g_malloc (len - HEADER_LENGTH);
+		data = (guint8 *)g_malloc_vb (len - HEADER_LENGTH);
 		if (len - HEADER_LENGTH > 0)
 		{
 			res = transport_recv (data, len - HEADER_LENGTH);
@@ -10473,7 +10473,7 @@ debugger_thread (void *arg)
 			buffer_replies = FALSE;
 		}
 
-		g_free (data);
+		g_free_vb (data);
 		buffer_free (&buf);
 
 		if (command_set == CMD_SET_VM && (command == CMD_VM_DISPOSE || command == CMD_VM_EXIT))

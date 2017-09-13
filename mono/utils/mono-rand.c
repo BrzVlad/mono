@@ -165,7 +165,7 @@ mono_rand_try_get_bytes (gpointer *handle, guchar *buffer, gint buffer_size, Mon
 			return FALSE;
 		}
 		get_entropy_from_egd (socket_path, buffer, buffer_size, error);
-		g_free (socket_path);
+		g_free_vb (socket_path);
 	} else {
 		/* Read until the buffer is filled. This may block if using NAME_DEV_RANDOM. */
 		gint count = 0;

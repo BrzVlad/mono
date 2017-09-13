@@ -83,7 +83,7 @@ ves_icall_System_IO_FSW_SupportsFSW (void)
 		return 0;
 
 	err = mono_dl_symbol (fam_module, "FAMNextEvent", (gpointer *) &FAMNextEvent);
-	g_free (err);
+	g_free_vb (err);
 	if (FAMNextEvent == NULL)
 		return 0;
 
@@ -197,8 +197,8 @@ ves_icall_System_IO_InotifyWatcher_AddWatch (int fd, MonoString *name, gint32 ma
 		mono_marshal_set_last_error ();
 	}
 	if (path != str)
-		g_free (path);
-	g_free (str);
+		g_free_vb (path);
+	g_free_vb (str);
 	return retval;
 }
 

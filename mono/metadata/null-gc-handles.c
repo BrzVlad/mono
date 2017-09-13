@@ -113,12 +113,12 @@ handle_data_alloc_entries (HandleData *handles)
 {
 	handles->size = 32;
 	if (MONO_GC_HANDLE_TYPE_IS_WEAK (handles->type)) {
-		handles->entries = (void **)g_malloc0 (sizeof (*handles->entries) * handles->size);
-		handles->domain_ids = (guint16 *)g_malloc0 (sizeof (*handles->domain_ids) * handles->size);
+		handles->entries = (void **)g_malloc0_vb (sizeof (*handles->entries) * handles->size);
+		handles->domain_ids = (guint16 *)g_malloc0_vb (sizeof (*handles->domain_ids) * handles->size);
 	} else {
 		handles->entries = (void **)mono_gc_alloc_fixed (sizeof (*handles->entries) * handles->size, NULL, MONO_ROOT_SOURCE_GC_HANDLE, "gc handles table");
 	}
-	handles->bitmap = (guint32 *)g_malloc0 (handles->size / CHAR_BIT);
+	handles->bitmap = (guint32 *)g_malloc0_vb (handles->size / CHAR_BIT);
 }
 
 static gint
@@ -155,9 +155,9 @@ handle_data_grow (HandleData *handles, gboolean track)
 	guint32 new_size = handles->size * 2; /* always double: we memset to 0 based on this below */
 
 	/* resize and copy the bitmap */
-	new_bitmap = (guint32 *)g_malloc0 (new_size / CHAR_BIT);
+	new_bitmap = (guint32 *)g_malloc0_vb (new_size / CHAR_BIT);
 	memcpy (new_bitmap, handles->bitmap, handles->size / CHAR_BIT);
-	g_free (handles->bitmap);
+	g_free_vb (handles->bitmap);
 	handles->bitmap = new_bitmap;
 
 	/* resize and copy the entries */
@@ -165,8 +165,8 @@ handle_data_grow (HandleData *handles, gboolean track)
 		gpointer *entries;
 		guint16 *domain_ids;
 		gint i;
-		domain_ids = (guint16 *)g_malloc0 (sizeof (*handles->domain_ids) * new_size);
-		entries = (void **)g_malloc0 (sizeof (*handles->entries) * new_size);
+		domain_ids = (guint16 *)g_malloc0_vb (sizeof (*handles->domain_ids) * new_size);
+		entries = (void **)g_malloc0_vb (sizeof (*handles->entries) * new_size);
 		memcpy (domain_ids, handles->domain_ids, sizeof (*handles->domain_ids) * handles->size);
 		for (i = 0; i < handles->size; ++i) {
 			MonoObject *obj = mono_gc_weak_link_get (&(handles->entries [i]));
@@ -177,8 +177,8 @@ handle_data_grow (HandleData *handles, gboolean track)
 				g_assert (!handles->entries [i]);
 			}
 		}
-		g_free (handles->entries);
-		g_free (handles->domain_ids);
+		g_free_vb (handles->entries);
+		g_free_vb (handles->domain_ids);
 		handles->entries = entries;
 		handles->domain_ids = domain_ids;
 	} else {

@@ -53,7 +53,7 @@ sigbuffer_init (SigBuffer *buf, int size)
 {
 	MONO_REQ_GC_NEUTRAL_MODE;
 
-	buf->buf = (char *)g_malloc (size);
+	buf->buf = (char *)g_malloc_vb (size);
 	buf->p = buf->buf;
 	buf->end = buf->buf + size;
 }
@@ -107,7 +107,7 @@ sigbuffer_free (SigBuffer *buf)
 {
 	MONO_REQ_GC_NEUTRAL_MODE;
 
-	g_free (buf->buf);
+	g_free_vb (buf->buf);
 }
 
 static guint32
@@ -530,7 +530,7 @@ mono_dynimage_encode_constant (MonoDynamicImage *assembly, MonoObject *val, Mono
 	char* buf;
 	guint32 idx = 0, len = 0, dummy = 0;
 
-	buf = (char *)g_malloc (64);
+	buf = (char *)g_malloc_vb (64);
 	if (!val) {
 		*ret_type = MONO_TYPE_CLASS;
 		len = 4;
@@ -584,18 +584,18 @@ handle_enum:
 		mono_metadata_encode_value (len, b, &b);
 #if G_BYTE_ORDER != G_LITTLE_ENDIAN
 		{
-			char *swapped = g_malloc (2 * mono_string_length (str));
+			char *swapped = g_malloc_vb (2 * mono_string_length (str));
 			const char *p = (const char*)mono_string_chars (str);
 
 			swap_with_size (swapped, p, 2, mono_string_length (str));
 			idx = mono_dynamic_image_add_to_blob_cached (assembly, blob_size, b-blob_size, swapped, len);
-			g_free (swapped);
+			g_free_vb (swapped);
 		}
 #else
 		idx = mono_dynamic_image_add_to_blob_cached (assembly, blob_size, b-blob_size, (char*)mono_string_chars (str), len);
 #endif
 
-		g_free (buf);
+		g_free_vb (buf);
 		return idx;
 	}
 	case MONO_TYPE_GENERICINST:
@@ -615,7 +615,7 @@ handle_enum:
 	idx = mono_dynamic_image_add_to_blob_cached (assembly, blob_size, b-blob_size, box_val, len);
 #endif
 
-	g_free (buf);
+	g_free_vb (buf);
 	return idx;
 }
 
@@ -1095,7 +1095,7 @@ mono_dynimage_save_encode_marshal_blob (MonoDynamicImage *assembly, MonoReflecti
 			len = strlen (str);
 			sigbuffer_add_value (&buf, len);
 			sigbuffer_add_mem (&buf, str, len);
-			g_free (str);
+			g_free_vb (str);
 		} else {
 			sigbuffer_add_value (&buf, 0);
 		}
@@ -1120,7 +1120,7 @@ mono_dynimage_save_encode_marshal_blob (MonoDynamicImage *assembly, MonoReflecti
 			len = strlen (str);
 			sigbuffer_add_value (&buf, len);
 			sigbuffer_add_mem (&buf, str, len);
-			g_free (str);
+			g_free_vb (str);
 		} else {
 			/* FIXME: Actually a bug, since this field is required.  Punting for now ... */
 			sigbuffer_add_value (&buf, 0);
@@ -1134,7 +1134,7 @@ mono_dynimage_save_encode_marshal_blob (MonoDynamicImage *assembly, MonoReflecti
 			len = strlen (str);
 			sigbuffer_add_value (&buf, len);
 			sigbuffer_add_mem (&buf, str, len);
-			g_free (str);
+			g_free_vb (str);
 		} else {
 			sigbuffer_add_value (&buf, 0);
 		}

@@ -233,7 +233,7 @@ namedsem_create (gint32 initial, gint32 max, const gunichar2 *name)
 		handle = sem_handle_create ((MonoW32HandleSemaphore*) &namedsem_handle, MONO_W32HANDLE_NAMEDSEM, initial, max);
 	}
 
-	g_free (utf8_name);
+	g_free_vb (utf8_name);
 
 	mono_w32handle_namespace_unlock ();
 
@@ -361,7 +361,7 @@ ves_icall_System_Threading_Semaphore_OpenSemaphore_internal (MonoString *name, g
 	mono_trace (G_LOG_LEVEL_DEBUG, MONO_TRACE_IO_LAYER, "%s: returning named sem handle %p", __func__, handle);
 
 cleanup:
-	g_free (utf8_name);
+	g_free_vb (utf8_name);
 
 	mono_w32handle_namespace_unlock ();
 

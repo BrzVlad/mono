@@ -297,7 +297,7 @@ ves_icall_System_Threading_Events_CreateEvent_internal (MonoBoolean manual, Mono
 	gchar *utf8_name = mono_string_handle_to_utf8 (name, error);
 	return_val_if_nok (error, NULL);
 	gpointer result = mono_w32event_create_full (manual, initial, utf8_name, err);
-	g_free (utf8_name);
+	g_free_vb (utf8_name);
 	return result;
 }
 
@@ -407,7 +407,7 @@ ves_icall_System_Threading_Events_OpenEvent_internal (MonoStringHandle name, gin
 	gchar *utf8_name = mono_string_handle_to_utf8 (name, error);
 	return_val_if_nok (error, NULL);
 	gpointer handle = mono_w32event_open (utf8_name, rights, err);
-	g_free (utf8_name);
+	g_free_vb (utf8_name);
 	return handle;
 }
 

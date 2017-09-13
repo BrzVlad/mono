@@ -2243,7 +2243,7 @@ add_code_pointer (uintptr_t ip)
 		size_code_pages *= 2;
 		if (size_code_pages == 0)
 			size_code_pages = 16;
-		n = (uintptr_t *) g_calloc (sizeof (uintptr_t) * size_code_pages, 1);
+		n = (uintptr_t *) g_calloc_vb (sizeof (uintptr_t) * size_code_pages, 1);
 		for (i = 0; i < old_size; ++i) {
 			if (code_pages [i])
 				add_code_page (n, size_code_pages, code_pages [i]);
@@ -2421,7 +2421,7 @@ elf_dl_callback (struct dl_phdr_info *info, size_t size, void *data)
 			filename = buf;
 		}
 	}
-	obj = g_calloc (sizeof (BinaryObject), 1);
+	obj = g_calloc_vb (sizeof (BinaryObject), 1);
 	obj->addr = (void*)info->dlpi_addr;
 	obj->name = pstrdup (filename);
 	obj->next = log_profiler.binary_objects;
@@ -2662,7 +2662,7 @@ counters_sample (uint64_t timestamp)
 	counters_emit ();
 
 	buffer_size = 8;
-	buffer = g_calloc (1, buffer_size);
+	buffer = g_calloc_vb (1, buffer_size);
 
 	mono_os_mutex_lock (&log_profiler.counters_mutex);
 
@@ -2705,7 +2705,7 @@ counters_sample (uint64_t timestamp)
 		type = mono_counter_get_type (counter);
 
 		if (!agent->value) {
-			agent->value = g_calloc (1, size);
+			agent->value = g_calloc_vb (1, size);
 			agent->value_size = size;
 		} else {
 			if (type == MONO_COUNTER_STRING) {
@@ -2975,7 +2975,7 @@ parse_generic_type_names(char *name)
 	if (name == NULL || *name == '\0')
 		return g_strdup ("");
 
-	if (!(ret = new_name = (char *) g_calloc (strlen (name) * 4 + 1, sizeof (char))))
+	if (!(ret = new_name = (char *) g_calloc_vb (strlen (name) * 4 + 1, sizeof (char))))
 		return NULL;
 
 	do {

@@ -279,7 +279,7 @@ mono_w32handle_cleanup (void)
 	shutting_down = TRUE;
 
 	for (i = 0; i < SLOT_MAX; ++i)
-		g_free (private_handles [i]);
+		g_free_vb (private_handles [i]);
 }
 
 static gsize
@@ -610,7 +610,7 @@ w32handle_destroy (gpointer handle)
 
 	memset (handle_specific, 0, mono_w32handle_ops_typesize (type));
 
-	g_free (handle_specific);
+	g_free_vb (handle_specific);
 }
 
 /* The handle must not be locked on entry to this function */

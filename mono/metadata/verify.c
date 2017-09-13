@@ -880,7 +880,7 @@ mono_type_is_valid_in_context (VerifyContext *ctx, MonoType *type)
 			type->type == MONO_TYPE_VAR ? "class" : "method",
 			ctx->ip_offset),
 			MONO_EXCEPTION_BAD_IMAGE);		
-		g_free (str);
+		g_free_vb (str);
 		return FALSE;
 	}
 
@@ -967,7 +967,7 @@ verifier_load_field (VerifyContext *ctx, int token, MonoClass **out_klass, const
 	if (mono_field_get_flags (field) & FIELD_ATTRIBUTE_LITERAL) {
 		char *type_name = mono_type_get_full_name (field->parent);
 		ADD_VERIFY_ERROR (ctx, g_strdup_printf ("Cannot reference literal field %s::%s at 0x%04x", type_name, field->name, ctx->ip_offset));
-		g_free (type_name);
+		g_free_vb (type_name);
 		return NULL;
 	}
 
@@ -1164,8 +1164,8 @@ stack_slot_full_name (ILStackDesc *value)
 	char *type_name = mono_type_full_name (value->type);
 	char *stack_name = stack_slot_stack_type_full_name (value);
 	char *res = g_strdup_printf ("%s (%s)", type_name, stack_name);
-	g_free (type_name);
-	g_free (stack_name);
+	g_free_vb (type_name);
+	g_free_vb (stack_name);
 	return res;
 }
 
@@ -1182,8 +1182,8 @@ mono_free_verify_list (GSList *list)
 
 	for (tmp = list; tmp; tmp = tmp->next) {
 		info = (MonoVerifyInfoExtended *)tmp->data;
-		g_free (info->info.message);
-		g_free (info);
+		g_free_vb (info->info.message);
+		g_free_vb (info);
 	}
 	g_slist_free (list);
 }
@@ -1518,7 +1518,7 @@ ensure_stack_size (ILCodeDesc *stack, int required)
 	if (stack->stack) {
 		if (stack->size)
 			memcpy (tmp, stack->stack, stack->size * sizeof (ILStackDesc));
-		g_free (stack->stack);
+		g_free_vb (stack->stack);
 		_MEM_FREE (sizeof (ILStackDesc) * stack->max_size);
 	}
 
@@ -1859,7 +1859,7 @@ dump_stack_value (ILStackDesc *value)
 				//should be a boxed value 
 				char * name = mono_type_full_name (value->type);
 				printf ("complex] %s", name);
-				g_free (name);
+				g_free_vb (name);
 				return;
 				}
 			}
@@ -2063,7 +2063,7 @@ init_stack_with_value_at_exception_boundary (VerifyContext *ctx, ILCodeDesc *cod
 	if (!mono_error_ok (&error)) {
 		char *name = mono_type_get_full_name (klass);
 		ADD_VERIFY_ERROR (ctx, g_strdup_printf ("Invalid class %s used for exception", name));
-		g_free (name);
+		g_free_vb (name);
 		mono_error_cleanup (&error);
 		return;
 	}
@@ -2723,14 +2723,14 @@ verify_delegate_compatibility (VerifyContext *ctx, MonoClass *delegate, ILStackD
 	if (!method || !mono_method_signature (method)) {
 		char *name = mono_type_get_full_name (delegate);
 		ADD_VERIFY_ERROR (ctx, g_strdup_printf ("Invalid method on stack to create delegate %s construction at 0x%04x", name, ctx->ip_offset));
-		g_free (name);
+		g_free_vb (name);
 		return;
 	}
 
 	if (!invoke || !mono_method_signature (invoke)) {
 		char *name = mono_type_get_full_name (delegate);
 		ADD_VERIFY_ERROR (ctx, g_strdup_printf ("Delegate type %s with bad Invoke method at 0x%04x", name, ctx->ip_offset));
-		g_free (name);
+		g_free_vb (name);
 		return;
 	}
 
@@ -2743,8 +2743,8 @@ verify_delegate_compatibility (VerifyContext *ctx, MonoClass *delegate, ILStackD
 		char *fun_sig = mono_signature_get_desc (mono_method_signature (method), FALSE);
 		char *invoke_sig = mono_signature_get_desc (mono_method_signature (invoke), FALSE);
 		CODE_NOT_VERIFIABLE (ctx, g_strdup_printf ("Function pointer signature '%s' doesn't match delegate's signature '%s' at 0x%04x", fun_sig, invoke_sig, ctx->ip_offset));
-		g_free (fun_sig);
-		g_free (invoke_sig);
+		g_free_vb (fun_sig);
+		g_free_vb (invoke_sig);
 	}
 
 	/* 
@@ -2884,8 +2884,8 @@ store_local (VerifyContext *ctx, guint32 arg)
 				arg,
 				expected,
 				ctx->ip_offset));
-		g_free (expected);
-		g_free (found);	
+		g_free_vb (expected);
+		g_free_vb (found);	
 	}
 }
 
@@ -3097,8 +3097,8 @@ do_cmp_op (VerifyContext *ctx, const unsigned char table [TYPE_MAX][TYPE_MAX], g
 		char *left_type = stack_slot_full_name (a);
 		char *right_type = stack_slot_full_name (b);
 		CODE_NOT_VERIFIABLE (ctx, g_strdup_printf("Compare instruction applyed to ill formed stack (%s x %s) at 0x%04x", left_type, right_type, ctx->ip_offset));
-		g_free (left_type);
-		g_free (right_type);
+		g_free_vb (left_type);
+		g_free_vb (right_type);
 	} else if (res & NON_VERIFIABLE_RESULT) {
 		CODE_NOT_VERIFIABLE (ctx, g_strdup_printf ("Compare instruction is not verifiable (%s x %s) at 0x%04x", stack_slot_get_name (a), stack_slot_get_name (b), ctx->ip_offset)); 
  		res = res & ~NON_VERIFIABLE_RESULT;
@@ -3122,8 +3122,8 @@ do_ret (VerifyContext *ctx)
 			char *ret_type = mono_type_full_name (ctx->signature->ret);
 			char *stack_type = stack_slot_full_name (top);
 			CODE_NOT_VERIFIABLE (ctx, g_strdup_printf ("Incompatible return value on stack with method signature, expected '%s' but got '%s' at 0x%04x", ret_type, stack_type, ctx->ip_offset));
-			g_free (stack_type);
-			g_free (ret_type);
+			g_free_vb (stack_type);
+			g_free_vb (ret_type);
 			return;
 		}
 
@@ -3185,7 +3185,7 @@ do_invoke_method (VerifyContext *ctx, int method_token, gboolean virtual_)
 		char *name = mono_type_get_full_name (method->klass);
 		ADD_VERIFY_ERROR (ctx, g_strdup_printf ("Could not resolve signature of %s:%s at 0x%04x due to: %s", name, method->name, ctx->ip_offset, mono_error_get_message (&error)));
 		mono_error_cleanup (&error);
-		g_free (name);
+		g_free_vb (name);
 		return;
 	}
 
@@ -3200,8 +3200,8 @@ do_invoke_method (VerifyContext *ctx, int method_token, gboolean virtual_)
 			char *stack_name = stack_slot_full_name (value);
 			char *sig_name = mono_type_full_name (sig->params [i]);
 			CODE_NOT_VERIFIABLE (ctx, g_strdup_printf ("Incompatible parameter with function signature: Calling method with signature (%s) but for argument %d there is a (%s) on stack at 0x%04x", sig_name, i, stack_name, ctx->ip_offset));
-			g_free (stack_name);
-			g_free (sig_name);
+			g_free_vb (stack_name);
+			g_free_vb (sig_name);
 		}
 
 		if (stack_slot_is_managed_mutability_pointer (value))
@@ -3266,21 +3266,21 @@ do_invoke_method (VerifyContext *ctx, int method_token, gboolean virtual_)
 			char *method_name = mono_method_full_name (method, TRUE);
 			CODE_NOT_VERIFIABLE (ctx, g_strdup_printf ("Incompatible this argument on stack with method signature expected '%s' but got '%s' for a call to '%s' at 0x%04x",
 					expected, effective, method_name, ctx->ip_offset));
-			g_free (method_name);
-			g_free (effective);
-			g_free (expected);
+			g_free_vb (method_name);
+			g_free_vb (effective);
+			g_free_vb (expected);
 		}
 
 		if (!IS_SKIP_VISIBILITY (ctx) && !mono_method_can_access_method_full (ctx->method, method, mono_class_from_mono_type (value->type))) {
 			char *name = mono_method_full_name (method, TRUE);
 			CODE_NOT_VERIFIABLE2 (ctx, g_strdup_printf ("Method %s is not accessible at 0x%04x", name, ctx->ip_offset), MONO_EXCEPTION_METHOD_ACCESS);
-			g_free (name);
+			g_free_vb (name);
 		}
 
 	} else if (!IS_SKIP_VISIBILITY (ctx) && !mono_method_can_access_method_full (ctx->method, method, NULL)) {
 		char *name = mono_method_full_name (method, TRUE);
 		CODE_NOT_VERIFIABLE2 (ctx, g_strdup_printf ("Method %s is not accessible at 0x%04x", name, ctx->ip_offset), MONO_EXCEPTION_METHOD_ACCESS);
-		g_free (name);
+		g_free_vb (name);
 	}
 
 	if (sig->ret->type != MONO_TYPE_VOID) {
@@ -3367,8 +3367,8 @@ do_store_static_field (VerifyContext *ctx, int token) {
 		char *field_name = mono_type_full_name (field->type);
 		CODE_NOT_VERIFIABLE (ctx, g_strdup_printf ("Incompatible type in static field store expected '%s' but found '%s' at 0x%04x",
 				field_name, stack_name, ctx->ip_offset));
-		g_free (field_name);
-		g_free (stack_name);
+		g_free_vb (field_name);
+		g_free_vb (stack_name);
 	}
 }
 
@@ -3413,8 +3413,8 @@ check_is_valid_type_for_field_ops (VerifyContext *ctx, int token, ILStackDesc *o
 			char *found = stack_slot_full_name (obj);
 			char *expected = mono_type_full_name (&field->parent->byval_arg);
 			CODE_NOT_VERIFIABLE (ctx, g_strdup_printf ("Expected type '%s' but found '%s' referencing the 'this' argument at 0x%04x", expected, found, ctx->ip_offset));
-			g_free (found);
-			g_free (expected);
+			g_free_vb (found);
+			g_free_vb (expected);
 		}
 
 		if (!IS_SKIP_VISIBILITY (ctx) && !mono_method_can_access_field_full (ctx->method, field, mono_class_from_mono_type (obj->type)))
@@ -3725,8 +3725,8 @@ do_stobj (VerifyContext *ctx, int token)
 		char *type_name = mono_type_full_name (type);
 		char *src_name = stack_slot_full_name (src);
 		CODE_NOT_VERIFIABLE (ctx, g_strdup_printf ("Token '%s' and source '%s' of stobj don't match ' at 0x%04x", type_name, src_name, ctx->ip_offset));
-		g_free (type_name);
-		g_free (src_name);
+		g_free_vb (type_name);
+		g_free_vb (src_name);
 	}
 
 	if (!verify_type_compatibility (ctx, mono_type_get_type_byval (dest->type), type))
@@ -3793,8 +3793,8 @@ do_initobj (VerifyContext *ctx, int token)
 		char *stack_name = mono_type_full_name (stack);
 
 		CODE_NOT_VERIFIABLE (ctx, g_strdup_printf ("Initobj %s not compatible with value on stack %s at 0x%04x", expected_name, stack_name, ctx->ip_offset));
-		g_free (expected_name);
-		g_free (stack_name);
+		g_free_vb (expected_name);
+		g_free_vb (stack_name);
 	}
 }
 
@@ -3822,8 +3822,8 @@ do_newobj (VerifyContext *ctx, int token)
 		char *from = mono_method_full_name (ctx->method, TRUE);
 		char *to = mono_method_full_name (method, TRUE);
 		CODE_NOT_VERIFIABLE2 (ctx, g_strdup_printf ("Constructor %s not visible from %s at 0x%04x", to, from, ctx->ip_offset), MONO_EXCEPTION_METHOD_ACCESS);
-		g_free (from);
-		g_free (to);
+		g_free_vb (from);
+		g_free_vb (to);
 	}
 
 	//FIXME use mono_method_get_signature_full
@@ -3861,8 +3861,8 @@ do_newobj (VerifyContext *ctx, int token)
 				char *stack_name = stack_slot_full_name (value);
 				char *sig_name = mono_type_full_name (sig->params [i]);
 				CODE_NOT_VERIFIABLE (ctx, g_strdup_printf ("Incompatible parameter value with constructor signature: %s X %s at 0x%04x", sig_name, stack_name, ctx->ip_offset));
-				g_free (stack_name);
-				g_free (sig_name);
+				g_free_vb (stack_name);
+				g_free_vb (sig_name);
 			}
 
 			if (stack_slot_is_managed_mutability_pointer (value))
@@ -3900,7 +3900,7 @@ do_cast (VerifyContext *ctx, int token, const char *opcode) {
 	else if (!MONO_TYPE_IS_REFERENCE  (value->type) && !is_boxed) {
 		char *name = stack_slot_full_name (value);
 		CODE_NOT_VERIFIABLE (ctx, g_strdup_printf ("Expected a reference type on stack for %s but found %s at 0x%04x", opcode, name, ctx->ip_offset));
-		g_free (name);
+		g_free_vb (name);
 	}
 
 	switch (value->type->type) {
@@ -4237,7 +4237,7 @@ do_throw (VerifyContext *ctx)
 	if (mono_type_is_generic_argument (exception->type) && !stack_slot_is_boxed_value (exception)) {
 		char *name = mono_type_full_name (exception->type);
 		CODE_NOT_VERIFIABLE (ctx, g_strdup_printf ("Invalid type on stack for throw, expected reference type but found unboxed %s  at 0x%04x ", name, ctx->ip_offset));
-		g_free (name);
+		g_free_vb (name);
 	}
 	/*The stack is left empty after a throw*/
 	ctx->eval.size = 0;
@@ -4612,8 +4612,8 @@ merge_stacks (VerifyContext *ctx, ILCodeDesc *from, ILCodeDesc *to, gboolean sta
 			char *old_name = stack_slot_full_name (old_slot); 
 			char *new_name = stack_slot_full_name (new_slot);
 			CODE_NOT_VERIFIABLE (ctx, g_strdup_printf ("Could not merge stack at depth %d, types not compatible: %s X %s at 0x%04x", i, old_name, new_name, ctx->ip_offset));
-			g_free (old_name);
-			g_free (new_name);
+			g_free_vb (old_name);
+			g_free_vb (new_name);
 			goto end_verify;			
 		} 
 
@@ -4685,8 +4685,8 @@ merge_stacks (VerifyContext *ctx, ILCodeDesc *from, ILCodeDesc *to, gboolean sta
 		char *old_name = stack_slot_full_name (old_slot); 
 		char *new_name = stack_slot_full_name (new_slot);
 		CODE_NOT_VERIFIABLE (ctx, g_strdup_printf ("Could not merge stack at depth %d, types not compatible: %s X %s at 0x%04x", i, old_name, new_name, ctx->ip_offset)); 
-		g_free (old_name);
-		g_free (new_name);
+		g_free_vb (old_name);
+		g_free_vb (new_name);
 		}
 		set_stack_value (ctx, old_slot, &new_class->byval_arg, stack_slot_is_managed_pointer (old_slot));
 		goto end_verify;
@@ -4916,7 +4916,7 @@ mono_method_verify (MonoMethod *method, int level)
 		if (!mono_error_ok (&error)) {
 			char *name = mono_type_full_name (ctx.locals [i] ? ctx.locals [i] : uninflated);
 			ADD_VERIFY_ERROR (&ctx, g_strdup_printf ("Invalid local %d of type %s", i, name));
-			g_free (name);
+			g_free_vb (name);
 			mono_error_cleanup (&error);
 			/* we must not free (in cleanup) what was not yet allocated (but only copied) */
 			ctx.num_locals = i;
@@ -4930,7 +4930,7 @@ mono_method_verify (MonoMethod *method, int level)
 		if (!mono_error_ok (&error)) {
 			char *name = mono_type_full_name (ctx.params [i] ? ctx.params [i] : uninflated);
 			ADD_VERIFY_ERROR (&ctx, g_strdup_printf ("Invalid parameter %d of type %s", i, name));
-			g_free (name);
+			g_free_vb (name);
 			mono_error_cleanup (&error);
 			/* we must not free (in cleanup) what was not yet allocated (but only copied) */
 			ctx.max_args = i;
@@ -4945,7 +4945,7 @@ mono_method_verify (MonoMethod *method, int level)
 		if (get_stack_type (ctx.locals [i]) == TYPE_INV) {
 			char *name = mono_type_full_name (ctx.locals [i]);
 			ADD_VERIFY_ERROR (&ctx, g_strdup_printf ("Invalid local %i of type %s", i, name));
-			g_free (name);
+			g_free_vb (name);
 			break;
 		}
 		
@@ -4958,7 +4958,7 @@ mono_method_verify (MonoMethod *method, int level)
 		if (get_stack_type (ctx.params [i]) == TYPE_INV) {
 			char *name = mono_type_full_name (ctx.params [i]);
 			ADD_VERIFY_ERROR (&ctx, g_strdup_printf ("Invalid parameter %i of type %s", i, name));
-			g_free (name);
+			g_free_vb (name);
 			break;
 		}
 	}
@@ -5130,7 +5130,7 @@ mono_method_verify (MonoMethod *method, int level)
 			discode = mono_disasm_code_one (NULL, method, ip, NULL);
 			discode [strlen (discode) - 1] = 0; /* no \n */
 			g_print ("[%d] %-29s (%d)\n",  ip_offset, discode, ctx.eval.size);
-			g_free (discode);
+			g_free_vb (discode);
 		}
 		dump_stack_state (&ctx.code [ip_offset]);
 		dump_stack_state (&ctx.eval);
@@ -5972,20 +5972,20 @@ mono_method_verify (MonoMethod *method, int level)
 			CODE_NOT_VERIFIABLE (&ctx, g_strdup_printf ("Constructor %s for type %s not calling base type ctor due to a TypeLoadException on base type.", method_name, type));
 		else
 			CODE_NOT_VERIFIABLE (&ctx, g_strdup_printf ("Constructor %s for type %s not calling base type ctor.", method_name, type));
-		g_free (method_name);
-		g_free (type);
+		g_free_vb (method_name);
+		g_free_vb (type);
 	}
 
 cleanup:
 	if (ctx.code) {
 		for (i = 0; i < ctx.header->code_size; ++i) {
 			if (ctx.code [i].stack)
-				g_free (ctx.code [i].stack);
+				g_free_vb (ctx.code [i].stack);
 		}
 	}
 
 	for (tmp = ctx.funptrs; tmp; tmp = tmp->next)
-		g_free (tmp->data);
+		g_free_vb (tmp->data);
 	g_slist_free (ctx.funptrs);
 
 	for (tmp = ctx.exception_types; tmp; tmp = tmp->next)
@@ -6002,11 +6002,11 @@ cleanup:
 	}
 
 	if (ctx.eval.stack)
-		g_free (ctx.eval.stack);
+		g_free_vb (ctx.eval.stack);
 	if (ctx.code)
-		g_free (ctx.code);
-	g_free (ctx.locals);
-	g_free (ctx.params);
+		g_free_vb (ctx.code);
+	g_free_vb (ctx.locals);
+	g_free_vb (ctx.params);
 	mono_basic_block_free (original_bb);
 	mono_metadata_free_mh (ctx.header);
 

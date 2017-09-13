@@ -9,7 +9,7 @@
 void
 mono_free (void *ptr)
 {
-	g_free (ptr);
+	g_free_vb (ptr);
 }
 
 

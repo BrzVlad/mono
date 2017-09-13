@@ -562,7 +562,7 @@ get_call_info (MonoMemPool *mp, MonoMethodSignature *sig)
 	if (mp)
 		cinfo = mono_mempool_alloc0 (mp, sizeof (CallInfo) + (sizeof (ArgInfo) * n));
 	else
-		cinfo = g_malloc0 (sizeof (CallInfo) + (sizeof (ArgInfo) * n));
+		cinfo = g_malloc0_vb (sizeof (CallInfo) + (sizeof (ArgInfo) * n));
 
 	return get_call_info_internal (cinfo, sig);
 }
@@ -590,7 +590,7 @@ mono_arch_get_argument_info (MonoMethodSignature *csig, int param_count, MonoJit
 	int offset = 8;
 	CallInfo *cinfo;
 
-	/* Avoid g_malloc as it is not signal safe */
+	/* Avoid g_malloc_vb as it is not signal safe */
 	len = sizeof (CallInfo) + (sizeof (ArgInfo) * (csig->param_count + 1));
 	cinfo = (CallInfo*)g_newa (guint8*, len);
 	memset (cinfo, 0, len);
@@ -672,8 +672,8 @@ mono_arch_tail_call_supported (MonoCompile *cfg, MonoMethodSignature *caller_sig
 		/* An address on the callee's stack is passed as the first argument */
 		res = FALSE;
 
-	g_free (c1);
-	g_free (c2);
+	g_free_vb (c1);
+	g_free_vb (c2);
 
 	return res;
 }
@@ -1044,7 +1044,7 @@ mono_arch_allocate_vars (MonoCompile *cfg)
 	if (locals_stack_size > MONO_ARCH_MAX_FRAME_SIZE) {
 		char *mname = mono_method_full_name (cfg->method, TRUE);
 		mono_cfg_set_exception_invalid_program (cfg, g_strdup_printf ("Method %s stack is too big.", mname));
-		g_free (mname);
+		g_free_vb (mname);
 		return;
 	}
 	if (locals_stack_align) {
@@ -5015,7 +5015,7 @@ mono_arch_emit_prolog (MonoCompile *cfg)
 
 	cfg->code_size = MAX (cfg->header->code_size * 4, 10240);
 
-	code = cfg->native_code = g_malloc (cfg->code_size);
+	code = cfg->native_code = g_malloc_vb (cfg->code_size);
 
 #if 0
 	{
@@ -5504,7 +5504,7 @@ mono_arch_finish_init (void)
 #endif
 #endif
 	} else {
-		g_free (mono_no_tls);
+		g_free_vb (mono_no_tls);
 	}
 }
 
@@ -5648,7 +5648,7 @@ mono_arch_build_imt_trampoline (MonoVTable *vtable, MonoDomain *domain, MonoIMTC
 	{
 		char *buff = g_strdup_printf ("thunk_for_class_%s_%s_entries_%d", vtable->klass->name_space, vtable->klass->name, count);
 		mono_disassemble_code (NULL, (guint8*)start, code - start, buff);
-		g_free (buff);
+		g_free_vb (buff);
 	}
 #endif
 	if (mono_jit_map_is_enabled ()) {
@@ -5658,7 +5658,7 @@ mono_arch_build_imt_trampoline (MonoVTable *vtable, MonoDomain *domain, MonoIMTC
 		else
 			buff = g_strdup_printf ("imt_trampoline_entries_%d", count);
 		mono_emit_jit_tramp (start, code - start, buff);
-		g_free (buff);
+		g_free_vb (buff);
 	}
 
 	MONO_PROFILER_RAISE (jit_code_buffer, (start, code - start, MONO_PROFILER_CODE_BUFFER_IMT_TRAMPOLINE, NULL));
@@ -5913,7 +5913,7 @@ get_delegate_invoke_impl (MonoTrampInfo **info, gboolean has_target, guint32 par
 	} else {
 		char *name = g_strdup_printf ("delegate_invoke_impl_target_%d", param_count);
 		*info = mono_tramp_info_create (name, start, code - start, NULL, unwind_ops);
-		g_free (name);
+		g_free_vb (name);
 	}
 
 	if (mono_jit_map_is_enabled ()) {
@@ -5924,7 +5924,7 @@ get_delegate_invoke_impl (MonoTrampInfo **info, gboolean has_target, guint32 par
 			buff = g_strdup_printf ("delegate_invoke_no_target_%d", param_count);
 		mono_emit_jit_tramp (start, code - start, buff);
 		if (!has_target)
-			g_free (buff);
+			g_free_vb (buff);
 	}
 	MONO_PROFILER_RAISE (jit_code_buffer, (start, code - start, MONO_PROFILER_CODE_BUFFER_DELEGATE_INVOKE, NULL));
 
@@ -5970,7 +5970,7 @@ get_delegate_virtual_invoke_impl (MonoTrampInfo **info, gboolean load_imt_reg, i
 
 	tramp_name = mono_get_delegate_virtual_invoke_impl_name (load_imt_reg, offset);
 	*info = mono_tramp_info_create (tramp_name, start, code - start, NULL, unwind_ops);
-	g_free (tramp_name);
+	g_free_vb (tramp_name);
 
 
 	return start;
@@ -6051,7 +6051,7 @@ mono_arch_get_delegate_invoke_impl (MonoMethodSignature *sig, gboolean has_targe
 		if (mono_aot_only) {
 			char *name = g_strdup_printf ("delegate_invoke_impl_target_%d", sig->param_count);
 			start = mono_aot_get_trampoline (name);
-			g_free (name);
+			g_free_vb (name);
 		} else {
 			MonoTrampInfo *info;
 			start = get_delegate_invoke_impl (&info, FALSE, sig->param_count);

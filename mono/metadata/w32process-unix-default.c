@@ -54,14 +54,14 @@ mono_w32process_get_name (pid_t pid)
 
 		fclose (fp);
 	}
-	g_free (filename);
+	g_free_vb (filename);
 #else
 	memset (buf, '\0', sizeof(buf));
 	filename = g_strdup_printf ("/proc/%d/exe", pid);
 	if (readlink (filename, buf, 255) > 0) {
 		ret = g_strdup (buf);
 	}
-	g_free (filename);
+	g_free_vb (filename);
 
 	if (ret != NULL) {
 		return(ret);
@@ -75,7 +75,7 @@ mono_w32process_get_name (pid_t pid)
 
 		fclose (fp);
 	}
-	g_free (filename);
+	g_free_vb (filename);
 
 	if (ret != NULL) {
 		return(ret);
@@ -99,7 +99,7 @@ mono_w32process_get_name (pid_t pid)
 
 		fclose (fp);
 	}
-	g_free (filename);
+	g_free_vb (filename);
 #endif
 
 	return ret;
@@ -127,7 +127,7 @@ open_process_map (int pid, const char *mode)
 
 		filename = g_strdup_printf (proc_path[i], pid);
 		fp = fopen (filename, mode);
-		g_free (filename);
+		g_free_vb (filename);
 
 		if (fp)
 			return fp;

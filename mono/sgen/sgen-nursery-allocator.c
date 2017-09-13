@@ -913,7 +913,7 @@ sgen_nursery_allocator_set_nursery_bounds (char *start, size_t min_size, size_t 
 	 * since the nursery size must be a power of 2.
 	 */
 	sgen_space_bitmap_size = (sgen_nursery_end - sgen_nursery_start + SGEN_TO_SPACE_GRANULE_IN_BYTES * 8 - 1) / (SGEN_TO_SPACE_GRANULE_IN_BYTES * 8);
-	sgen_space_bitmap = (char *)g_malloc0 (sgen_space_bitmap_size);
+	sgen_space_bitmap = (char *)g_malloc0_vb (sgen_space_bitmap_size);
 
 	/* Setup the single first large fragment */
 	sgen_minor_collector.init_nursery (&mutator_allocator, sgen_nursery_start, sgen_nursery_end);

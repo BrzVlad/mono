@@ -62,16 +62,16 @@ struct _MonoSymbolFile {
 static void
 free_method_info (MonoDebugMethodInfo *minfo)
 {
-	g_free (minfo);
+	g_free_vb (minfo);
 }
 
 static void
 free_source_info (MonoDebugSourceInfo *sinfo)
 {
-	g_free (sinfo->source_file);
-	g_free (sinfo->guid);
-	g_free (sinfo->hash);
-	g_free (sinfo);
+	g_free_vb (sinfo->source_file);
+	g_free_vb (sinfo->guid);
+	g_free_vb (sinfo->hash);
+	g_free_vb (sinfo);
 }
 
 static int
@@ -120,7 +120,7 @@ load_symfile (MonoDebugHandle *handle, MonoSymbolFile *symfile, mono_bool in_the
 			g_warning ("Symbol file %s doesn't match image %s", symfile->filename,
 				   handle->image->name);
 		if (guid)
-			g_free (guid);
+			g_free_vb (guid);
 		return FALSE;
 	}
 
@@ -135,7 +135,7 @@ load_symfile (MonoDebugHandle *handle, MonoSymbolFile *symfile, mono_bool in_the
 	symfile->source_hash = g_hash_table_new_full (
 		NULL, NULL, NULL, (GDestroyNotify) free_source_info);
 
-	g_free (guid);
+	g_free_vb (guid);
 	return TRUE;
 }
 
@@ -154,7 +154,7 @@ mono_debug_open_mono_symbols (MonoDebugHandle *handle, const uint8_t *raw_conten
 	if (raw_contents != NULL) {
 		unsigned char *p;
 		symfile->raw_contents_size = size;
-		symfile->raw_contents = p = (unsigned char *)g_malloc (size);
+		symfile->raw_contents = p = (unsigned char *)g_malloc_vb (size);
 		memcpy (p, raw_contents, size);
 		symfile->filename = g_strdup_printf ("LoadedFromMemory");
 		symfile->was_loaded_from_memory = TRUE;
@@ -205,14 +205,14 @@ mono_debug_close_mono_symbol_file (MonoSymbolFile *symfile)
 
 	if (symfile->raw_contents) {
 		if (symfile->was_loaded_from_memory)
-			g_free ((gpointer)symfile->raw_contents);
+			g_free_vb ((gpointer)symfile->raw_contents);
 		else
 			mono_file_unmap ((gpointer) symfile->raw_contents, symfile->raw_contents_handle);
 	}
 
 	if (symfile->filename)
-		g_free (symfile->filename);
-	g_free (symfile);
+		g_free_vb (symfile->filename);
+	g_free_vb (symfile);
 	mono_debugger_unlock ();
 }
 
@@ -443,8 +443,8 @@ add_line (StatementMachine *stm, GPtrArray *il_offset_array, GPtrArray *line_num
 void
 mono_debug_symfile_free_location (MonoDebugSourceLocation  *location)
 {
-	g_free (location->source_file);
-	g_free (location);
+	g_free_vb (location->source_file);
+	g_free_vb (location);
 }
 
 /*
@@ -465,10 +465,10 @@ get_source_info (MonoSymbolFile *symfile, int index)
 
 		info = g_new0 (MonoDebugSourceInfo, 1);
 		info->source_file = read_string (ptr, &ptr);
-		info->guid = (guint8 *)g_malloc0 (16);
+		info->guid = (guint8 *)g_malloc0_vb (16);
 		memcpy (info->guid, ptr, 16);
 		ptr += 16;
-		info->hash = (guint8 *)g_malloc0 (16);
+		info->hash = (guint8 *)g_malloc0_vb (16);
 		memcpy (info->hash, ptr, 16);
 		ptr += 16;
 		g_hash_table_insert (symfile->source_hash, GUINT_TO_POINTER (index), info);
@@ -646,7 +646,7 @@ mono_debug_symfile_get_seq_points (MonoDebugMethodInfo *minfo, char **source_fil
 
 		*source_file_list = g_ptr_array_new ();
 		if (source_files)
-			*source_files = (int *)g_malloc (il_offset_array->len * sizeof (int));
+			*source_files = (int *)g_malloc_vb (il_offset_array->len * sizeof (int));
 
 		for (i = 0; i < il_offset_array->len; ++i) {
 			file = GPOINTER_TO_UINT (g_ptr_array_index (source_file_array, i));
@@ -832,7 +832,7 @@ mono_debug_symfile_lookup_locals (MonoDebugMethodInfo *minfo)
 	for (i = 0; i < num_locals; ++i) {
 		res->locals [i].index = read_leb128 (p, &p);
 		len = read_leb128 (p, &p);
-		res->locals [i].name = (char *)g_malloc (len + 1);
+		res->locals [i].name = (char *)g_malloc_vb (len + 1);
 		memcpy (res->locals [i].name, p, len);
 		res->locals [i].name [len] = '\0';
 		p += len;

@@ -43,6 +43,7 @@
 #define g_find_program_in_path monoeg_g_find_program_in_path
 #define g_fprintf monoeg_g_fprintf
 #define g_free monoeg_g_free
+#define g_free_verbose monoeg_g_free_verbose
 #define g_get_charset monoeg_g_get_charset
 #define g_get_current_dir monoeg_g_get_current_dir
 #define g_get_current_time monoeg_g_get_current_time
@@ -260,6 +261,7 @@
 #define g_vasprintf monoeg_g_vasprintf
 #define g_win32_getlocale monoeg_g_win32_getlocale
 #define g_assertion_message monoeg_assertion_message
+#define g_malloc_verbose monoeg_malloc_verbose
 #define g_malloc monoeg_malloc
 #define g_malloc0 monoeg_malloc0
 #define g_ptr_array_grow monoeg_ptr_array_grow

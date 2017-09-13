@@ -50,8 +50,8 @@ static void
 conc_table_free (gpointer ptr)
 {
 	conc_table *table = (conc_table *)ptr;
-	g_free (table->kvs);
-	g_free (table);
+	g_free_vb (table->kvs);
+	g_free_vb (table);
 }
 
 static void
@@ -151,7 +151,7 @@ mono_conc_hashtable_destroy (MonoConcurrentHashTable *hash_table)
 		}
 	}
 	conc_table_free ((gpointer)hash_table->table);
-	g_free (hash_table);
+	g_free_vb (hash_table);
 }
 
 gpointer

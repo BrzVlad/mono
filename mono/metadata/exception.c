@@ -948,7 +948,7 @@ append_frame_and_continue (MonoMethod *method, gpointer ip, size_t native_offset
 	if (method) {
 		char *msg = mono_debug_print_stack_frame (method, native_offset, domain);
 		g_string_append_printf (text, "%s\n", msg);
-		g_free (msg);
+		g_free_vb (msg);
 	} else {
 		g_string_append_printf (text, "<unknown native frame 0x%x>\n", ip);
 	}
@@ -1000,13 +1000,13 @@ mono_exception_handle_get_native_backtrace (MonoExceptionHandle exc)
 		if (ji) {
 			char *msg = mono_debug_print_stack_frame (mono_jit_info_get_method (ji), (char*)ip - (char*)ji->code_start, domain);
 			g_string_append_printf (text, "%s\n", msg);
-			g_free (msg);
+			g_free_vb (msg);
 		} else {
 			g_string_append_printf (text, "%s\n", messages [i]);
 		}
 	}
 
-	g_free (messages);
+	g_free_vb (messages);
 	return g_string_free (text, FALSE);
 #else
 	return g_strdup ("");
@@ -1027,7 +1027,7 @@ ves_icall_Mono_Runtime_GetNativeStackTrace (MonoExceptionHandle exc, MonoError *
 
 	trace = mono_exception_handle_get_native_backtrace (exc);
 	res = mono_string_new_handle (mono_domain_get (), trace, error);
-	g_free (trace);
+	g_free_vb (trace);
 	return res;
 }
 
@@ -1102,13 +1102,13 @@ mono_invoke_unhandled_exception_hook (MonoObject *exc)
 			msg = g_strdup_printf ("Nested exception detected.\nOriginal Exception: %s\nNested exception:%s\n",
 				original_backtrace, nested_backtrace);
 
-			g_free (original_backtrace);
-			g_free (nested_backtrace);
+			g_free_vb (original_backtrace);
+			g_free_vb (nested_backtrace);
 		} else {
 			msg = g_strdup ("Nested exception trying to figure out what went wrong");
 		}
 		mono_runtime_printf_err ("[ERROR] FATAL UNHANDLED EXCEPTION: %s", msg);
-		g_free (msg);
+		g_free_vb (msg);
 #if defined(HOST_IOS)
 		g_assertion_message ("Terminating runtime due to unhandled exception");
 #else

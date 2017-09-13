@@ -267,7 +267,7 @@ add_ginst (MonoProfiler *prof, MonoGenericInst *inst)
 	int *ids;
 
 	// FIXME: Cache
-	ids = g_malloc0 (inst->type_argc * sizeof (int));
+	ids = g_malloc0_vb (inst->type_argc * sizeof (int));
 	for (i = 0; i < inst->type_argc; ++i) {
 		MonoType *t = inst->type_argv [i];
 		ids [i] = add_type (prof, t);

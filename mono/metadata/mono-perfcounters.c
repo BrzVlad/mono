@@ -389,7 +389,7 @@ unref_pid_unlocked (int pid)
 		if (!data->refcount) {
 			g_hash_table_remove (pid_to_shared_area, GINT_TO_POINTER (pid));
 			mono_shared_area_unload (data->sarea);
-			g_free (data);
+			g_free_vb (data);
 		}
 	}
 }
@@ -896,9 +896,9 @@ network_cleanup (ImplVtable *vtable)
 	if (narg == NULL)
 		return;
 
-	g_free (narg->name);
+	g_free_vb (narg->name);
 	narg->name = NULL;
-	g_free (narg);
+	g_free_vb (narg);
 	vtable->arg = NULL;
 }
 
@@ -1250,7 +1250,7 @@ custom_get_instance (SharedCategory *cat, SharedCounter *scounter, char* name)
 	inst = (SharedInstance*) shared_data_reserve_room (size, FTYPE_INSTANCE);
 	if (!inst) {
 		perfctr_unlock ();
-		g_free (name);
+		g_free_vb (name);
 		return NULL;
 	}
 	inst->category_offset = (char*)cat - (char*)shared_area;
@@ -1303,7 +1303,7 @@ custom_get_impl (SharedCategory *cat, MonoString *counter, MonoString* instance,
 	return_val_if_nok (error, NULL);
 	*type = simple_type_to_type [scounter->type];
 	inst = custom_get_instance (cat, scounter, name);
-	g_free (name);
+	g_free_vb (name);
 	if (!inst)
 		return NULL;
 	return custom_vtable (scounter, inst, (char *)custom_get_value_address (scounter, inst));
@@ -1370,7 +1370,7 @@ mono_perfcounter_get_impl (MonoString* category, MonoString* counter, MonoString
 		result = predef_writable_get_impl (cdesc->id, counter, c_instance, type, custom);
 		break;
 	}
-	g_free (c_instance);
+	g_free_vb (c_instance);
 	return result;
 }
 
@@ -1398,7 +1398,7 @@ mono_perfcounter_free_data (void *impl)
 	ImplVtable *vtable = (ImplVtable *)impl;
 	if (vtable && vtable->cleanup)
 		vtable->cleanup (vtable);
-	g_free (impl);
+	g_free_vb (impl);
 }
 
 /* Category icalls */
@@ -1566,12 +1566,12 @@ mono_perfcounter_create (MonoString *category, MonoString *help, int type, MonoA
 failure:
 	if (counter_info) {
 		for (i = 0; i < num_counters * 2; ++i) {
-			g_free (counter_info [i]);
+			g_free_vb (counter_info [i]);
 		}
-		g_free (counter_info);
+		g_free_vb (counter_info);
 	}
-	g_free (name);
-	g_free (chelp);
+	g_free_vb (name);
+	g_free_vb (chelp);
 	mono_error_cleanup (&error);
 	return result;
 }
@@ -1597,7 +1597,7 @@ mono_perfcounter_instance_exists (MonoString *instance, MonoString *category, Mo
 		if (mono_error_set_pending_exception (&error))
 			return FALSE;
 		sinst = find_custom_instance (scat, name);
-		g_free (name);
+		g_free_vb (name);
 		if (sinst)
 			return TRUE;
 	} else {
@@ -1728,7 +1728,7 @@ get_string_array (void **array, int count, gboolean is_process, MonoError *error
 		}
 		MonoString *str = mono_string_new_checked (domain, p, error);
 		if (p != buf)
-			g_free (p);
+			g_free_vb (p);
 		return_val_if_nok (error, NULL);
 		mono_array_setref (res, i, str);
 	}
@@ -1763,12 +1763,12 @@ get_mono_instances (MonoError *error)
 	error_init (error);
 	do {
 		count *= 2;
-		g_free (buf);
+		g_free_vb (buf);
 		buf = g_new (void*, count);
 		res = mono_shared_area_instances (buf, count);
 	} while (res == count);
 	array = get_string_array (buf, res, TRUE, error);
-	g_free (buf);
+	g_free_vb (buf);
 	return array;
 }
 
@@ -1784,7 +1784,7 @@ get_cpu_instances (MonoError *error)
 	for (i = 0; i < count; ++i)
 		buf [i] = GINT_TO_POINTER (i - 1); /* -1 => _Total */
 	array = get_string_array (buf, count, FALSE, error);
-	g_free (buf);
+	g_free_vb (buf);
 	MonoString *total = mono_string_new_checked (mono_domain_get (), "_Total", error);
 	return_val_if_nok (error, NULL);
 	mono_array_setref (array, 0, total);
@@ -1801,7 +1801,7 @@ get_processes_instances (MonoError *error)
 	if (!buf)
 		return get_string_array (NULL, 0, FALSE, error);
 	array = get_string_array (buf, count, TRUE, error);
-	g_free (buf);
+	g_free_vb (buf);
 	return array;
 }
 

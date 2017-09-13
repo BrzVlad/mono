@@ -302,8 +302,8 @@ process_module_string_read (MonoObject *filever, gpointer data, const gchar *fie
 		process_set_field_string (filever, fieldname, EMPTY_STRING, 0, error);
 	}
 
-	g_free (lang_key);
-	g_free (lang_key_utf8);
+	g_free_vb (lang_key);
+	g_free_vb (lang_key_utf8);
 }
 
 static void
@@ -334,12 +334,12 @@ mono_w32process_get_fileversion (MonoObject *filever, gunichar2 *filename, MonoE
 
 	datalen = mono_w32process_get_fileversion_info_size (filename, &verinfohandle);
 	if (datalen) {
-		data = g_malloc0 (datalen);
+		data = g_malloc0_vb (datalen);
 		ok = mono_w32process_get_fileversion_info (filename, verinfohandle, datalen, data);
 		if (ok) {
 			query = g_utf8_to_utf16 ("\\", -1, NULL, NULL, NULL);
 			if (query == NULL) {
-				g_free (data);
+				g_free_vb (data);
 				return;
 			}
 
@@ -370,11 +370,11 @@ mono_w32process_get_fileversion (MonoObject *filever, gunichar2 *filename, MonoE
 				#undef LOWORD
 				#undef HIWORD
 			}
-			g_free (query);
+			g_free_vb (query);
 
 			query = g_utf8_to_utf16 ("\\VarFileInfo\\Translation", -1, NULL, NULL, NULL);
 			if (query == NULL) {
-				g_free (data);
+				g_free_vb (data);
 				return;
 			}
 
@@ -409,9 +409,9 @@ mono_w32process_get_fileversion (MonoObject *filever, gunichar2 *filename, MonoE
 				}
 			}
 
-			g_free (query);
+			g_free_vb (query);
 		}
-		g_free (data);
+		g_free_vb (data);
 	}
 }
 
@@ -545,7 +545,7 @@ process_get_module (MonoAssembly *assembly, MonoClass *proc_class, MonoError *er
 	process_set_field_string_char (item, "modulename", modulename, error);
 	return_val_if_nok (error, NULL);
 
-	g_free (filename);
+	g_free_vb (filename);
 
 	return item;
 }

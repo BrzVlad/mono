@@ -112,7 +112,7 @@ load_from_region (int fd, uint64_t offset, uint64_t size)
 	} while (loc == -1 && errno == EINTR);
 	if (loc == -1)
 		return NULL;
-	buffer = g_malloc (size + 1);
+	buffer = g_malloc_vb (size + 1);
 	if (buffer == NULL)
 		return NULL;
 	buffer [size] = 0;
@@ -120,7 +120,7 @@ load_from_region (int fd, uint64_t offset, uint64_t size)
 		status = read (fd, buffer, size);
 	} while (status == -1 && errno == EINTR);
 	if (status == -1){
-		g_free (buffer);
+		g_free_vb (buffer);
 		return NULL;
 	}
 	return buffer;
@@ -152,7 +152,7 @@ bundle_save_library_initialize (void)
 	bundle_save_library_initialized = 1;
 	char *path = g_build_filename (g_get_tmp_dir (), "mono-bundle-XXXXXX", NULL);
 	bundled_dylibrary_directory = g_mkdtemp (path);
-	g_free (path);
+	g_free_vb (path);
 	if (bundled_dylibrary_directory == NULL)
 		return;
 	atexit (delete_bundled_libraries);
@@ -178,10 +178,10 @@ save_library (int fd, uint64_t offset, uint64_t size, const char *destfname)
 	// Register the name with "." as this is how it will be found when embedded
 	internal_path = g_build_filename (".", destfname, NULL);
  	mono_loader_register_module (internal_path, lib);
-	g_free (internal_path);
+	g_free_vb (internal_path);
 	bundle_library_paths = g_slist_append (bundle_library_paths, file);
 	
-	g_free (buffer);
+	g_free_vb (buffer);
 }
 
 static gboolean
@@ -215,7 +215,7 @@ probe_embedded (const char *program, int *ref_argc, char **ref_argv [])
 	if (lseek (fd, directory_location, SEEK_SET) == -1)
 		goto doclose;
 	directory_size = sigstart-directory_location;
-	directory = g_malloc (directory_size);
+	directory = g_malloc_vb (directory_size);
 	if (directory == NULL)
 		goto doclose;
 	if (read (fd, directory, directory_size) == -1)
@@ -291,7 +291,7 @@ probe_embedded (const char *program, int *ref_argc, char **ref_argv [])
 	return TRUE;
 	
 dofree:
-	g_free (directory);
+	g_free_vb (directory);
 doclose:
 	if (!status)
 		close (fd);

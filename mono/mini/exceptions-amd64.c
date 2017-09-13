@@ -1101,7 +1101,7 @@ terminate_table_no_lock (void)
 			// Free all list elements.
 			for (GList *l = g_dynamic_function_table_begin; l; l = l->next) {
 				if (l->data) {
-					g_free (l->data);
+					g_free_vb (l->data);
 					l->data = NULL;
 				}
 			}
@@ -1374,7 +1374,7 @@ mono_arch_unwindinfo_insert_range_in_table (const gpointer code_block, gsize blo
 				validate_table_no_lock ();
 
 			} else {
-				g_free (new_entry);
+				g_free_vb (new_entry);
 				new_entry = NULL;
 			}
 		}
@@ -1406,8 +1406,8 @@ remove_range_in_table_no_lock (GList *entry)
 			}
 		}
 
-		g_free (removed_entry->rt_funcs);
-		g_free (removed_entry);
+		g_free_vb (removed_entry->rt_funcs);
+		g_free_vb (removed_entry);
 
 		g_list_free_1 (entry);
 	}
@@ -1613,7 +1613,7 @@ mono_arch_unwindinfo_insert_rt_func_in_table (const gpointer code, gsize code_si
 			g_assert_checked (g_rtl_delete_growable_function_table != NULL);
 			g_rtl_delete_growable_function_table (found_entry->handle);
 			found_entry->handle = NULL;
-			g_free (found_entry->rt_funcs);
+			g_free_vb (found_entry->rt_funcs);
 			found_entry->rt_funcs = new_rt_funcs;
 			DWORD result = g_rtl_add_growable_function_table (&found_entry->handle,
 								found_entry->rt_funcs, found_entry->rt_funcs_current_count,
@@ -1621,7 +1621,7 @@ mono_arch_unwindinfo_insert_rt_func_in_table (const gpointer code, gsize code_si
 			g_assert (!result);
 		} else if (new_rt_funcs != NULL && g_rtl_add_growable_function_table == NULL) {
 			// No table registered with OS, callback solution in use. Switch tables.
-			g_free (found_entry->rt_funcs);
+			g_free_vb (found_entry->rt_funcs);
 			found_entry->rt_funcs = new_rt_funcs;
 		} else if (new_rt_funcs == NULL && g_rtl_grow_function_table == NULL) {
 			// No table registered with OS, callback solution in use, nothing to do.
@@ -1750,7 +1750,7 @@ mono_arch_unwindinfo_install_method_unwind_info (gpointer *monoui, gpointer code
 	}
 #endif /* ENABLE_CHECKED_BUILD_UNWINDINFO */
 
-	g_free (unwindinfo);
+	g_free_vb (unwindinfo);
 	*monoui = 0;
 
 	// Register unwind info in table.

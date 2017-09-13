@@ -35,8 +35,8 @@ GetSidName (gunichar2 *server, PSID sid, gint32 *size)
 		&cchDomain, &peUse);
 
 	if ((cchName > 0) && (cchDomain > 0)) {
-		gunichar2 *user = g_malloc0 ((cchName + 1) * 2);
-		gunichar2 *domain = g_malloc0 ((cchDomain + 1) * 2);
+		gunichar2 *user = g_malloc0_vb ((cchName + 1) * 2);
+		gunichar2 *domain = g_malloc0_vb ((cchDomain + 1) * 2);
 
 		LookupAccountSid (server, sid, user, &cchName, domain,
 			&cchDomain, &peUse);
@@ -45,11 +45,11 @@ GetSidName (gunichar2 *server, PSID sid, gint32 *size)
 			if (cchDomain > 0) {
 				/* domain/machine name included (+ sepearator) */
 				*size = cchName + cchDomain + 1;
-				uniname = g_malloc0 ((*size + 1) * 2);
+				uniname = g_malloc0_vb ((*size + 1) * 2);
 				memcpy (uniname, domain, cchDomain * 2);
 				*(uniname + cchDomain) = '\\';
 				memcpy (uniname + cchDomain + 1, user, cchName * 2);
-				g_free (user);
+				g_free_vb (user);
 			}
 			else {
 				/* no domain / machine */
@@ -59,10 +59,10 @@ GetSidName (gunichar2 *server, PSID sid, gint32 *size)
 		}
 		else {
 			/* nothing -> return NULL */
-			g_free (user);
+			g_free_vb (user);
 		}
 
-		g_free (domain);
+		g_free_vb (domain);
 	}
 
 	return uniname;
@@ -100,11 +100,11 @@ mono_security_win_get_token_name (gpointer token, gunichar2 ** uniname)
 
 	GetTokenInformation (token, TokenUser, NULL, size, (PDWORD)&size);
 	if (size > 0) {
-		TOKEN_USER *tu = g_malloc0 (size);
+		TOKEN_USER *tu = g_malloc0_vb (size);
 		if (GetTokenInformation (token, TokenUser, tu, size, (PDWORD)&size)) {
 			*uniname = GetSidName (NULL, tu->User.Sid, &size);
 		}
-		g_free (tu);
+		g_free_vb (tu);
 	}
 
 	return size;
@@ -129,7 +129,7 @@ ves_icall_System_Security_Principal_WindowsIdentity_GetTokenName (gpointer token
 		result = mono_string_new_handle (mono_domain_get (), "", error);
 
 	if (uniname)
-		g_free (uniname);
+		g_free_vb (uniname);
 
 	return result;
 }
@@ -160,14 +160,14 @@ ves_icall_System_Security_Principal_WindowsIdentity_GetRoles (gpointer token)
 
 	GetTokenInformation (token, TokenGroups, NULL, size, (PDWORD)&size);
 	if (size > 0) {
-		TOKEN_GROUPS *tg = g_malloc0 (size);
+		TOKEN_GROUPS *tg = g_malloc0_vb (size);
 		if (GetTokenInformation (token, TokenGroups, tg, size, (PDWORD)&size)) {
 			int i=0;
 			int num = tg->GroupCount;
 
 			array = mono_array_new_checked (domain, mono_get_string_class (), num, &error);
 			if (mono_error_set_pending_exception (&error)) {
-				g_free (tg);
+				g_free_vb (tg);
 				return NULL;
 			}
 
@@ -178,17 +178,17 @@ ves_icall_System_Security_Principal_WindowsIdentity_GetRoles (gpointer token)
 				if (uniname) {
 					MonoString *str = mono_string_new_utf16_checked (domain, uniname, size, &error);
 					if (!is_ok (&error)) {
-						g_free (uniname);
-						g_free (tg);
+						g_free_vb (uniname);
+						g_free_vb (tg);
 						mono_error_set_pending_exception (&error);
 						return NULL;
 					}
 					mono_array_setref (array, i, str);
-					g_free (uniname);
+					g_free_vb (uniname);
 				}
 			}
 		}
-		g_free (tg);
+		g_free_vb (tg);
 	}
 
 	if (!array) {
@@ -274,18 +274,18 @@ GetCurrentUserSid (void)
 
 	GetTokenInformation (token, TokenUser, NULL, size, (PDWORD)&size);
 	if (size > 0) {
-		TOKEN_USER *tu = g_malloc0 (size);
+		TOKEN_USER *tu = g_malloc0_vb (size);
 		if (GetTokenInformation (token, TokenUser, tu, size, (PDWORD)&size)) {
 			DWORD length = GetLengthSid (tu->User.Sid);
-			sid = (PSID) g_malloc0 (length);
+			sid = (PSID) g_malloc0_vb (length);
 			if (!CopySid (length, sid, tu->User.Sid)) {
-				g_free (sid);
+				g_free_vb (sid);
 				sid = NULL;
 			}
 		}
-		g_free (tu);
+		g_free_vb (tu);
 	}
-	/* Note: this SID must be freed with g_free () */
+	/* Note: this SID must be freed with g_free_vb () */
 	return sid;
 }
 
@@ -442,7 +442,7 @@ mono_security_win_protect_user (gunichar2 *path)
 
 		if (pDACL)
 			LocalFree (pDACL);
-		g_free (pCurrentSid); /* g_malloc0 */
+		g_free_vb (pCurrentSid); /* g_malloc0_vb */
 	}
 
 	return (retval == ERROR_SUCCESS);

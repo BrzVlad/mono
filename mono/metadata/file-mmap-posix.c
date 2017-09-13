@@ -390,7 +390,7 @@ mono_mmap_open_file (MonoString *path, int mode, MonoString *mapName, gint64 *ca
 		if (mono_error_set_pending_exception (&error))
 			return NULL;
 		handle = open_file_map (c_path, -1, mode, capacity, access, options, ioerror);
-		g_free (c_path);
+		g_free_vb (c_path);
 		return handle;
 	}
 
@@ -415,13 +415,13 @@ mono_mmap_open_file (MonoString *path, int mode, MonoString *mapName, gint64 *ca
 			} else {
 				handle = NULL;
 			}
-			g_free (c_path);
+			g_free_vb (c_path);
 		}
 		named_regions_unlock ();
 	} else
 		handle = open_memory_map (c_mapName, mode, capacity, access, options, ioerror);
 
-	g_free (c_mapName);
+	g_free_vb (c_mapName);
 	return handle;
 }
 
@@ -451,7 +451,7 @@ mono_mmap_open_handle (void *input_fd, MonoString *mapName, gint64 *capacity, in
 		}
 		named_regions_unlock ();
 
-		g_free (c_mapName);
+		g_free_vb (c_mapName);
 	}
 	return handle;
 }
@@ -467,9 +467,9 @@ mono_mmap_close (void *mmap_handle)
 		if (handle->name)
 			g_hash_table_remove (named_regions, handle->name);
 
-		g_free (handle->name);
+		g_free_vb (handle->name);
 		close (handle->fd);
-		g_free (handle);
+		g_free_vb (handle);
 	}
 	named_regions_unlock ();
 }
@@ -545,7 +545,7 @@ mono_mmap_unmap (void *mmap_handle)
 
 	res = mono_file_unmap (h->address, h->free_handle);
 
-	g_free (h);
+	g_free_vb (h);
 	return res == 0;
 }
 

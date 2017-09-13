@@ -98,7 +98,7 @@ mono_get_address_info (const char *hostname, int port, int flags, MonoAddressInf
 		} else {
 			g_warning ("Cannot handle address family %d", cur->family);
 			res = res->ai_next;
-			g_free (cur);
+			g_free_vb (cur);
 			continue;
 		}
 
@@ -192,7 +192,7 @@ mono_get_local_interfaces (int family, int *interface_count)
 
 	memset (&ifc, 0, sizeof (ifc));
 	ifc.ifc_len = IFCONF_BUFF_SIZE;
-	ifc.ifc_buf = (char *)g_malloc (IFCONF_BUFF_SIZE); /* We can't have such huge buffers on the stack. */
+	ifc.ifc_buf = (char *)g_malloc_vb (IFCONF_BUFF_SIZE); /* We can't have such huge buffers on the stack. */
 	if (ioctl (fd, SIOCGIFCONF, &ifc) < 0)
 		goto done;
 
@@ -229,7 +229,7 @@ mono_get_local_interfaces (int family, int *interface_count)
 		++if_count;
 	}
 
-	result = (char *)g_malloc (if_count * mono_address_size_for_family (family));
+	result = (char *)g_malloc_vb (if_count * mono_address_size_for_family (family));
 	result_ptr = (char *)result;
 	FOREACH_IFR (ifr, ifc) {
 		if (ifr->ifr_name [0] == '\0')
@@ -247,7 +247,7 @@ mono_get_local_interfaces (int family, int *interface_count)
 
 done:
 	*interface_count = if_count;
-	g_free (ifc.ifc_buf);
+	g_free_vb (ifc.ifc_buf);
 	close (fd);
 	return result;
 }
@@ -291,7 +291,7 @@ mono_get_local_interfaces (int family, int *interface_count)
 		if_count++;
 	}
 
-	result_ptr = result = g_malloc (if_count * mono_address_size_for_family (family));
+	result_ptr = result = g_malloc_vb (if_count * mono_address_size_for_family (family));
 	for (cur = ifap; cur; cur = cur->ifa_next) {
 		if (!cur->ifa_addr)
 			continue;

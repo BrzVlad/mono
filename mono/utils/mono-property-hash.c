@@ -39,7 +39,7 @@ mono_property_hash_destroy (MonoPropertyHash *hash)
 	g_hash_table_foreach (hash->hashes, free_hash, NULL);
 	g_hash_table_destroy (hash->hashes);
 
-	g_free (hash);
+	g_free_vb (hash);
 }
 
 void

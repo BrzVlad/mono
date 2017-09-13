@@ -137,19 +137,19 @@ mono_error_cleanup (MonoError *oerror)
 		mono_gchandle_free (error->exn.instance_handle);
 
 
-	g_free ((char*)error->full_message);
-	g_free ((char*)error->full_message_with_fields);
+	g_free_vb ((char*)error->full_message);
+	g_free_vb ((char*)error->full_message_with_fields);
 	error->full_message = NULL;
 	error->full_message_with_fields = NULL;
 	if (!free_strings) //no memory was allocated
 		return;
 
-	g_free ((char*)error->type_name);
-	g_free ((char*)error->assembly_name);
-	g_free ((char*)error->member_name);
-	g_free ((char*)error->exception_name_space);
-	g_free ((char*)error->exception_name);
-	g_free ((char*)error->first_argument);
+	g_free_vb ((char*)error->type_name);
+	g_free_vb ((char*)error->assembly_name);
+	g_free_vb ((char*)error->member_name);
+	g_free_vb ((char*)error->exception_name_space);
+	g_free_vb ((char*)error->exception_name);
+	g_free_vb ((char*)error->first_argument);
 	error->type_name = error->assembly_name = error->member_name = error->exception_name_space = error->exception_name = error->first_argument = NULL;
 	error->exn.klass = NULL;
 
@@ -590,7 +590,7 @@ get_type_name_as_mono_string (MonoErrorInternal *error, MonoDomain *domain, Mono
 			char *name = mono_type_full_name (&klass->byval_arg);
 			if (name) {
 				res = string_new_cleanup (domain, name);
-				g_free (name);
+				g_free_vb (name);
 			}
 		}
 	}
@@ -741,13 +741,13 @@ mono_error_prepare_exception (MonoError *oerror, MonoError *error_out)
 		}
 		message = g_strdup_printf ("Error in %s:%s %s", type_name, error->member_name, error->full_message);
 		if (!message) {
-			g_free (type_name);
+			g_free_vb (type_name);
 			mono_error_set_out_of_memory (error_out, "Could not allocate message");
 			break;	
 		}
 		exception = mono_exception_from_name_msg (mono_defaults.corlib, "System.Security", "VerificationException", message);
-		g_free (message);
-		g_free (type_name);
+		g_free_vb (message);
+		g_free_vb (type_name);
 		break;
 	}
 	case MONO_ERROR_GENERIC:

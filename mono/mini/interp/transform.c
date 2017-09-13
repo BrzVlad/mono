@@ -1405,7 +1405,7 @@ interp_save_debug_info (InterpMethod *rtm, MonoMethodHeader *header, TransformDa
 		dinfo->line_numbers [i] = g_array_index (line_numbers, MonoDebugLineNumberEntry, i);
 	mono_debug_add_method (rtm->method, dinfo, mono_domain_get ());
 
-	mono_debug_free_method_jit_info (dinfo);
+	mono_debug_free_vb_method_jit_info (dinfo);
 }
 
 /* Same as the code in seq-points.c */
@@ -1657,18 +1657,18 @@ generate (MonoMethod *method, InterpMethod *rtm, unsigned char *is_bb_start, Mon
 	td->code_size = header->code_size;
 	td->header = header;
 	td->max_code_size = td->code_size;
-	td->new_code = (unsigned short *)g_malloc(td->max_code_size * sizeof(gushort));
+	td->new_code = (unsigned short *)g_malloc_vb(td->max_code_size * sizeof(gushort));
 	td->new_code_end = td->new_code + td->max_code_size;
-	td->mempool = mono_mempool_new ();
-	td->in_offsets = g_malloc0(header->code_size * sizeof(int));
-	td->stack_state = g_malloc0(header->code_size * sizeof(StackInfo *));
-	td->stack_height = g_malloc(header->code_size * sizeof(int));
-	td->vt_stack_size = g_malloc(header->code_size * sizeof(int));
+	td->mempool = mono_mempool_new_runtime (G_STRLOC, 0);
+	td->in_offsets = g_malloc0_vb(header->code_size * sizeof(int));
+	td->stack_state = g_malloc0_vb(header->code_size * sizeof(StackInfo *));
+	td->stack_height = g_malloc_vb(header->code_size * sizeof(int));
+	td->vt_stack_size = g_malloc_vb(header->code_size * sizeof(int));
 	td->n_data_items = 0;
 	td->max_data_items = 0;
 	td->data_items = NULL;
 	td->data_hash = g_hash_table_new (NULL, NULL);
-	td->clause_indexes = g_malloc (header->code_size * sizeof (int));
+	td->clause_indexes = g_malloc_vb (header->code_size * sizeof (int));
 	td->gen_sdb_seq_points = debug_options.gen_sdb_seq_points;
 	td->seq_points = g_ptr_array_new ();
 	td->relocs = g_ptr_array_new ();
@@ -1715,7 +1715,7 @@ generate (MonoMethod *method, InterpMethod *rtm, unsigned char *is_bb_start, Mon
 				if (sps [i].il_offset < header->code_size)
 					mono_bitset_set_fast (seq_point_locs, sps [i].il_offset);
 			}
-			g_free (sps);
+			g_free_vb (sps);
 		} else if (!method->wrapper_type && !method->dynamic && mono_debug_image_has_debug_info (method->klass->image)) {
 			/* Methods without line number info like auto-generated property accessors */
 			seq_point_locs = mono_bitset_new (header->code_size, 0);
@@ -1727,7 +1727,7 @@ generate (MonoMethod *method, InterpMethod *rtm, unsigned char *is_bb_start, Mon
 	td->new_ip = td->new_code;
 	td->last_new_ip = NULL;
 
-	td->stack = g_malloc0 ((header->max_stack + 1) * sizeof (td->stack [0]));
+	td->stack = g_malloc0_vb ((header->max_stack + 1) * sizeof (td->stack [0]));
 	td->sp = td->stack;
 	td->max_stack_height = 0;
 
@@ -1740,7 +1740,7 @@ generate (MonoMethod *method, InterpMethod *rtm, unsigned char *is_bb_start, Mon
 		td->is_bb_start [c->handler_offset] = 1;
 
 		td->stack_height [c->handler_offset] = 1;
-		td->stack_state [c->handler_offset] = g_malloc0(sizeof(StackInfo));
+		td->stack_state [c->handler_offset] = g_malloc0_vb(sizeof(StackInfo));
 		td->stack_state [c->handler_offset][0].type = STACK_TYPE_O;
 		td->stack_state [c->handler_offset][0].klass = NULL; /*FIX*/
 
@@ -1750,7 +1750,7 @@ generate (MonoMethod *method, InterpMethod *rtm, unsigned char *is_bb_start, Mon
 			td->is_bb_start [c->data.filter_offset] = 1;
 
 			td->stack_height [c->data.filter_offset] = 1;
-			td->stack_state [c->data.filter_offset] = g_malloc0(sizeof(StackInfo));
+			td->stack_state [c->data.filter_offset] = g_malloc0_vb(sizeof(StackInfo));
 			td->stack_state [c->data.filter_offset][0].type = STACK_TYPE_O;
 			td->stack_state [c->data.filter_offset][0].klass = NULL; /*FIX*/
 		}
@@ -1769,8 +1769,8 @@ generate (MonoMethod *method, InterpMethod *rtm, unsigned char *is_bb_start, Mon
 		char *name = mono_method_full_name (method, TRUE);
 		g_print ("Method %s, original code:\n", name);
 		g_print ("%s\n", tmp);
-		g_free (tmp);
-		g_free (name);
+		g_free_vb (tmp);
+		g_free_vb (name);
 	}
 
 	if (signature->hasthis)
@@ -4184,7 +4184,7 @@ generate (MonoMethod *method, InterpMethod *rtm, unsigned char *is_bb_start, Mon
 	memcpy (rtm->clauses, header->clauses, header->num_clauses * sizeof(MonoExceptionClause));
 	rtm->code = mono_domain_alloc0 (domain, (td->new_ip - td->new_code) * sizeof (gushort));
 	memcpy (rtm->code, td->new_code, (td->new_ip - td->new_code) * sizeof(gushort));
-	g_free (td->new_code);
+	g_free_vb (td->new_code);
 	rtm->new_body_start = rtm->code + body_start_offset;
 	rtm->num_clauses = header->num_clauses;
 	for (i = 0; i < header->num_clauses; i++) {
@@ -4231,16 +4231,16 @@ generate (MonoMethod *method, InterpMethod *rtm, unsigned char *is_bb_start, Mon
 
 	save_seq_points (td);
 
-	g_free (td->in_offsets);
+	g_free_vb (td->in_offsets);
 	for (i = 0; i < header->code_size; ++i)
-		g_free (td->stack_state [i]);
-	g_free (td->stack_state);
-	g_free (td->stack_height);
-	g_free (td->vt_stack_size);
-	g_free (td->data_items);
-	g_free (td->stack);
+		g_free_vb (td->stack_state [i]);
+	g_free_vb (td->stack_state);
+	g_free_vb (td->stack_height);
+	g_free_vb (td->vt_stack_size);
+	g_free_vb (td->data_items);
+	g_free_vb (td->stack);
 	g_hash_table_destroy (td->data_hash);
-	g_free (td->clause_indexes);
+	g_free_vb (td->clause_indexes);
 	g_ptr_array_free (td->seq_points, TRUE);
 	g_array_free (line_numbers, TRUE);
 	g_ptr_array_free (td->relocs, TRUE);
@@ -4340,7 +4340,7 @@ mono_interp_transform_method (InterpMethod *imethod, ThreadContext *context)
 				}
 			}
 			if (nm == NULL) {
-				imethod->code = g_malloc(sizeof(short));
+				imethod->code = g_malloc_vb(sizeof(short));
 				imethod->code[0] = MINT_CALLRUN;
 			}
 		}
@@ -4359,7 +4359,7 @@ mono_interp_transform_method (InterpMethod *imethod, ThreadContext *context)
 		if (!strcmp (method->name, "UnsafeMov") || !strcmp (method->name, "UnsafeLoad")) {
 			mono_os_mutex_lock (&calc_section);
 			if (!imethod->transformed) {
-				imethod->code = g_malloc (sizeof (short));
+				imethod->code = g_malloc_vb (sizeof (short));
 				imethod->code[0] = MINT_CALLRUN;
 				imethod->stack_size = sizeof (stackval); /* for tracing */
 				imethod->alloca_size = imethod->stack_size;
@@ -4378,7 +4378,7 @@ mono_interp_transform_method (InterpMethod *imethod, ThreadContext *context)
 	ip = header->code;
 	end = ip + header->code_size;
 
-	is_bb_start = g_malloc0(header->code_size);
+	is_bb_start = g_malloc0_vb(header->code_size);
 	is_bb_start [0] = 1;
 	while (ip < end) {
 		in = *ip;
@@ -4417,7 +4417,7 @@ mono_interp_transform_method (InterpMethod *imethod, ThreadContext *context)
 			if (method->wrapper_type == MONO_WRAPPER_NONE && *ip != CEE_CALLI) {
 				m = mono_get_method_full (image, read32 (ip + 1), NULL, generic_context);
 				if (m == NULL) {
-					g_free (is_bb_start);
+					g_free_vb (is_bb_start);
 					g_error ("FIXME: where to get method and class string?"); 
 					return NULL;
 					// return mono_get_exception_missing_method ();
@@ -4489,12 +4489,12 @@ mono_interp_transform_method (InterpMethod *imethod, ThreadContext *context)
 	mono_os_mutex_lock(&calc_section);
 	if (imethod->transformed) {
 		mono_os_mutex_unlock(&calc_section);
-		g_free (is_bb_start);
+		g_free_vb (is_bb_start);
 		MONO_PROFILER_RAISE (jit_done, (method, imethod->jinfo));
 		return NULL;
 	}
 
-	imethod->local_offsets = g_malloc (header->num_locals * sizeof(guint32));
+	imethod->local_offsets = g_malloc_vb (header->num_locals * sizeof(guint32));
 	imethod->stack_size = (sizeof (stackval)) * (header->max_stack + 2); /* + 1 for returns of called functions  + 1 for 0-ing in trace*/
 	imethod->stack_size = (imethod->stack_size + 7) & ~7;
 	offset = 0;
@@ -4507,7 +4507,7 @@ mono_interp_transform_method (InterpMethod *imethod, ThreadContext *context)
 	}
 	offset = (offset + 7) & ~7;
 
-	imethod->exvar_offsets = g_malloc (header->num_clauses * sizeof (guint32));
+	imethod->exvar_offsets = g_malloc_vb (header->num_clauses * sizeof (guint32));
 	for (i = 0; i < header->num_clauses; i++) {
 		offset += sizeof (MonoObject*);
 		imethod->exvar_offsets [i] = offset;
@@ -4517,7 +4517,7 @@ mono_interp_transform_method (InterpMethod *imethod, ThreadContext *context)
 	imethod->locals_size = offset;
 	g_assert (imethod->locals_size < 65536);
 	offset = 0;
-	imethod->arg_offsets = g_malloc ((!!signature->hasthis + signature->param_count) * sizeof(guint32));
+	imethod->arg_offsets = g_malloc_vb ((!!signature->hasthis + signature->param_count) * sizeof(guint32));
 
 	if (signature->hasthis) {
 		g_assert (!signature->pinvoke);
@@ -4547,7 +4547,7 @@ mono_interp_transform_method (InterpMethod *imethod, ThreadContext *context)
 
 	generate (method, imethod, is_bb_start, generic_context);
 
-	g_free (is_bb_start);
+	g_free_vb (is_bb_start);
 
 	// FIXME: Add a different callback ?
 	MONO_PROFILER_RAISE (jit_done, (method, imethod->jinfo));

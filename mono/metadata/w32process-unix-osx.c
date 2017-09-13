@@ -41,12 +41,12 @@ mono_w32process_get_name (pid_t pid)
 	if (sysctl(mib, 4, NULL, &size, NULL, 0) < 0)
 		return(ret);
 
-	if ((pi = g_malloc (size)) == NULL)
+	if ((pi = g_malloc_vb (size)) == NULL)
 		return(ret);
 
 	if (sysctl (mib, 4, pi, &size, NULL, 0) < 0) {
 		if (errno == ENOMEM) {
-			g_free (pi);
+			g_free_vb (pi);
 			mono_trace (G_LOG_LEVEL_DEBUG, MONO_TRACE_IO_LAYER, "%s: Didn't allocate enough memory for kproc info", __func__);
 		}
 		return(ret);
@@ -55,7 +55,7 @@ mono_w32process_get_name (pid_t pid)
 	if (strlen (pi->kp_proc.p_comm) > 0)
 		ret = g_strdup (pi->kp_proc.p_comm);
 
-	g_free (pi);
+	g_free_vb (pi);
 #else
 	gchar buf[256];
 	gint res;

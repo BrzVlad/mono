@@ -422,11 +422,11 @@ mono_dynamic_image_add_to_blob_cached (MonoDynamicImage *assembly, char *b1, int
 	char *copy;
 	gpointer oldkey, oldval;
 
-	copy = (char *)g_malloc (s1+s2);
+	copy = (char *)g_malloc_vb (s1+s2);
 	memcpy (copy, b1, s1);
 	memcpy (copy + s1, b2, s2);
 	if (g_hash_table_lookup_extended (assembly->blob_cache, copy, &oldkey, &oldval)) {
-		g_free (copy);
+		g_free_vb (copy);
 		idx = GPOINTER_TO_UINT (oldval);
 	} else {
 		idx = mono_dynstream_add_data (&assembly->blob, b1, s1);
@@ -459,7 +459,7 @@ mono_dynimage_alloc_table (MonoDynamicTable *table, guint nrows)
 static void
 free_blob_cache_entry (gpointer key, gpointer val, gpointer user_data)
 {
-	g_free (key);
+	g_free_vb (key);
 }
 
 static void
@@ -531,10 +531,10 @@ mono_dynamic_image_free (MonoDynamicImage *image)
 		g_hash_table_destroy (di->method_aux_hash);
 	if (di->vararg_aux_hash)
 		g_hash_table_destroy (di->vararg_aux_hash);
-	g_free (di->strong_name);
-	g_free (di->win32_res);
+	g_free_vb (di->strong_name);
+	g_free_vb (di->win32_res);
 	if (di->public_key)
-		g_free (di->public_key);
+		g_free_vb (di->public_key);
 
 	/*g_print ("string heap destroy for image %p\n", di);*/
 	mono_dynamic_stream_reset (&di->sheap);
@@ -545,7 +545,7 @@ mono_dynamic_image_free (MonoDynamicImage *image)
 	mono_dynamic_stream_reset (&di->tstream);
 	mono_dynamic_stream_reset (&di->guid);
 	for (i = 0; i < MONO_TABLE_NUM; ++i) {
-		g_free (di->tables [i].values);
+		g_free_vb (di->tables [i].values);
 	}
 
 	dynamic_images_lock ();
@@ -560,5 +560,5 @@ mono_dynamic_image_free (MonoDynamicImage *image)
 void
 mono_dynamic_image_free_image (MonoDynamicImage *image)
 {
-	g_free (image);
+	g_free_vb (image);
 }

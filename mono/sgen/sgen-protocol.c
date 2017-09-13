@@ -139,14 +139,14 @@ binary_protocol_init (const char *filename, long long limit)
 	if (binary_protocol_file == invalid_file_value) {
 		/* Another process owns the file, try adding the pid suffix to the filename */
 		gint32 pid = mono_process_current_pid ();
-		g_free (filename_or_prefix);
+		g_free_vb (filename_or_prefix);
 		filename_or_prefix = g_strdup_printf ("%s.%x", filename, pid);
 		binary_protocol_open_file (TRUE);
 	}
 
 	/* If we have a file size limit, we might need to open additional files */
 	if (file_size_limit == 0)
-		g_free (filename_or_prefix);
+		g_free_vb (filename_or_prefix);
 
 	binary_protocol_header (PROTOCOL_HEADER_CHECK, PROTOCOL_HEADER_VERSION, SIZEOF_VOID_P, G_BYTE_ORDER == G_LITTLE_ENDIAN);
 }

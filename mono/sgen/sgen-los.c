@@ -324,7 +324,7 @@ sgen_los_free_object (LOSObject *obj)
 	los_num_objects--;
 
 #ifdef USE_MALLOC
-	g_free (obj);
+	g_free_vb (obj);
 #else
 	if (size > LOS_SECTION_OBJECT_LIMIT) {
 		int pagesize = mono_pagesize ();
@@ -380,7 +380,7 @@ sgen_los_alloc_large_inner (GCVTable vtable, size_t size)
 	sgen_ensure_free_space (size, GENERATION_OLD);
 
 #ifdef USE_MALLOC
-	obj = g_malloc (size + sizeof (LOSObject));
+	obj = g_malloc_vb (size + sizeof (LOSObject));
 	memset (obj, 0, size + sizeof (LOSObject));
 #else
 	if (size > LOS_SECTION_OBJECT_LIMIT) {

@@ -59,7 +59,7 @@ mono_networkinterface_list (int *size)
 		*size = i;
 
 	if (!nilist)
-		nilist = (void **) g_malloc (sizeof (void*));
+		nilist = (void **) g_malloc_vb (sizeof (void*));
 	nilist [i] = NULL;
 	return nilist;
 }

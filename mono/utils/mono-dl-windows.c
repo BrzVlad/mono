@@ -63,7 +63,7 @@ mono_dl_open_file (const char *file, int flags)
 		SetErrorMode (last_sem);
 #endif
 
-		g_free (file_utf16);
+		g_free_vb (file_utf16);
 
 		if (!hModule)
 			SetLastError (last_error);
@@ -90,29 +90,29 @@ mono_dl_lookup_symbol_in_process (const char *symbol_name)
 	gpointer proc = NULL;
 
 	/* get the symbol from the loaded DLLs */
-	modules = (HMODULE *) g_malloc (buffer_size);
+	modules = (HMODULE *) g_malloc_vb (buffer_size);
 	if (modules == NULL)
 		return NULL;
 
 	if (!EnumProcessModules (GetCurrentProcess (), modules,
 				 buffer_size, &needed)) {
-		g_free (modules);
+		g_free_vb (modules);
 		return NULL;
 	}
 
 	/* check whether the supplied buffer was too small, realloc, retry */
 	if (needed > buffer_size) {
-		g_free (modules);
+		g_free_vb (modules);
 
 		buffer_size = needed;
-		modules = (HMODULE *) g_malloc (buffer_size);
+		modules = (HMODULE *) g_malloc_vb (buffer_size);
 
 		if (modules == NULL)
 			return NULL;
 
 		if (!EnumProcessModules (GetCurrentProcess (), modules,
 					 buffer_size, &needed)) {
-			g_free (modules);
+			g_free_vb (modules);
 			return NULL;
 		}
 	}
@@ -120,12 +120,12 @@ mono_dl_lookup_symbol_in_process (const char *symbol_name)
 	for (i = 0; i < needed / sizeof (HANDLE); i++) {
 		proc = GetProcAddress (modules [i], symbol_name);
 		if (proc != NULL) {
-			g_free (modules);
+			g_free_vb (modules);
 			return proc;
 		}
 	}
 
-	g_free (modules);
+	g_free_vb (modules);
 	return NULL;
 }
 #endif /* G_HAVE_API_SUPPORT(HAVE_CLASSIC_WINAPI_SUPPORT) */

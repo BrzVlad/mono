@@ -35,7 +35,7 @@ mono_internal_hash_table_init (MonoInternalHashTable *table,
 void
 mono_internal_hash_table_destroy (MonoInternalHashTable *table)
 {
-	g_free (table->table);
+	g_free_vb (table->table);
 	table->table = NULL;
 }
 
@@ -82,7 +82,7 @@ resize_if_needed (MonoInternalHashTable *table)
 		}
 	}
 
-	g_free (table->table);
+	g_free_vb (table->table);
 
 	table->size = new_size;
 	table->table = new_table;

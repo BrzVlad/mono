@@ -261,7 +261,7 @@ static inline void store_string_location (MonoProfiler *prof, const gchar *strin
 	saved = (SavedString*)g_hash_table_find (prof->saved_strings_hash, saved_strings_find_func, &info);
 	hashptr = (guint32*)g_malloc (sizeof (guint32));
 	*hashptr = hash;
-	location = (StringLocation*)g_malloc0 (sizeof (location));
+	location = (StringLocation*)g_malloc0_vb (sizeof (location));
 
 	g_hash_table_insert (prof->string_locations_hash, hashptr, location);
 	if (!saved)
@@ -455,7 +455,7 @@ static void mono_portability_remember_string (MonoProfiler *prof, MonoDomain *do
 	if (!str || !domain || !runtime_initialized)
 		return;
 
-	entry = (SavedString*)g_malloc0 (sizeof (SavedString));
+	entry = (SavedString*)g_malloc0_vb (sizeof (SavedString));
 	entry->string = str;
 	entry->domain = domain;
 	entry->stack_entries = mono_stack_backtrace (prof, domain, entry->stack, BACKTRACE_SIZE);

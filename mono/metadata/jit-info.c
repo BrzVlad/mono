@@ -77,7 +77,7 @@ jit_info_table_new_chunk (void)
 MonoJitInfoTable *
 mono_jit_info_table_new (MonoDomain *domain)
 {
-	MonoJitInfoTable *table = (MonoJitInfoTable *)g_malloc0 (MONO_SIZEOF_JIT_INFO_TABLE + sizeof (MonoJitInfoTableChunk*));
+	MonoJitInfoTable *table = (MonoJitInfoTable *)g_malloc0_vb (MONO_SIZEOF_JIT_INFO_TABLE + sizeof (MonoJitInfoTableChunk*));
 
 	table->domain = domain;
 	table->num_chunks = 1;
@@ -101,7 +101,7 @@ mono_jit_info_table_free (MonoJitInfoTable *table)
 		GSList *list;
 
 		for (list = table->domain->jit_info_free_queue; list; list = list->next)
-			g_free (list->data);
+			g_free_vb (list->data);
 
 		g_slist_free (table->domain->jit_info_free_queue);
 		table->domain->jit_info_free_queue = NULL;
@@ -120,16 +120,16 @@ mono_jit_info_table_free (MonoJitInfoTable *table)
 
 		for (tombstone = chunk->next_tombstone; tombstone; ) {
 			MonoJitInfo *next = tombstone->n.next_tombstone;
-			g_free (tombstone);
+			g_free_vb (tombstone);
 			tombstone = next;
 		}
 
-		g_free (chunk);
+		g_free_vb (chunk);
 	}
 
 	mono_domain_unlock (domain);
 
-	g_free (table);
+	g_free_vb (table);
 }
 
 /* The jit_info_table is sorted in ascending order by the end
@@ -381,7 +381,7 @@ jit_info_table_realloc (MonoJitInfoTable *old)
 	}
 	g_assert (num_chunks > 0);
 
-	result = (MonoJitInfoTable *)g_malloc (MONO_SIZEOF_JIT_INFO_TABLE + sizeof (MonoJitInfoTableChunk*) * num_chunks);
+	result = (MonoJitInfoTable *)g_malloc_vb (MONO_SIZEOF_JIT_INFO_TABLE + sizeof (MonoJitInfoTableChunk*) * num_chunks);
 	result->domain = old->domain;
 	result->num_chunks = num_chunks;
 	result->num_valid = old->num_valid;
@@ -451,7 +451,7 @@ jit_info_table_split_chunk (MonoJitInfoTableChunk *chunk, MonoJitInfoTableChunk 
 static MonoJitInfoTable*
 jit_info_table_copy_and_split_chunk (MonoJitInfoTable *table, MonoJitInfoTableChunk *chunk)
 {
-	MonoJitInfoTable *new_table = (MonoJitInfoTable *)g_malloc (MONO_SIZEOF_JIT_INFO_TABLE
+	MonoJitInfoTable *new_table = (MonoJitInfoTable *)g_malloc_vb (MONO_SIZEOF_JIT_INFO_TABLE
 		+ sizeof (MonoJitInfoTableChunk*) * (table->num_chunks + 1));
 	int i, j;
 
@@ -500,7 +500,7 @@ jit_info_table_purify_chunk (MonoJitInfoTableChunk *old)
 static MonoJitInfoTable*
 jit_info_table_copy_and_purify_chunk (MonoJitInfoTable *table, MonoJitInfoTableChunk *chunk)
 {
-	MonoJitInfoTable *new_table = (MonoJitInfoTable *)g_malloc (MONO_SIZEOF_JIT_INFO_TABLE
+	MonoJitInfoTable *new_table = (MonoJitInfoTable *)g_malloc_vb (MONO_SIZEOF_JIT_INFO_TABLE
 		+ sizeof (MonoJitInfoTableChunk*) * table->num_chunks);
 	int i, j;
 

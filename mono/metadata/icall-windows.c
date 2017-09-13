@@ -62,7 +62,7 @@ mono_icall_get_machine_name (MonoError *error)
 	} else
 		result = MONO_HANDLE_NEW (MonoString, NULL);
 
-	g_free (buf);
+	g_free_vb (buf);
 	return result;
 }
 #endif /* G_HAVE_API_SUPPORT(HAVE_CLASSIC_WINAPI_SUPPORT) */
@@ -163,7 +163,7 @@ mono_icall_set_environment_variable (MonoString *name, MonoString *value)
 	utf16_name = mono_string_to_utf16 (name);
 	if ((value == NULL) || (mono_string_length (value) == 0) || (mono_string_chars (value)[0] == 0)) {
 		SetEnvironmentVariable (utf16_name, NULL);
-		g_free (utf16_name);
+		g_free_vb (utf16_name);
 		return;
 	}
 
@@ -171,8 +171,8 @@ mono_icall_set_environment_variable (MonoString *name, MonoString *value)
 
 	SetEnvironmentVariable (utf16_name, utf16_value);
 
-	g_free (utf16_name);
-	g_free (utf16_value);
+	g_free_vb (utf16_name);
+	g_free_vb (utf16_value);
 }
 
 #if G_HAVE_API_SUPPORT(HAVE_CLASSIC_WINAPI_SUPPORT)

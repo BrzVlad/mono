@@ -239,7 +239,7 @@ static void *open_handle (void *handle, MonoString *mapName, int mode, gint64 *c
 	}
 
 	if (w_mapName)
-		g_free (w_mapName);
+		g_free_vb (w_mapName);
 	return result;
 }
 
@@ -276,7 +276,7 @@ done:
 	if (!result && delete_on_error)
 		DeleteFileW (w_path);
 	if (w_path)
-		g_free (w_path);
+		g_free_vb (w_path);
 
 	return result;
 }
@@ -393,7 +393,7 @@ int mono_mmap_map (void *handle, gint64 offset, gint64 *size, int access, void *
 	if (*size == 0)
 		*size = viewSize - extraMemNeeded;
 
-	MmapInstance *h = g_malloc0 (sizeof (MmapInstance));
+	MmapInstance *h = g_malloc0_vb (sizeof (MmapInstance));
 	h->address = address;
 	h->length = *size + extraMemNeeded;
 	*mmap_handle = h;
@@ -410,7 +410,7 @@ gboolean mono_mmap_unmap (void *mmap_handle)
 
 	gboolean result = UnmapViewOfFile (h->address);
 
-	g_free (h);
+	g_free_vb (h);
 	return result;
 }
 

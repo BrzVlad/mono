@@ -531,7 +531,7 @@ mono_find_jit_info (MonoDomain *domain, MonoJitTlsData *jit_tls, MonoJitInfo *re
 		if (trace) {
 			char *fname = mono_method_full_name (jinfo_get_method (res), TRUE);
 			*trace = g_strdup_printf ("in (unmanaged) %s", fname);
-			g_free (fname);
+			g_free_vb (fname);
 		}
 	}
 
@@ -643,7 +643,7 @@ mono_find_jit_info_ext (MonoDomain *domain, MonoJitTlsData *jit_tls,
 		if (trace && frame->method) {
 			char *fname = mono_method_full_name (frame->method, TRUE);
 			*trace = g_strdup_printf ("in (unmanaged) %s", fname);
-			g_free (fname);
+			g_free_vb (fname);
 		}
 	}
 
@@ -923,7 +923,7 @@ ves_icall_get_trace (MonoException *exc, gint32 skip, MonoBoolean need_file_info
 			sf->method = NULL;
 			s = mono_method_get_name_full (method, TRUE, FALSE, MONO_TYPE_NAME_FORMAT_REFLECTION);
 			MonoString *name = mono_string_new_checked (domain, s, &error);
-			g_free (s);
+			g_free_vb (s);
 			if (!is_ok (&error)) {
 				mono_error_set_pending_exception (&error);
 				return NULL;
@@ -1119,7 +1119,7 @@ mono_walk_stack_full (MonoJitStackWalk func, MonoContext *start_ctx, MonoDomain 
 			if (func (&frame, NULL, user_data))
 				break;
 		}
-		g_free (ips);
+		g_free_vb (ips);
 		return;
 	}
 
@@ -1461,12 +1461,12 @@ wrap_non_exception_throws (MonoMethod *m)
 			if (named_type != 0x54)
 				continue;
 			name_len = mono_metadata_decode_blob_size (p, &p);
-			name = (char *)g_malloc (name_len + 1);
+			name = (char *)g_malloc_vb (name_len + 1);
 			memcpy (name, p, name_len);
 			name [name_len] = 0;
 			p += name_len;
 			g_assert (!strcmp (name, "WrapNonExceptionThrows"));
-			g_free (name);
+			g_free_vb (name);
 			/* The value is a BOOLEAN */
 			val = *p;
 		}
@@ -1865,26 +1865,26 @@ mono_handle_exception_internal (MonoContext *ctx, MonoObject *obj, gboolean resu
 			char *to_name = mono_type_get_full_name (jit_tls->class_cast_to);
 			char *msg = g_strdup_printf ("Unable to cast object of type '%s' to type '%s'.", from_name, to_name);
 			mono_ex->message = mono_string_new_checked (domain, msg, &error);
-			g_free (from_name);
-			g_free (to_name);
+			g_free_vb (from_name);
+			g_free_vb (to_name);
 			if (!is_ok (&error)) {
 				mono_runtime_printf_err ("Error creating class cast exception message '%s'\n", msg);
 				mono_error_assert_ok (&error);
 			}
-			g_free (msg);
+			g_free_vb (msg);
 		}
 		if (!strcmp (mono_ex->object.vtable->klass->name, "ArrayTypeMismatchException")) {
 			char *from_name = mono_type_get_full_name (jit_tls->class_cast_from);
 			char *to_name = mono_type_get_full_name (jit_tls->class_cast_to);
 			char *msg = g_strdup_printf ("Source array of type '%s' cannot be cast to destination array type '%s'.", from_name, to_name);
 			mono_ex->message = mono_string_new_checked (domain, msg, &error);
-			g_free (from_name);
-			g_free (to_name);
+			g_free_vb (from_name);
+			g_free_vb (to_name);
 			if (!is_ok (&error)) {
 				mono_runtime_printf_err ("Error creating array type mismatch exception message '%s'\n", msg);
 				mono_error_assert_ok (&error);
 			}
-			g_free (msg);
+			g_free_vb (msg);
 		}
 	}
 
@@ -1933,7 +1933,7 @@ mono_handle_exception_internal (MonoContext *ctx, MonoObject *obj, gboolean resu
 				}
 			}
 			g_print ("[%p:] EXCEPTION handling: %s.%s: %s\n", (void*)mono_native_thread_id_get (), mono_object_class (obj)->name_space, mono_object_class (obj)->name, msg);
-			g_free (msg);
+			g_free_vb (msg);
 			if (mono_ex && mono_trace_eval_exception (mono_object_class (mono_ex)))
 				mono_print_thread_dump_from_ctx (ctx);
 		}
@@ -2524,7 +2524,7 @@ print_overflow_stack_frame (StackFrameInfo *frame, MonoContext *ctx, gpointer da
 
 		location = mono_debug_print_stack_frame (method, frame->native_offset, mono_domain_get ());
 		mono_runtime_printf_err ("  %s", location);
-		g_free (location);
+		g_free_vb (location);
 
 		if (user_data->count == 1) {
 			mono_runtime_printf_err ("  <...>");
@@ -2581,7 +2581,7 @@ print_stack_frame_to_stderr (StackFrameInfo *frame, MonoContext *ctx, gpointer d
 	if (method) {
 		gchar *location = mono_debug_print_stack_frame (method, frame->native_offset, mono_domain_get ());
 		mono_runtime_printf_err ("  %s", location);
-		g_free (location);
+		g_free_vb (location);
 	} else
 		mono_runtime_printf_err ("  at <unknown> <0x%05x>", frame->native_offset);
 
@@ -2600,7 +2600,7 @@ print_stack_frame_to_string (StackFrameInfo *frame, MonoContext *ctx, gpointer d
 	if (method && frame->domain) {
 		gchar *location = mono_debug_print_stack_frame (method, frame->native_offset, frame->domain);
 		g_string_append_printf (p, "  %s\n", location);
-		g_free (location);
+		g_free_vb (location);
 	} else
 		g_string_append_printf (p, "  at <unknown> <0x%05x>\n", frame->native_offset);
 
@@ -2694,7 +2694,7 @@ mono_handle_native_crash (const char *signal, void *ctx, MONO_SIG_HANDLER_INFO_T
 	for (i =0; i < size; ++i) {
 		mono_runtime_printf_err ("\t%s", names [i]);
 	}
-	g_free (names);
+	g_free_vb (names);
 
 	/* Try to get more meaningful information using gdb */
 
@@ -2819,7 +2819,7 @@ mono_print_thread_dump_internal (void *sigctx, MonoContext *start_ctx)
 		name = g_utf16_to_utf8 (thread->name, thread->name_len, NULL, NULL, &error);
 		g_assert (!error);
 		g_string_append_printf (text, "\n\"%s\"", name);
-		g_free (name);
+		g_free_vb (name);
 	}
 	else if (thread->threadpool_thread)
 		g_string_append (text, "\n\"<threadpool thread>\"");

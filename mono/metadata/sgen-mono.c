@@ -981,11 +981,11 @@ void*
 mono_gc_alloc_fixed (size_t size, MonoGCDescriptor descr, MonoGCRootSource source, const char *msg)
 {
 	/* FIXME: do a single allocation */
-	void *res = g_calloc (1, size);
+	void *res = g_calloc_vb (1, size);
 	if (!res)
 		return NULL;
 	if (!mono_gc_register_root ((char *)res, size, descr, source, msg)) {
-		g_free (res);
+		g_free_vb (res);
 		res = NULL;
 	}
 	return res;
@@ -998,7 +998,7 @@ void
 mono_gc_free_fixed (void* addr)
 {
 	mono_gc_deregister_root ((char *)addr);
-	g_free (addr);
+	g_free_vb (addr);
 }
 
 /*

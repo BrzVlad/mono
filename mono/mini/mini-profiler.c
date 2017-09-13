@@ -272,5 +272,5 @@ mini_profiler_context_get_result (MonoProfilerCallContext *ctx)
 void
 mini_profiler_context_free_buffer (void *buffer)
 {
-	g_free (buffer);
+	g_free_vb (buffer);
 }

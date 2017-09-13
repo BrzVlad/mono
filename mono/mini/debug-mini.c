@@ -210,8 +210,8 @@ mono_debug_add_vg_method (MonoMethod *method, MonoDebugMethodJitInfo *jit)
 
 	VALGRIND_ADD_SYMBOL (jit->code_start, jit->code_size, full_name);
 
-	g_free (addresses);
-	g_free (lines);
+	g_free_vb (addresses);
+	g_free_vb (lines);
 	mono_metadata_free_mh (header);
 #endif /* VALGRIND_ADD_LINE_INFO */
 }
@@ -229,7 +229,7 @@ mono_debug_close_method (MonoCompile *cfg)
 	info = (MiniDebugMethodInfo *) cfg->debug_info;
 	if (!info || !info->jit) {
 		if (info)
-			g_free (info);
+			g_free_vb (info);
 		return;
 	}
 
@@ -292,7 +292,7 @@ mono_debug_free_method (MonoCompile *cfg)
 	if (info) {
 		if (info->line_numbers)
 			g_array_free (info->line_numbers, TRUE);
-		g_free (info);
+		g_free_vb (info);
 		cfg->debug_info = NULL;	
 	}
 }
@@ -457,7 +457,7 @@ mono_debug_serialize_debug_info (MonoCompile *cfg, guint8 **out_buf, guint32 *bu
 	}
 
 	size = ((jit->num_params + jit->num_locals + 1) * 10) + (jit->num_line_numbers * 10) + 64;
-	p = buf = (guint8 *)g_malloc (size);
+	p = buf = (guint8 *)g_malloc_vb (size);
 	encode_value (jit->epilogue_begin, p, &p);
 	encode_value (jit->prologue_end, p, &p);
 	encode_value (jit->code_size, p, &p);
@@ -684,7 +684,7 @@ mono_debug_print_vars (gpointer ip, gboolean only_arguments)
 		for (i = 0; i < jit->num_params; ++i) {
 			print_var_info (&jit->params [i], i, names [i]? names [i]: "unknown name", "Arg");
 		}
-		g_free (names);
+		g_free_vb (names);
 	} else {
 		for (i = 0; i < jit->num_locals; ++i) {
 			print_var_info (&jit->locals [i], i, "", "Local");

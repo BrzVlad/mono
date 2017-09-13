@@ -156,7 +156,7 @@ register_internal (const char *name, int type, void *addr, int size)
 		}
 	}
 
-	counter = (MonoCounter *) g_malloc (sizeof (MonoCounter));
+	counter = (MonoCounter *) g_malloc_vb (sizeof (MonoCounter));
 	if (!counter) {
 		mono_os_mutex_unlock (&counters_mutex);
 		return;
@@ -514,7 +514,7 @@ mono_counters_sample (MonoCounter *counter, void *buffer, int buffer_size)
 #define ENTRY_FMT "%-36s: "
 static void
 dump_counter (MonoCounter *counter, FILE *outfile) {
-	void *buffer = g_malloc0 (counter->size);
+	void *buffer = g_malloc0_vb (counter->size);
 	int size = sample_internal (counter, buffer, counter->size);
 
 	switch (counter->type & MONO_COUNTER_TYPE_MASK) {
@@ -550,7 +550,7 @@ dump_counter (MonoCounter *counter, FILE *outfile) {
 		break;
 	}
 
-	g_free (buffer);
+	g_free_vb (buffer);
 }
 
 static const char
@@ -640,8 +640,8 @@ mono_counters_cleanup (void)
 	while (counter) {
 		MonoCounter *tmp = counter;
 		counter = counter->next;
-		g_free ((void*)tmp->name);
-		g_free (tmp);
+		g_free_vb ((void*)tmp->name);
+		g_free_vb (tmp);
 	}
 
 	mono_os_mutex_unlock (&counters_mutex);

@@ -553,7 +553,7 @@ get_delegate_invoke_impl (MonoTrampInfo **info, gboolean has_target, gboolean pa
 	} else {
 		char *name = g_strdup_printf ("delegate_invoke_impl_target_%d", param_count);
 		*info = mono_tramp_info_create (name, start, code - start, NULL, NULL);
-		g_free (name);
+		g_free_vb (name);
 	}
 
 	return start;
@@ -630,7 +630,7 @@ mono_arch_get_delegate_invoke_impl (MonoMethodSignature *sig, gboolean has_targe
 		if (mono_aot_only) {
 			char *name = g_strdup_printf ("delegate_invoke_impl_target_%d", sig->param_count);
 			start = mono_aot_get_trampoline (name);
-			g_free (name);
+			g_free_vb (name);
 		} else {
 			MonoTrampInfo *info;
 			start = get_delegate_invoke_impl (&info, FALSE, sig->param_count);
@@ -1047,7 +1047,7 @@ get_call_info (MonoMemPool *mp, MonoMethodSignature *sig)
 	if (mp)
 		cinfo = mono_mempool_alloc0 (mp, sizeof (CallInfo) + (sizeof (ArgInfo) * n));
 	else
-		cinfo = g_malloc0 (sizeof (CallInfo) + (sizeof (ArgInfo) * n));
+		cinfo = g_malloc0_vb (sizeof (CallInfo) + (sizeof (ArgInfo) * n));
 
 	cinfo->fr = MIPS_FIRST_FPARG_REG;
 	cinfo->gr = MIPS_FIRST_ARG_REG;
@@ -1868,7 +1868,7 @@ mono_arch_emit_outarg_vt (MonoCompile *cfg, MonoInst *ins, MonoInst *src)
 			char* nm = mono_method_full_name (cfg->method, TRUE);
 			g_print ("Method %s outarg_vt struct doffset=%d ainfo->size=%d ovf_size=%d\n", 
 				 nm, doffset, ainfo->size, ovf_size);
-			g_free (nm);
+			g_free_vb (nm);
 		}
 #endif
 
@@ -4806,7 +4806,7 @@ mono_arch_emit_prolog (MonoCompile *cfg)
 	
 	sig = mono_method_signature (method);
 	cfg->code_size = 768 + sig->param_count * 20;
-	code = cfg->native_code = g_malloc (cfg->code_size);
+	code = cfg->native_code = g_malloc_vb (cfg->code_size);
 
 	/* 
 	 * compute max_offset in order to use short forward jumps.

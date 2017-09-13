@@ -169,9 +169,9 @@ debug_enter (InterpFrame *frame, int *tracing)
 		output_indent ();
 		mn = mono_method_full_name (method, FALSE);
 		g_print ("(%p) Entering %s (", mono_thread_internal_current (), mn);
-		g_free (mn);
+		g_free_vb (mn);
 		g_print  ("%s)\n", args);
-		g_free (args);
+		g_free_vb (args);
 	}
 }
 
@@ -183,9 +183,9 @@ debug_enter (InterpFrame *frame, int *tracing)
 		output_indent ();	\
 		mn = mono_method_full_name (frame->imethod->method, FALSE); \
 		g_print  ("(%p) Leaving %s", mono_thread_internal_current (),  mn);	\
-		g_free (mn); \
+		g_free_vb (mn); \
 		g_print  (" => %s\n", args);	\
-		g_free (args);	\
+		g_free_vb (args);	\
 		debug_indent_level--;	\
 		if (tracing == 3) global_tracing = 0; \
 	}
@@ -591,7 +591,7 @@ fill_in_trace (MonoException *exception, InterpFrame *frame)
 	(exception)->stack_trace = mono_string_new_checked (domain, stack_trace, &error);
 	mono_error_cleanup (&error); /* FIXME: don't swallow the error */
 	(exception)->trace_ips = get_trace_ips (domain, frame);
-	g_free (stack_trace);
+	g_free_vb (stack_trace);
 }
 
 #define FILL_IN_TRACE(exception, frame) fill_in_trace(exception, frame)
@@ -788,7 +788,7 @@ static MonoPIFunc mono_interp_enter_icall_trampoline = NULL;
 
 static InterpMethodArguments* build_args_from_sig (MonoMethodSignature *sig, InterpFrame *frame)
 {
-	InterpMethodArguments *margs = g_malloc0 (sizeof (InterpMethodArguments));
+	InterpMethodArguments *margs = g_malloc0_vb (sizeof (InterpMethodArguments));
 
 #ifdef TARGET_ARM
 	g_assert (mono_arm_eabi_supported ());
@@ -850,10 +850,10 @@ static InterpMethodArguments* build_args_from_sig (MonoMethodSignature *sig, Int
 	}
 
 	if (margs->ilen > 0)
-		margs->iargs = g_malloc0 (sizeof (gpointer) * margs->ilen);
+		margs->iargs = g_malloc0_vb (sizeof (gpointer) * margs->ilen);
 
 	if (margs->flen > 0)
-		margs->fargs = g_malloc0 (sizeof (double) * margs->flen);
+		margs->fargs = g_malloc0_vb (sizeof (double) * margs->flen);
 
 	if (margs->ilen > INTERP_ICALL_TRAMP_IARGS)
 		g_error ("build_args_from_sig: TODO, allocate gregs: %d\n", margs->ilen);
@@ -1039,9 +1039,9 @@ ves_pinvoke_method (InterpFrame *frame, MonoMethodSignature *sig, MonoFuncV addr
 	context->env_frame = old_env_frame;
 	context->current_env = old_env;
 
-	g_free (margs->iargs);
-	g_free (margs->fargs);
-	g_free (margs);
+	g_free_vb (margs->iargs);
+	g_free_vb (margs->fargs);
+	g_free_vb (margs);
 }
 
 void
@@ -1244,9 +1244,9 @@ dump_frame (InterpFrame *inv)
 				g_string_append_printf (str, "#%d: 0x%05x %-10s in %s (%s) at %s\n", i, codep, opname, name, args, source);
 			else
 				g_string_append_printf (str, "#%d: 0x%05x %-10s in %s (%s)\n", i, codep, opname, name, args);
-			g_free (name);
-			g_free (args);
-			g_free (source);
+			g_free_vb (name);
+			g_free_vb (args);
+			g_free_vb (source);
 			++i;
 		}
 	}
@@ -2209,10 +2209,10 @@ static int opcode_counts[512];
 		output_indent (); \
 		char *mn = mono_method_full_name (frame->imethod->method, FALSE); \
 		g_print ("(%p) %s -> ", mono_thread_internal_current (), mn); \
-		g_free (mn); \
+		g_free_vb (mn); \
 		mono_interp_dis_mintop(rtm->code, ip); \
 		g_print ("\t%d:%s\n", vt_sp - vtalloc, ins); \
-		g_free (ins); \
+		g_free_vb (ins); \
 	}
 #else
 #define DUMP_INSTR()
@@ -2281,7 +2281,7 @@ ves_exec_method_with_context (InterpFrame *frame, ThreadContext *context, unsign
 #if DEBUG_INTERP
 		char *mn = mono_method_full_name (frame->imethod->method, TRUE);
 		g_print ("(%p) Transforming %s\n", mono_thread_internal_current (), mn);
-		g_free (mn);
+		g_free_vb (mn);
 #endif
 
 		do_transform_method (frame, context);
@@ -4502,7 +4502,7 @@ array_constructed:
 			++ip;
 			--sp;
 			g_error ("that doesn't seem right");
-			g_free (sp->data.p);
+			g_free_vb (sp->data.p);
 			MINT_IN_BREAK;
 		MINT_IN_CASE(MINT_MONO_RETOBJ)
 			++ip;
@@ -4824,7 +4824,7 @@ array_constructed:
 
 				MONO_PROFILER_RAISE (method_enter, (frame->imethod->method, prof_ctx));
 
-				g_free (prof_ctx);
+				g_free_vb (prof_ctx);
 			}
 
 			MINT_IN_BREAK;
@@ -5212,7 +5212,7 @@ exit_frame:
 
 		MONO_PROFILER_RAISE (method_leave, (frame->imethod->method, prof_ctx));
 
-		g_free (prof_ctx);
+		g_free_vb (prof_ctx);
 	} else if (frame->ex && frame->imethod->prof_flags & MONO_PROFILER_CALL_INSTRUMENTATION_EXCEPTION_LEAVE)
 		MONO_PROFILER_RAISE (method_exception_leave, (frame->imethod->method, &frame->ex->object));
 

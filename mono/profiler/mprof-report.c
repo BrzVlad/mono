@@ -192,7 +192,7 @@ add_counter_to_section (Counter *counter)
 	CounterSection *csection, *s;
 	CounterList *clist;
 
-	clist = (CounterList *) g_calloc (1, sizeof (CounterList));
+	clist = (CounterList *) g_calloc_vb (1, sizeof (CounterList));
 	clist->counter = counter;
 
 	for (csection = counters_sections; csection; csection = csection->next) {
@@ -208,7 +208,7 @@ add_counter_to_section (Counter *counter)
 	}
 
 	/* If section does not exist */
-	csection = (CounterSection *) g_calloc (1, sizeof (CounterSection));
+	csection = (CounterSection *) g_calloc_vb (1, sizeof (CounterSection));
 	csection->value = counter->section;
 	csection->counters = clist;
 	csection->counters_last = clist;
@@ -233,7 +233,7 @@ add_counter (const char *section, const char *name, int type, int unit, int vari
 		if (list->counter->index == index)
 			return;
 
-	counter = (Counter *) g_calloc (1, sizeof (Counter));
+	counter = (Counter *) g_calloc_vb (1, sizeof (Counter));
 	counter->section = section;
 	counter->name = name;
 	counter->type = type;
@@ -241,7 +241,7 @@ add_counter (const char *section, const char *name, int type, int unit, int vari
 	counter->variance = variance;
 	counter->index = index;
 
-	list = (CounterList *) g_calloc (1, sizeof (CounterList));
+	list = (CounterList *) g_calloc_vb (1, sizeof (CounterList));
 	list->counter = counter;
 
 	if (!counters) {
@@ -264,7 +264,7 @@ add_counter_to_timestamp (uint64_t timestamp, Counter *counter)
 	CounterSection *csection;
 	CounterList *clist;
 
-	clist = (CounterList *) g_calloc (1, sizeof (CounterList));
+	clist = (CounterList *) g_calloc_vb (1, sizeof (CounterList));
 	clist->counter = counter;
 
 	for (ctimestamp = counters_timestamps; ctimestamp; ctimestamp = ctimestamp->next) {
@@ -282,7 +282,7 @@ add_counter_to_timestamp (uint64_t timestamp, Counter *counter)
 			}
 
 			/* if timestamp exist and section does not exist */
-			csection = (CounterSection *) g_calloc (1, sizeof (CounterSection));
+			csection = (CounterSection *) g_calloc_vb (1, sizeof (CounterSection));
 			csection->value = counter->section;
 			csection->counters = clist;
 			csection->counters_last = clist;
@@ -297,12 +297,12 @@ add_counter_to_timestamp (uint64_t timestamp, Counter *counter)
 	}
 
 	/* If timestamp do not exist and section does not exist */
-	csection = (CounterSection *) g_calloc (1, sizeof (CounterSection));
+	csection = (CounterSection *) g_calloc_vb (1, sizeof (CounterSection));
 	csection->value = counter->section;
 	csection->counters = clist;
 	csection->counters_last = clist;
 
-	ctimestamp = (CounterTimestamp *) g_calloc (1, sizeof (CounterTimestamp));
+	ctimestamp = (CounterTimestamp *) g_calloc_vb (1, sizeof (CounterTimestamp));
 	ctimestamp->value = timestamp;
 	ctimestamp->sections = csection;
 	ctimestamp->sections_last = csection;
@@ -632,7 +632,7 @@ add_class (intptr_t klass, const char *name)
 		cd->name = pstrdup (name);
 		return cd;
 	}
-	cd = (ClassDesc *) g_calloc (sizeof (ClassDesc), 1);
+	cd = (ClassDesc *) g_calloc_vb (sizeof (ClassDesc), 1);
 	cd->klass = klass;
 	cd->name = pstrdup (name);
 	cd->next = class_hash [slot];
@@ -698,7 +698,7 @@ add_method (intptr_t method, const char *name, intptr_t code, int len)
 		cd->name = pstrdup (name);
 		return cd;
 	}
-	cd = (MethodDesc *) g_calloc (sizeof (MethodDesc), 1);
+	cd = (MethodDesc *) g_calloc_vb (sizeof (MethodDesc), 1);
 	cd->method = method;
 	cd->name = pstrdup (name);
 	cd->code = code;
@@ -827,7 +827,7 @@ add_unmanaged_symbol (uintptr_t addr, char *name, uintptr_t size)
 		usymbols = (UnmanagedSymbol **) g_realloc (usymbols, sizeof (void*) * new_size);
 		usymbols_size = new_size;
 	}
-	sym = (UnmanagedSymbol *) g_calloc (sizeof (UnmanagedSymbol), 1);
+	sym = (UnmanagedSymbol *) g_calloc_vb (sizeof (UnmanagedSymbol), 1);
 	sym->addr = addr;
 	sym->name = name;
 	sym->size = size;
@@ -875,7 +875,7 @@ add_unmanaged_binary (uintptr_t addr, char *name, uintptr_t size)
 		ubinaries = (UnmanagedSymbol **) g_realloc (ubinaries, sizeof (void*) * new_size);
 		ubinaries_size = new_size;
 	}
-	sym = (UnmanagedSymbol *) g_calloc (sizeof (UnmanagedSymbol), 1);
+	sym = (UnmanagedSymbol *) g_calloc_vb (sizeof (UnmanagedSymbol), 1);
 	sym->addr = addr;
 	sym->name = name;
 	sym->size = size;
@@ -1105,7 +1105,7 @@ add_heap_class_rev (HeapClassDesc *from, HeapClassDesc *to)
 		to->rev_hash_size *= 2;
 		if (to->rev_hash_size == 0)
 			to->rev_hash_size = 4;
-		n = (HeapClassRevRef *) g_calloc (sizeof (HeapClassRevRef) * to->rev_hash_size, 1);
+		n = (HeapClassRevRef *) g_calloc_vb (sizeof (HeapClassRevRef) * to->rev_hash_size, 1);
 		for (i = 0; i < old_size; ++i) {
 			if (to->rev_hash [i].klass)
 				add_rev_class_hashed (n, to->rev_hash_size, to->rev_hash [i].klass, to->rev_hash [i].count);
@@ -1147,9 +1147,9 @@ static int num_heap_shots = 0;
 static HeapShot*
 new_heap_shot (uint64_t timestamp)
 {
-	HeapShot *hs = (HeapShot *) g_calloc (sizeof (HeapShot), 1);
+	HeapShot *hs = (HeapShot *) g_calloc_vb (sizeof (HeapShot), 1);
 	hs->hash_size = 4;
-	hs->class_hash = (HeapClassDesc **) g_calloc (sizeof (void*), hs->hash_size);
+	hs->class_hash = (HeapClassDesc **) g_calloc_vb (sizeof (void*), hs->hash_size);
 	hs->timestamp = timestamp;
 	num_heap_shots++;
 	hs->next = heap_shots;
@@ -1195,7 +1195,7 @@ add_heap_hashed (HeapClassDesc **hash, HeapClassDesc **retv, uintptr_t hsize, Cl
 				hash [i] = *retv;
 				return 1;
 			}
-			hash [i] = (HeapClassDesc *) g_calloc (sizeof (HeapClassDesc), 1);
+			hash [i] = (HeapClassDesc *) g_calloc_vb (sizeof (HeapClassDesc), 1);
 			hash [i]->klass = klass;
 			hash [i]->total_size += size;
 			hash [i]->count += count;
@@ -1222,7 +1222,7 @@ add_heap_shot_class (HeapShot *hs, ClassDesc *klass, uint64_t size)
 		hs->hash_size *= 2;
 		if (hs->hash_size == 0)
 			hs->hash_size = 4;
-		n = (HeapClassDesc **) g_calloc (sizeof (void*) * hs->hash_size, 1);
+		n = (HeapClassDesc **) g_calloc_vb (sizeof (void*) * hs->hash_size, 1);
 		for (i = 0; i < old_size; ++i) {
 			res = hs->class_hash [i];
 			if (hs->class_hash [i])
@@ -1242,7 +1242,7 @@ add_heap_shot_class (HeapShot *hs, ClassDesc *klass, uint64_t size)
 static HeapObjectDesc*
 alloc_heap_obj (uintptr_t objaddr, HeapClassDesc *hklass, uintptr_t num_refs)
 {
-	HeapObjectDesc* ho = (HeapObjectDesc *) g_calloc (sizeof (HeapObjectDesc) + num_refs * sizeof (uintptr_t), 1);
+	HeapObjectDesc* ho = (HeapObjectDesc *) g_calloc_vb (sizeof (HeapObjectDesc) + num_refs * sizeof (uintptr_t), 1);
 	ho->objaddr = objaddr;
 	ho->hklass = hklass;
 	ho->num_refs = num_refs;
@@ -1327,7 +1327,7 @@ add_heap_shot_obj (HeapShot *hs, HeapObjectDesc *obj)
 		hs->objects_hash_size *= 2;
 		if (hs->objects_hash_size == 0)
 			hs->objects_hash_size = 4;
-		n = (HeapObjectDesc **) g_calloc (sizeof (void*) * hs->objects_hash_size, 1);
+		n = (HeapObjectDesc **) g_calloc_vb (sizeof (void*) * hs->objects_hash_size, 1);
 		for (i = 0; i < old_size; ++i) {
 			if (hs->objects_hash [i])
 				add_heap_hashed_obj (n, hs->objects_hash_size, hs->objects_hash [i]);
@@ -1381,7 +1381,7 @@ heap_shot_mark_objects (HeapShot *hs)
 	if (!debug)
 		return;
 	/* consistency checks: it seems not all the objects are walked in the heap in some cases */
-	marks = (unsigned char *) g_calloc (hs->objects_hash_size, 1);
+	marks = (unsigned char *) g_calloc_vb (hs->objects_hash_size, 1);
 	if (!marks)
 		return;
 	for (i = 0; i < hs->num_roots; ++i) {
@@ -1619,7 +1619,7 @@ get_thread (ProfContext *ctx, intptr_t thread_id)
 		}
 		thread = thread->next;
 	}
-	thread = (ThreadContext *) g_calloc (sizeof (ThreadContext), 1);
+	thread = (ThreadContext *) g_calloc_vb (sizeof (ThreadContext), 1);
 	thread->next = ctx->threads;
 	ctx->threads = thread;
 	thread->thread_id = thread_id;
@@ -1647,7 +1647,7 @@ get_domain (ProfContext *ctx, intptr_t domain_id)
 		domain = domain->next;
 	}
 
-	domain = (DomainContext *) g_calloc (sizeof (DomainContext), 1);
+	domain = (DomainContext *) g_calloc_vb (sizeof (DomainContext), 1);
 	domain->next = ctx->domains;
 	ctx->domains = domain;
 	domain->domain_id = domain_id;
@@ -1670,7 +1670,7 @@ get_remctx (ProfContext *ctx, intptr_t remctx_id)
 		remctx = remctx->next;
 	}
 
-	remctx = (RemCtxContext *) g_calloc (sizeof (RemCtxContext), 1);
+	remctx = (RemCtxContext *) g_calloc_vb (sizeof (RemCtxContext), 1);
 	remctx->next = ctx->remctxs;
 	ctx->remctxs = remctx;
 	remctx->remctx_id = remctx_id;
@@ -1734,7 +1734,7 @@ add_trace_bt (BackTrace *bt, TraceDesc *trace, uint64_t value)
 		trace->size *= 2;
 		if (trace->size == 0)
 			trace->size = 4;
-		n = (CallContext *) g_calloc (sizeof (CallContext) * trace->size, 1);
+		n = (CallContext *) g_calloc_vb (sizeof (CallContext) * trace->size, 1);
 		for (i = 0; i < old_size; ++i) {
 			if (trace->traces [i].bt)
 				add_trace_hashed (n, trace->size, trace->traces [i].bt, trace->traces [i].count);
@@ -1941,7 +1941,7 @@ lookup_monitor (uintptr_t objid)
 	while (cd && cd->objid != objid)
 		cd = cd->next;
 	if (!cd) {
-		cd = (MonitorDesc *) g_calloc (sizeof (MonitorDesc), 1);
+		cd = (MonitorDesc *) g_calloc_vb (sizeof (MonitorDesc), 1);
 		cd->objid = objid;
 		cd->next = monitor_hash [slot];
 		monitor_hash [slot] = cd;
@@ -3045,7 +3045,7 @@ decode_buffer (ProfContext *ctx)
 					else
 						type = decode_uleb128 (p, &p);
 
-					value = (CounterValue *) g_calloc (1, sizeof (CounterValue));
+					value = (CounterValue *) g_calloc_vb (1, sizeof (CounterValue));
 					value->timestamp = timestamp;
 
 					switch (type) {
@@ -3269,7 +3269,7 @@ static ProfContext*
 load_file (char *name)
 {
 	unsigned char *p;
-	ProfContext *ctx = (ProfContext *) g_calloc (sizeof (ProfContext), 1);
+	ProfContext *ctx = (ProfContext *) g_calloc_vb (sizeof (ProfContext), 1);
 	if (strcmp (name, "-") == 0)
 		ctx->file = stdin;
 	else

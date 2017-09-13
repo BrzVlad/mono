@@ -74,7 +74,7 @@ ves_icall_System_Runtime_InteropServices_Marshal_StringToHGlobalAnsi (MonoString
 	len = MAX (strlen (tres) + 1, string->length);
 	ret = ves_icall_System_Runtime_InteropServices_Marshal_AllocHGlobal ((gpointer)len);
 	memcpy (ret, tres, len);
-	g_free (tres);
+	g_free_vb (tres);
 	return ret;
 }
 
@@ -118,7 +118,7 @@ mono_string_to_utf8str (MonoString *s)
 	} else {
 		as = CoTaskMemAlloc (len + 1);
 		memcpy (as, tmp, len + 1);
-		g_free (tmp);
+		g_free_vb (tmp);
 		return as;
 	}
 }

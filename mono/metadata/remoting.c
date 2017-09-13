@@ -1446,7 +1446,7 @@ mono_marshal_get_ldfld_wrapper (MonoType *type)
 	/* we add the %p pointer value of klass because class names are not unique */
 	name = g_strdup_printf ("__ldfld_wrapper_%p_%s.%s", klass, klass->name_space, klass->name); 
 	mb = mono_mb_new (mono_defaults.object_class, name, MONO_WRAPPER_LDFLD);
-	g_free (name);
+	g_free_vb (name);
 
 	sig = mono_metadata_signature_alloc (mono_defaults.corlib, 4);
 	sig->params [0] = &mono_defaults.object_class->byval_arg;
@@ -1604,7 +1604,7 @@ mono_marshal_get_ldflda_wrapper (MonoType *type)
 	/* we add the %p pointer value of klass because class names are not unique */
 	name = g_strdup_printf ("__ldflda_wrapper_%p_%s.%s", klass, klass->name_space, klass->name); 
 	mb = mono_mb_new (mono_defaults.object_class, name, MONO_WRAPPER_LDFLDA);
-	g_free (name);
+	g_free_vb (name);
 
 	sig = mono_metadata_signature_alloc (mono_defaults.corlib, 4);
 	sig->params [0] = &mono_defaults.object_class->byval_arg;
@@ -1740,7 +1740,7 @@ mono_marshal_get_stfld_wrapper (MonoType *type)
 	/* we add the %p pointer value of klass because class names are not unique */
 	name = g_strdup_printf ("__stfld_wrapper_%p_%s.%s", klass, klass->name_space, klass->name); 
 	mb = mono_mb_new (mono_defaults.object_class, name, MONO_WRAPPER_STFLD);
-	g_free (name);
+	g_free_vb (name);
 
 	sig = mono_metadata_signature_alloc (mono_defaults.corlib, 5);
 	sig->params [0] = &mono_defaults.object_class->byval_arg;
@@ -1857,8 +1857,8 @@ mono_marshal_get_proxy_cancast (MonoClass *klass)
 	klass_name = mono_type_full_name (&klass->byval_arg);
 	name = g_strdup_printf ("__proxy_isinst_wrapper_%s", klass_name); 
 	mb = mono_mb_new (mono_defaults.object_class, name, MONO_WRAPPER_PROXY_ISINST);
-	g_free (klass_name);
-	g_free (name);
+	g_free_vb (klass_name);
+	g_free_vb (name);
 	
 	mb->method->save_lmf = 1;
 

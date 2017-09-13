@@ -223,7 +223,7 @@ destroy (gpointer data)
 
 	mono_coop_mutex_destroy (&worker.heuristic_lock);
 
-	g_free (worker.cpu_usage_state);
+	g_free_vb (worker.cpu_usage_state);
 }
 
 void

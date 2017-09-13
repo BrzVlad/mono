@@ -102,7 +102,7 @@ mono_thread_small_id_alloc (void)
 	g_assert (id < HAZARD_TABLE_MAX_SIZE);
 	if (id >= hazard_table_size) {
 #if MONO_SMALL_CONFIG
-		hazard_table = g_malloc0 (sizeof (MonoThreadHazardPointers) * HAZARD_TABLE_MAX_SIZE);
+		hazard_table = g_malloc0_vb (sizeof (MonoThreadHazardPointers) * HAZARD_TABLE_MAX_SIZE);
 		hazard_table_size = HAZARD_TABLE_MAX_SIZE;
 #else
 		gpointer page_addr;

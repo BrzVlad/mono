@@ -31,22 +31,22 @@ load_profiler (MonoDl *module, const char *name, const char *desc)
 
 	if (!(err = mono_dl_symbol (module, old_name, (gpointer) &func))) {
 		mono_profiler_printf_err ("Found old-style startup symbol '%s' for the '%s' profiler; it has not been migrated to the new API.", old_name, name);
-		g_free (old_name);
+		g_free_vb (old_name);
 		return FALSE;
 	}
 
-	g_free (err);
-	g_free (old_name);
+	g_free_vb (err);
+	g_free_vb (old_name);
 
 	char *new_name = g_strdup_printf (NEW_INITIALIZER_NAME "_%s", name);
 
 	if ((err = mono_dl_symbol (module, new_name, (gpointer *) &func))) {
-		g_free (err);
-		g_free (new_name);
+		g_free_vb (err);
+		g_free_vb (new_name);
 		return FALSE;
 	}
 
-	g_free (new_name);
+	g_free_vb (new_name);
 
 	func (desc);
 
@@ -70,7 +70,7 @@ load_profiler_from_executable (const char *name, const char *desc)
 
 	if (!module) {
 		mono_profiler_printf_err ("Could not open main executable: %s", err);
-		g_free (err);
+		g_free_vb (err);
 		return FALSE;
 	}
 
@@ -87,7 +87,7 @@ load_profiler_from_directory (const char *directory, const char *libname, const 
 		// See the comment in load_embedded_profiler ().
 		MonoDl *module = mono_dl_open (path, MONO_DL_EAGER, NULL);
 
-		g_free (path);
+		g_free_vb (path);
 
 		if (module)
 			return load_profiler (module, name, desc);
@@ -102,7 +102,7 @@ load_profiler_from_installation (const char *libname, const char *name, const ch
 	char *err;
 	MonoDl *module = mono_dl_open_runtime_lib (libname, MONO_DL_EAGER, &err);
 
-	g_free (err);
+	g_free_vb (err);
 
 	if (module)
 		return load_profiler (module, name, desc);
@@ -138,10 +138,10 @@ mono_profiler_load (const char *desc)
 		if (!res)
 			mono_profiler_printf_err ("The '%s' profiler wasn't found in the main executable nor could it be loaded from '%s'.", mname, libname);
 
-		g_free (libname);
+		g_free_vb (libname);
 	}
 
-	g_free (mname);
+	g_free_vb (mname);
 }
 
 MonoProfilerHandle
@@ -249,7 +249,7 @@ mono_profiler_get_coverage_data (MonoProfilerHandle handle, MonoMethod *method, 
 
 			cb (handle->prof, &data);
 
-			g_free ((char *) data.file_name);
+			g_free_vb ((char *) data.file_name);
 		}
 	}
 
@@ -278,7 +278,7 @@ mono_profiler_coverage_alloc (MonoMethod *method, guint32 entries)
 
 	coverage_lock ();
 
-	MonoProfilerCoverageInfo *info = g_malloc0 (sizeof (MonoProfilerCoverageInfo) + SIZEOF_VOID_P * 2 * entries);
+	MonoProfilerCoverageInfo *info = g_malloc0_vb (sizeof (MonoProfilerCoverageInfo) + SIZEOF_VOID_P * 2 * entries);
 
 	info->entries = entries;
 
@@ -496,7 +496,7 @@ mono_profiler_cleanup (void)
 		MonoProfilerHandle cur = head;
 		head = head->next;
 
-		g_free (cur);
+		g_free_vb (cur);
 	}
 
 	if (mono_profiler_state.code_coverage) {
@@ -509,7 +509,7 @@ mono_profiler_cleanup (void)
 		MonoProfilerCoverageInfo *info;
 
 		while (g_hash_table_iter_next (&iter, NULL, (gpointer *) &info))
-			g_free (info);
+			g_free_vb (info);
 
 		g_hash_table_destroy (mono_profiler_state.coverage_hash);
 	}

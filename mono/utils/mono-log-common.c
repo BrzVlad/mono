@@ -75,7 +75,7 @@ mono_log_open_logfile(const char *path, void *userData)
 		gunichar2 *wPath = g_utf8_to_utf16(path, -1, 0, 0, 0);
 		if (wPath != NULL) {
 			logFile = _wfopen((wchar_t *) wPath, L"w");
-			g_free (wPath);
+			g_free_vb (wPath);
 		}
 #endif
 		if (logFile == NULL) {

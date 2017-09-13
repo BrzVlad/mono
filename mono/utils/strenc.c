@@ -59,7 +59,7 @@ mono_unicode_from_external (const gchar *in, gsize *bytes)
 	}
 	
 	encodings=g_strsplit (encoding_list, ":", 0);
-	g_free (encoding_list);
+	g_free_vb (encoding_list);
 	for(i=0;encodings[i]!=NULL; i++) {
 		/* "default_locale" is a special case encoding */
 		if(!strcmp (encodings[i], "default_locale")) {
@@ -68,7 +68,7 @@ mono_unicode_from_external (const gchar *in, gsize *bytes)
 				res=(gchar *) g_utf8_to_utf16 (utf8, -1, NULL, &lbytes, NULL);
 				*bytes = (gsize) lbytes;
 			}
-			g_free (utf8);
+			g_free_vb (utf8);
 		} else {
 			/* Don't use UTF16 here. It returns the <FF FE> prepended to the string */
 			res = g_convert (in, strlen (in), "UTF8", encodings[i], NULL, bytes, NULL);
@@ -76,7 +76,7 @@ mono_unicode_from_external (const gchar *in, gsize *bytes)
 				gchar *ptr = res;
 				res = (gchar *) g_utf8_to_utf16 (res, -1, NULL, &lbytes, NULL);
 				*bytes = (gsize) lbytes;
-				g_free (ptr);
+				g_free_vb (ptr);
 			}
 		}
 
@@ -132,14 +132,14 @@ gchar *mono_utf8_from_external (const gchar *in)
 	}
 	
 	encodings=g_strsplit (encoding_list, ":", 0);
-	g_free (encoding_list);
+	g_free_vb (encoding_list);
 	for(i=0;encodings[i]!=NULL; i++) {
 		
 		/* "default_locale" is a special case encoding */
 		if(!strcmp (encodings[i], "default_locale")) {
 			res=g_locale_to_utf8 (in, -1, NULL, NULL, NULL);
 			if(res!=NULL && !g_utf8_validate (res, -1, NULL)) {
-				g_free (res);
+				g_free_vb (res);
 				res=NULL;
 			}
 		} else {
@@ -190,7 +190,7 @@ gchar *mono_unicode_to_external (const gunichar2 *uni)
 		int i;
 		
 		encodings=g_strsplit (encoding_list, ":", 0);
-		g_free (encoding_list);
+		g_free_vb (encoding_list);
 		for(i=0; encodings[i]!=NULL; i++) {
 			if(!strcmp (encodings[i], "default_locale")) {
 				res=g_locale_from_utf8 (utf8, -1, NULL, NULL,
@@ -201,7 +201,7 @@ gchar *mono_unicode_to_external (const gunichar2 *uni)
 			}
 
 			if(res!=NULL) {
-				g_free (utf8);
+				g_free_vb (utf8);
 				g_strfreev (encodings);
 				
 				return(res);

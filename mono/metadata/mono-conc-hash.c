@@ -18,11 +18,11 @@
 #ifdef HAVE_BOEHM_GC
 #define mg_new0(type,n)  ((type *) GC_MALLOC(sizeof(type) * (n)))
 #define mg_new(type,n)   ((type *) GC_MALLOC(sizeof(type) * (n)))
-#define mg_free(x)       do { } while (0)
+#define mg_free_vb(x)       do { } while (0)
 #else
 #define mg_new0(x,n)     g_new0(x,n)
 #define mg_new(type,n)   g_new(type,n)
-#define mg_free(x)       g_free(x)
+#define mg_free_vb(x)       g_free_vb(x)
 #endif
 
 #define INITIAL_SIZE 32
@@ -87,10 +87,10 @@ conc_table_free (gpointer ptr)
 		mono_gc_deregister_root ((char*)table->values);
 #endif
 
-	mg_free (table->keys);
-	mg_free (table->values);
+	mg_free_vb (table->keys);
+	mg_free_vb (table->values);
 #ifdef HAVE_SGEN_GC
-	mg_free (table);
+	mg_free_vb (table);
 #else
 	mono_gc_free_fixed (table);
 #endif
@@ -328,7 +328,7 @@ mono_conc_g_hash_table_destroy (MonoConcGHashTable *hash_table)
 		}
 	}
 	conc_table_free ((gpointer)hash_table->table);
-	g_free (hash_table);
+	g_free_vb (hash_table);
 }
 
 /* Return NULL on success or the old value in failure */
