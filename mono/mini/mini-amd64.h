@@ -233,6 +233,8 @@ static AMD64_XMM_Reg_No float_return_regs [] = { AMD64_XMM0 };
 #else
 #define PARAM_REGS 6
 #define FLOAT_PARAM_REGS 8
+#define RETURN_REGS 2
+#define FLOAT_RETURN_REGS 2
 
 static const AMD64_Reg_No param_regs [] = {AMD64_RDI, AMD64_RSI, AMD64_RDX,
 					   AMD64_RCX, AMD64_R8,  AMD64_R9};
@@ -326,6 +328,15 @@ typedef struct {
 	ArgInfo args [1];
 } CallInfo;
 
+typedef struct {
+	/* General registers */
+	mgreg_t gregs [AMD64_NREG];
+	/* Floating registers */
+	mgreg_t fregs [AMD64_XMM_NREG];
+	/* Stack usage, used for passing params on stack */
+	size_t stack_size;
+	gpointer *stack;
+} CallContext;
 
 #define MONO_CONTEXT_SET_LLVM_EXC_REG(ctx, exc) do { (ctx)->gregs [AMD64_RAX] = (gsize)exc; } while (0)
 #define MONO_CONTEXT_SET_LLVM_EH_SELECTOR_REG(ctx, sel) do { (ctx)->gregs [AMD64_RDX] = (gsize)(sel); } while (0)

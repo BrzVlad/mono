@@ -69,4 +69,13 @@ void mono_interp_parse_options (const char *options);
 
 void mono_interp_init (void);
 
+void
+mono_interp_frame_arg_to_data (MonoInterpFrameHandle frame, MonoMethodSignature *sig, int index, gpointer data);
+
+void
+mono_interp_data_to_frame_arg (MonoInterpFrameHandle frame, MonoMethodSignature *sig, int index, gpointer data);
+
+gpointer
+mono_interp_frame_arg_to_storage (MonoInterpFrameHandle frame, MonoMethodSignature *sig, int index);
+
 #endif /* __MONO_MINI_INTERPRETER_H__ */
