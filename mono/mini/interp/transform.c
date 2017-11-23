@@ -3762,11 +3762,26 @@ generate (MonoMethod *method, MonoMethodHeader *header, InterpMethod *rtm, unsig
 						}
 						break;
 					case 3:
+						if (MONO_TYPE_IS_VOID (info->sig->ret)) {
+							if (info->sig->params [2]->type == MONO_TYPE_I4)
+								ADD_CODE (td,MINT_ICALL_PPI_V);
+							else
+								ADD_CODE (td,MINT_ICALL_PPP_V);
+						} else {
+							if (info->sig->params [1]->type == MONO_TYPE_I4 &&
+									info->sig->params [2]->type == MONO_TYPE_I4)
+								ADD_CODE (td, MINT_ICALL_PII_P);
+							else
+								g_assert_not_reached ();
+						}
+						break;
+					case 4:
 						g_assert (MONO_TYPE_IS_VOID (info->sig->ret));
-						if (info->sig->params [2]->type == MONO_TYPE_I4)
-							ADD_CODE (td,MINT_ICALL_PPI_V);
+						if (info->sig->params [2]->type == MONO_TYPE_I4 &&
+								info->sig->params [3]->type == MONO_TYPE_I4)
+							ADD_CODE (td, MINT_ICALL_PPII_V);
 						else
-							ADD_CODE (td,MINT_ICALL_PPP_V);
+							g_assert_not_reached ();
 						break;
 					default:
 						g_assert_not_reached ();
