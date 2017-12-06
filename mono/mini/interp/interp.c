@@ -1432,6 +1432,7 @@ interp_runtime_invoke (MonoMethod *method, void *obj, void **params, MonoObject 
 	stackval result;
 	stackval *args;
 	ThreadContext context_struct;
+	MonoMethod *invoke_wrapper = method;
 
 	error_init (error);
 	if (exc)
@@ -1449,7 +1450,10 @@ interp_runtime_invoke (MonoMethod *method, void *obj, void **params, MonoObject 
 
 	MonoDomain *domain = mono_domain_get ();
 
-	MonoMethod *invoke_wrapper = mono_marshal_get_runtime_invoke_full (method, FALSE, TRUE);
+	if (method->flags & METHOD_ATTRIBUTE_PINVOKE_IMPL)
+		invoke_wrapper = mono_marshal_get_native_wrapper (method, TRUE, FALSE);
+
+	invoke_wrapper = mono_marshal_get_runtime_invoke_full (invoke_wrapper, FALSE, TRUE);
 
 	//* <code>MonoObject *runtime_invoke (MonoObject *this_obj, void **params, MonoObject **exc, void* method)</code>
 
