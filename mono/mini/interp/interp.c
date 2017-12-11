@@ -74,7 +74,7 @@
 #endif
 
 /* TODO Properly implement for all architectures */
-#ifdef TARGET_AMD64
+#if defined(TARGET_AMD64) || defined(TARGET_ARM64)
 #define HAVE_COMPLETE_PINVOKE_TRAMP
 #endif
 

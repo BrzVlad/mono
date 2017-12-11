@@ -228,6 +228,15 @@ typedef struct {
 	ArgInfo args [1];
 } CallInfo;
 
+typedef struct {
+        /* General registers + ARMREG_R8 for indirect returns */
+        mgreg_t gregs [PARAM_REGS + 1];
+        /* Floating registers */
+        mgreg_t fregs [FP_PARAM_REGS];
+        /* Stack usage, used for passing params on stack */
+        size_t stack_size;
+        gpointer *stack;
+} CallContext;
 
 guint8* mono_arm_emit_imm64 (guint8 *code, int dreg, gint64 imm);
 

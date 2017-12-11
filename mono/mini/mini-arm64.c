@@ -27,6 +27,10 @@
 #include <mono/utils/mono-memory-model.h>
 #include <mono/metadata/abi-details.h>
 
+#ifndef DISABLE_INTERPRETER
+#include "interp/interp.h"
+#endif
+
 /*
  * Documentation:
  *
@@ -1368,6 +1372,113 @@ get_call_info (MonoMemPool *mp, MonoMethodSignature *sig)
 	cinfo->stack_usage = ALIGN_TO (cinfo->stack_usage, MONO_ARCH_FRAME_ALIGNMENT);
 
 	return cinfo;
+}
+
+void
+mono_arch_set_native_call_context (CallContext *ccontext, gpointer frame, MonoMethodSignature *sig)
+{
+	CallInfo *cinfo = get_call_info (NULL, sig);
+	MonoInterpCallbacks *interp_cb = mini_get_interp_callbacks ();
+
+	memset (ccontext, 0, sizeof (CallContext));
+
+	ccontext->stack_size = ALIGN_TO (cinfo->stack_usage, MONO_ARCH_FRAME_ALIGNMENT);
+	if (ccontext->stack_size)
+		ccontext->stack = malloc (ccontext->stack_size);
+
+	if (sig->ret->type != MONO_TYPE_VOID) {
+		if (cinfo->ret.storage == ArgVtypeByRef) {
+			gpointer ret_storage = interp_cb->frame_arg_to_storage ((MonoInterpFrameHandle)frame, sig, -1);
+			ccontext->gregs [cinfo->ret.reg] = (mgreg_t)ret_storage;
+		}
+	}
+
+	for (int i = 0; i < sig->param_count + sig->hasthis; i++) {
+		ArgInfo *ainfo = &cinfo->args [i];
+		gpointer storage;
+		int storage_type = ainfo->storage;
+		int reg_storage = ainfo->reg;
+		switch (storage_type) {
+			case ArgInIReg: {
+				storage = &ccontext->gregs [reg_storage];
+				break;
+			}
+			case ArgInFReg:
+			case ArgInFRegR4: {
+				storage = &ccontext->fregs [reg_storage];
+				break;
+			}
+			case ArgOnStack:
+			case ArgOnStackR4:
+			case ArgOnStackR8:
+			case ArgVtypeOnStack: {
+				storage = (char*)ccontext->stack + ainfo->offset;
+				break;
+			}
+			case ArgVtypeInIRegs: {
+				storage = alloca (ainfo->nregs * sizeof (mgreg_t));
+				break;
+			}
+			default:
+				g_error ("Arg storage type not yet supported");
+		}
+		interp_cb->frame_arg_to_data ((MonoInterpFrameHandle)frame, sig, i, storage);
+		if (storage_type == ArgVtypeInIRegs) {
+			/* Split up the value type into the reg pairs */
+			for (int k = 0; k < ainfo->nregs; k++) {
+				ccontext->gregs [ainfo->reg + k] = *(mgreg_t*)storage;
+				storage = (gpointer*)storage + 1;
+			}
+		}
+	}
+
+	g_free (cinfo);
+}
+
+void
+mono_arch_get_native_call_context (CallContext *ccontext, gpointer frame, MonoMethodSignature *sig)
+{
+	MonoInterpCallbacks *interp_cb = mini_get_interp_callbacks ();
+	CallInfo *cinfo;
+
+	/* No return value */
+	if (sig->ret->type == MONO_TYPE_VOID)
+		return;
+
+	cinfo = get_call_info (NULL, sig);
+
+	/* The return values were stored directly at address passed in reg */
+	if (cinfo->ret.storage == ArgVtypeByRef)
+		goto done;
+
+	ArgInfo *ainfo = &cinfo->ret;
+	mgreg_t *storage;
+	int storage_type = ainfo->storage;
+	int reg_storage = ainfo->reg;
+	switch (storage_type) {
+		case ArgInIReg: {
+			storage = &ccontext->gregs [reg_storage];
+			break;
+		}
+		case ArgInFReg:
+		case ArgInFRegR4: {
+			storage = &ccontext->fregs [reg_storage];
+			break;
+		}
+		case ArgValuetypeInReg: {
+			storage = alloca (ainfo->nregs * sizeof (mgreg_t));
+			/* Reconstruct the value type */
+			for (int k = 0; k < ainfo->nregs; k++)
+				storage [k]  = ccontext->gregs [reg_storage + k];
+			break;
+		}
+		default:
+			g_error ("Arg storage type not yet supported");
+	}
+	interp_cb->data_to_frame_arg ((MonoInterpFrameHandle)frame, sig, -1, storage);
+
+done:
+	g_free (cinfo);
 }
 
 typedef struct {
