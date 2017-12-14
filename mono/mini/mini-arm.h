@@ -223,6 +223,19 @@ typedef struct {
 	ArgInfo args [1];
 } CallInfo;
 
+#define PARAM_REGS 4
+#define FP_PARAM_REGS 8
+
+typedef struct {
+        /* General registers */
+        mgreg_t gregs [PARAM_REGS];
+        /* Floating registers */
+        mgreg_t fregs [FP_PARAM_REGS];
+        /* Stack usage, used for passing params on stack */
+        size_t stack_size;
+        gpointer *stack;
+} CallContext;
+
 /* Structure used by the sequence points in AOTed code */
 typedef struct {
 	gpointer ss_trigger_page;
@@ -230,10 +243,6 @@ typedef struct {
 	gpointer ss_tramp_addr;
 	guint8* bp_addrs [MONO_ZERO_LEN_ARRAY];
 } SeqPointInfo;
-
-
-#define PARAM_REGS 4
-#define FP_PARAM_REGS 8
 
 typedef struct {
 	double fpregs [FP_PARAM_REGS];

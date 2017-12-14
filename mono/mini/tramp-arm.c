@@ -822,8 +822,6 @@ gpointer
 mono_arch_get_enter_icall_trampoline (MonoTrampInfo **info)
 {
 #ifndef DISABLE_INTERPRETER
-	const int gregs_num = INTERP_ICALL_TRAMP_IARGS;
-	const int fregs_num = INTERP_ICALL_TRAMP_FARGS;
 
 	guint8 *start = NULL, *code, *label_gexits [gregs_num], *label_fexits [fregs_num], *label_leave_tramp [3], *label_is_float_ret;
 	MonoJumpInfo *ji = NULL;
@@ -957,6 +955,109 @@ mono_arch_get_enter_icall_trampoline (MonoTrampInfo **info)
 	ARM_POP (code, (1 << ARMREG_R4) | (1 << ARMREG_R8) | (1 << ARMREG_R6));
 	ARM_MOV_REG_REG (code, ARMREG_SP, fp_reg);
 	ARM_POP (code, (1 << fp_reg) | (1 << ARMREG_PC));
+
+	g_assert (code - start < buf_len);
+
+	mono_arch_flush_icache (start, code - start);
+	MONO_PROFILER_RAISE (jit_code_buffer, (start, code - start, MONO_PROFILER_CODE_BUFFER_EXCEPTION_HANDLING, NULL));
+
+	if (info)
+		*info = mono_tramp_info_create ("enter_icall_trampoline", start, code - start, ji, unwind_ops);
+
+	return start;
+#else
+	g_assert_not_reached ();
+	return NULL;
+#endif /* DISABLE_INTERPRETER */
+}
+
+gpointer
+mono_arch_get_enter_icall_trampoline (MonoTrampInfo **info)
+{
+#ifndef DISABLE_INTERPRETER
+	guint8 *start = NULL, *code;
+	guint8 *label_start_copy, *label_exit_copy;
+	MonoJumpInfo *ji = NULL;
+	GSList *unwind_ops = NULL;
+	int buf_len, i, framesize = 0, off_methodargs, off_targetaddr;
+
+	buf_len = 512 + 1024;
+	start = code = (guint8 *) mono_global_codeman_reserve (buf_len);
+
+	/* allocate frame */
+	framesize += 2 * sizeof (mgreg_t);
+
+	off_methodargs = framesize;
+	framesize += sizeof (mgreg_t);
+
+	off_targetaddr = framesize;
+	framesize += sizeof (mgreg_t);
+
+	framesize = ALIGN_TO (framesize, MONO_ARCH_FRAME_ALIGNMENT);
+
+	arm_subx_imm (code, ARMREG_SP, ARMREG_SP, framesize);
+	arm_stpx (code, ARMREG_FP, ARMREG_LR, ARMREG_SP, 0);
+	arm_movspx (code, ARMREG_FP, ARMREG_SP);
+
+	/* save CallContext* onto stack */
+	arm_strx (code, ARMREG_R1, ARMREG_FP, off_methodargs);
+
+	/* save target address onto stack */
+	arm_strx (code, ARMREG_R0, ARMREG_FP, off_targetaddr);
+
+	/* allocate the stack space necessary for the call */
+	arm_ldrx (code, ARMREG_R0, ARMREG_R1, MONO_STRUCT_OFFSET (CallContext, stack_size));
+	arm_subx (code, ARMREG_SP, ARMREG_SP, ARMREG_R0);
+
+	/* copy stack from the CallContext, IP0 = dest, IP1 = source */
+	arm_movx (code, ARMREG_IP0, ARMREG_SP);
+	arm_ldrx (code, ARMREG_IP1, ARMREG_R1, MONO_STRUCT_OFFSET (CallContext, stack));
+
+	label_start_copy = code;
+
+	arm_cmpx_imm (code, ARMREG_R0, 0);
+	label_exit_copy = code;
+	arm_bcc (code, ARMCOND_EQ, 0);
+	arm_ldrx (code, ARMREG_R2, ARMREG_IP1, 0);
+	arm_strx (code, ARMREG_R2, ARMREG_IP0, 0);
+	arm_addx_imm (code, ARMREG_IP0, ARMREG_IP0, sizeof (mgreg_t));
+	arm_addx_imm (code, ARMREG_IP1, ARMREG_IP1, sizeof (mgreg_t));
+	arm_subx_imm (code, ARMREG_R0, ARMREG_R0, sizeof (mgreg_t));
+	arm_b (code, label_start_copy);
+	mono_arm_patch (label_exit_copy, code, MONO_R_ARM64_BCC);
+
+	/* Load CallContext* into IP0 */
+	arm_ldrx (code, ARMREG_IP0, ARMREG_FP, off_methodargs);
+
+	/* set all general purpose registers from CallContext */
+	for (i = 0; i < PARAM_REGS + 1; i++)
+		arm_ldrx (code, i, ARMREG_IP0, MONO_STRUCT_OFFSET (CallContext, gregs) + i * sizeof (mgreg_t));
+
+	/* set all floating registers from CallContext  */
+	for (i = 0; i < FP_PARAM_REGS; i++)
+		arm_ldrfpx (code, i, ARMREG_IP0, MONO_STRUCT_OFFSET (CallContext, fregs) + i * sizeof (double));
+
+	/* load target addr */
+	arm_ldrx (code, ARMREG_IP0, ARMREG_FP, off_targetaddr);
+
+	/* call into native function */
+	arm_blrx (code, ARMREG_IP0);
+
+	/* load CallContext* */
+	arm_ldrx (code, ARMREG_IP0, ARMREG_FP, off_methodargs);
+
+	/* set all general purpose registers to CallContext */
+	for (i = 0; i < PARAM_REGS; i++)
+		arm_strx (code, i, ARMREG_IP0, MONO_STRUCT_OFFSET (CallContext, gregs) + i * sizeof (mgreg_t));
+
+	/* set all floating registers to CallContext  */
+	for (i = 0; i < FP_PARAM_REGS; i++)
+		arm_strfpx (code, i, ARMREG_IP0, MONO_STRUCT_OFFSET (CallContext, fregs) + i * sizeof (double));
+
+	arm_movspx (code, ARMREG_SP, ARMREG_FP);
+	arm_ldpx (code, ARMREG_FP, ARMREG_LR, ARMREG_SP, 0);
+	arm_addx_imm (code, ARMREG_SP, ARMREG_SP, framesize);
+	arm_retx (code, ARMREG_LR);
 
 	g_assert (code - start < buf_len);
 
