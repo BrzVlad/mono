@@ -1233,8 +1233,8 @@ mono_lookup_pinvoke_call (MonoMethod *method, const char **exc_class, const char
 	if (!module) {
 		mono_image_lock (image);
 		if (!image->pinvoke_scopes) {
-			image->pinvoke_scopes = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
-			image->pinvoke_scope_filenames = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
+			image->pinvoke_scopes = g_hash_table_new_full (g_str_hash, g_str_equal, monoeg_free, NULL);
+			image->pinvoke_scope_filenames = g_hash_table_new_full (g_str_hash, g_str_equal, monoeg_free, monoeg_free);
 		}
 		module = (MonoDl *)g_hash_table_lookup (image->pinvoke_scopes, new_scope);
 		found_name = (char *)g_hash_table_lookup (image->pinvoke_scope_filenames, new_scope);

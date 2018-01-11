@@ -685,7 +685,7 @@ mono_jit_info_free_or_queue (MonoDomain *domain, MonoJitInfo *ji)
 	if (domain->num_jit_info_tables <= 1) {
 		/* Can it actually happen that we only have one table
 		   but ji is still hazardous? */
-		mono_thread_hazardous_try_free (ji, g_free);
+		mono_thread_hazardous_try_free (ji, monoeg_free);
 	} else {
 		domain->jit_info_free_queue = g_slist_prepend (domain->jit_info_free_queue, ji);
 	}

@@ -8132,7 +8132,7 @@ mono_icall_init (void)
 	}
 #endif
 
-	icall_hash = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+	icall_hash = g_hash_table_new_full (g_str_hash, g_str_equal, monoeg_free, NULL);
 	mono_os_mutex_init (&icall_mutex);
 }
 
@@ -8738,7 +8738,7 @@ mono_register_jit_icall_full (gconstpointer func, const char *name, MonoMethodSi
 	mono_icall_lock ();
 
 	if (!jit_icall_hash_name) {
-		jit_icall_hash_name = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
+		jit_icall_hash_name = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, monoeg_free);
 		jit_icall_hash_addr = g_hash_table_new (NULL, NULL);
 	}
 
