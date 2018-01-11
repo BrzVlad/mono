@@ -384,7 +384,7 @@ mono_marshal_init (void)
 		register_icall (mono_marshal_free_array, "mono_marshal_free_array", "void ptr int32", FALSE);
 		register_icall (mono_string_to_byvalstr, "mono_string_to_byvalstr", "void ptr ptr int32", FALSE);
 		register_icall (mono_string_to_byvalwstr, "mono_string_to_byvalwstr", "void ptr ptr int32", FALSE);
-		register_icall (g_free, "g_free", "void ptr", FALSE);
+		register_icall (monoeg_free, "g_free", "void ptr", FALSE);
 		register_icall_no_wrapper (mono_object_isinst_icall, "mono_object_isinst_icall", "object object ptr");
 		register_icall (mono_struct_delete_old, "mono_struct_delete_old", "void ptr ptr", FALSE);
 		register_icall (mono_delegate_begin_invoke, "mono_delegate_begin_invoke", "object object ptr", FALSE);
@@ -1787,7 +1787,7 @@ emit_object_to_ptr_conv (MonoMethodBuilder *mb, MonoType *type, MonoMarshalConv 
 		pos = mono_mb_emit_short_branch (mb, CEE_BRFALSE_S);
 		mono_mb_emit_ldloc (mb, 1);
 		mono_mb_emit_byte (mb, CEE_LDIND_I);
-		mono_mb_emit_icall (mb, g_free);
+		mono_mb_emit_icall (mb, monoeg_free);
 		mono_mb_patch_short_branch (mb, pos);
 
 		mono_mb_emit_ldloc (mb, 1);

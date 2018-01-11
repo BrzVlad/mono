@@ -123,20 +123,29 @@ typedef guint32 gunichar;
 /*
  * Allocation
  */
-void g_free (void *ptr);
-gpointer g_realloc (gpointer obj, gsize size);
-gpointer g_malloc (gsize x);
-gpointer g_malloc0 (gsize x);
-gpointer g_calloc (gsize n, gsize x);
-gpointer g_try_malloc (gsize x);
-gpointer g_try_realloc (gpointer obj, gsize size);
+void monoeg_free_verbose (void *ptr, const char *filename);
+void monoeg_free (void *ptr);
+gpointer monoeg_realloc_verbose (gpointer obj, gsize size, const char *filename);
+gpointer monoeg_realloc (gpointer obj, gsize size);
+gpointer monoeg_malloc_verbose (gsize x, const char *filename);
+gpointer monoeg_malloc (gsize x);
+gpointer monoeg_malloc0_verbose (gsize x, const char *filename);
+gpointer monoeg_malloc0 (gsize x);
+gpointer monoeg_calloc_verbose (gsize n, gsize x, const char *filename);
+gpointer monoeg_calloc (gsize n, gsize x);
+gpointer monoeg_try_malloc_verbose (gsize x, const char *filename);
+gpointer monoeg_try_malloc (gsize x);
+gpointer monoeg_try_realloc_verbose (gpointer obj, gsize size, const char *filename);
+gpointer monoeg_try_realloc (gpointer obj, gsize size);
 
-#define g_new(type,size)        ((type *) g_malloc (sizeof (type) * (size)))
-#define g_new0(type,size)       ((type *) g_malloc0 (sizeof (type)* (size)))
+void print_malloc_entries (void);
+
+#define g_new(type,size)        ((type *) monoeg_malloc_verbose (sizeof (type) * (size), __FILE__))
+#define g_new0(type,size)       ((type *) monoeg_malloc0_verbose (sizeof (type)* (size), __FILE__))
 #define g_newa(type,size)       ((type *) alloca (sizeof (type) * (size)))
 
 #define g_memmove(dest,src,len) memmove (dest, src, len)
-#define g_renew(struct_type, mem, n_structs) g_realloc (mem, sizeof (struct_type) * n_structs)
+#define g_renew(struct_type, mem, n_structs) monoeg_realloc_verbose (mem, sizeof (struct_type) * n_structs, __FILE__)
 #define g_alloca(size)		alloca (size)
 
 gpointer g_memdup (gconstpointer mem, guint byte_size);

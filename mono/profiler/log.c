@@ -3220,7 +3220,7 @@ count_queue (MonoLockFreeQueue *queue)
 
 	while ((node = mono_lock_free_queue_dequeue (queue))) {
 		count++;
-		mono_thread_hazardous_try_free (node, g_free);
+		mono_thread_hazardous_try_free (node, monoeg_free);
 	}
 
 	return count;
