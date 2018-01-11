@@ -289,7 +289,7 @@ mono_save_xdebug_info (MonoCompile *cfg)
 		mono_loader_lock ();
 
 		if (!xdebug_syms)
-			xdebug_syms = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+			xdebug_syms = g_hash_table_new_full (g_str_hash, g_str_equal, monoeg_free, NULL);
 
 		/*
 		 * gdb is not designed to handle 1000s of symbol files (one per method). So we

@@ -342,7 +342,7 @@ mono_remoting_mb_create_and_cache (MonoMethod *key, MonoMethodBuilder *mb,
 	MonoRemotingMethods *wrps;
 	GHashTable *cache;
 
-	cache = get_cache_full (&mono_method_get_wrapper_cache (key)->remoting_invoke_cache, mono_aligned_addr_hash, NULL, NULL, g_free);
+	cache = get_cache_full (&mono_method_get_wrapper_cache (key)->remoting_invoke_cache, mono_aligned_addr_hash, NULL, NULL, monoeg_free);
 
 	mono_marshal_lock_internal ();
 	wrps = (MonoRemotingMethods *)g_hash_table_lookup (cache, key);

@@ -8815,7 +8815,7 @@ mono_icall_init (void)
 #ifndef DISABLE_ICALL_TABLES
 	mono_icall_table_init ();
 #endif
-	icall_hash = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
+	icall_hash = g_hash_table_new_full (g_str_hash, g_str_equal, monoeg_free, monoeg_free);
 	mono_os_mutex_init (&icall_mutex);
 }
 

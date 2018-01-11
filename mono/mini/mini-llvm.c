@@ -6351,7 +6351,7 @@ process_bb (EmitContext *ctx, MonoBasicBlock *bb)
 			LLVMValueRef var;
 
 			if (!ctx->module->objc_selector_to_var) {
-				ctx->module->objc_selector_to_var = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+				ctx->module->objc_selector_to_var = g_hash_table_new_full (g_str_hash, g_str_equal, monoeg_free, NULL);
 
 				LLVMValueRef info_var = LLVMAddGlobal (ctx->lmodule, LLVMArrayType (LLVMInt8Type (), 8), "@OBJC_IMAGE_INFO");
 				int32_t objc_imageinfo [] = { 0, 16 };

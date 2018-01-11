@@ -3719,7 +3719,7 @@ verify_typedef_table_global_constraints (VerifyContext *ctx)
 	guint32 nested_data [MONO_NESTED_CLASS_SIZE];
 	MonoTableInfo *table = &ctx->image->tables [MONO_TABLE_TYPEDEF];
 	MonoTableInfo *nested_table = &ctx->image->tables [MONO_TABLE_NESTEDCLASS];
-	GHashTable *unique_types = g_hash_table_new_full (&typedef_hash, &typedef_equals, g_free, NULL);
+	GHashTable *unique_types = g_hash_table_new_full (&typedef_hash, &typedef_equals, monoeg_free, NULL);
 
 	for (i = 0; i < table->rows; ++i) {
 		guint visibility;
@@ -3757,7 +3757,7 @@ verify_typeref_table_global_constraints (VerifyContext *ctx)
 	int i;
 	guint32 data [MONO_TYPEREF_SIZE];
 	MonoTableInfo *table = &ctx->image->tables [MONO_TABLE_TYPEREF];
-	GHashTable *unique_types = g_hash_table_new_full (&typedef_hash, &typedef_equals, g_free, NULL);
+	GHashTable *unique_types = g_hash_table_new_full (&typedef_hash, &typedef_equals, monoeg_free, NULL);
 
 	for (i = 0; i < table->rows; ++i) {
 		TypeDefUniqueId *type = g_new (TypeDefUniqueId, 1);
@@ -3805,7 +3805,7 @@ verify_methodimpl_table_global_constraints (VerifyContext *ctx)
 	int i;
 	guint32 data [MONO_METHODIMPL_SIZE];
 	MonoTableInfo *table = &ctx->image->tables [MONO_TABLE_METHODIMPL];
-	GHashTable *unique_impls = g_hash_table_new_full (&methodimpl_hash, &methodimpl_equals, g_free, NULL);
+	GHashTable *unique_impls = g_hash_table_new_full (&methodimpl_hash, &methodimpl_equals, monoeg_free, NULL);
 
 	for (i = 0; i < table->rows; ++i) {
 		MethodImplUniqueId *impl = g_new (MethodImplUniqueId, 1);

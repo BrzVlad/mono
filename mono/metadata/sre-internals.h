@@ -61,9 +61,9 @@ void
 mono_reflection_dynimage_basic_init (MonoReflectionAssemblyBuilder *assemblyb, MonoError *error);
 
 gpointer
-mono_image_g_malloc0 (MonoImage *image, guint size);
+mono_image_g_malloc0_verbose (MonoImage *image, guint size, const char *filename);
 
-#define mono_image_g_malloc0(image, size) (g_cast (mono_image_g_malloc0 ((image), (size))))
+#define mono_image_g_malloc0(image,size) mono_image_g_malloc0_verbose(image,size,__FILE__ ":" STRINGIFY2(__LINE__))
 
 gboolean
 mono_is_sre_type_builder (MonoClass *klass);

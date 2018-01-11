@@ -12556,8 +12556,8 @@ acfg_create (MonoAssembly *ass, guint32 opts)
 	acfg->patch_to_plt_entry = g_new0 (GHashTable*, MONO_PATCH_INFO_NUM);
 	acfg->method_to_cfg = g_hash_table_new (NULL, NULL);
 	acfg->token_info_hash = g_hash_table_new_full (NULL, NULL, NULL, NULL);
-	acfg->method_to_pinvoke_import = g_hash_table_new_full (NULL, NULL, NULL, g_free);
-	acfg->method_to_external_icall_symbol_name = g_hash_table_new_full (NULL, NULL, NULL, g_free);
+	acfg->method_to_pinvoke_import = g_hash_table_new_full (NULL, NULL, NULL, monoeg_free);
+	acfg->method_to_external_icall_symbol_name = g_hash_table_new_full (NULL, NULL, NULL, monoeg_free);
 	acfg->image_hash = g_hash_table_new (NULL, NULL);
 	acfg->image_table = g_ptr_array_new ();
 	acfg->globals = g_ptr_array_new ();
@@ -12571,7 +12571,7 @@ acfg_create (MonoAssembly *ass, guint32 opts)
 	acfg->extra_methods = g_ptr_array_new ();
 	acfg->unwind_info_offsets = g_hash_table_new (NULL, NULL);
 	acfg->unwind_ops = g_ptr_array_new ();
-	acfg->method_label_hash = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+	acfg->method_label_hash = g_hash_table_new_full (g_str_hash, g_str_equal, monoeg_free, NULL);
 	acfg->method_order = g_ptr_array_new ();
 	acfg->export_names = g_hash_table_new (NULL, NULL);
 	acfg->klass_blob_hash = g_hash_table_new (NULL, NULL);

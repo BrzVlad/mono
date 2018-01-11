@@ -709,7 +709,7 @@ mono_jit_info_free_or_queue (MonoDomain *domain, MonoJitInfo *ji)
 	 * there are no jit info table duplicates.
 	 */
 	if (!domain->num_jit_info_table_duplicates)
-		mono_thread_hazardous_try_free (ji, g_free);
+		mono_thread_hazardous_try_free (ji, monoeg_free);
 	else
 		domain->jit_info_free_queue = g_slist_prepend (domain->jit_info_free_queue, ji);
 }

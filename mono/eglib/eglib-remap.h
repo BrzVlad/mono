@@ -1,10 +1,5 @@
-#undef g_malloc
-#undef g_realloc
-#undef g_malloc0
-#undef g_calloc
-#undef g_try_malloc
-#undef g_try_realloc
-#undef g_memdup
+#define STR_HELPER(x) #x
+#define STRINGIFY2(x) STR_HELPER(x)
 
 #define g_array_append monoeg_g_array_append
 #define g_array_append_vals monoeg_g_array_append_vals
@@ -24,7 +19,7 @@
 #define g_byte_array_free monoeg_g_byte_array_free
 #define g_byte_array_new monoeg_g_byte_array_new
 #define g_byte_array_set_size monoeg_g_byte_array_set_size
-#define g_calloc monoeg_g_calloc
+#define g_calloc(n,x) monoeg_calloc_verbose(n,x,__FILE__ ":" STRINGIFY2(__LINE__))
 #define g_clear_error monoeg_g_clear_error
 #define g_convert monoeg_g_convert
 #define g_convert_error_quark monoeg_g_convert_error_quark
@@ -50,7 +45,7 @@
 #define g_filename_to_uri monoeg_g_filename_to_uri
 #define g_find_program_in_path monoeg_g_find_program_in_path
 #define g_fprintf monoeg_g_fprintf
-#define g_free monoeg_g_free
+#define g_free(x) monoeg_free_verbose(x, __FILE__ ":" STRINGIFY2(__LINE__))
 #define g_get_charset monoeg_g_get_charset
 #define g_get_current_dir monoeg_g_get_current_dir
 #define g_get_current_time monoeg_g_get_current_time
@@ -280,12 +275,12 @@
 #define g_assert_abort monoeg_assert_abort
 #define g_assertion_message monoeg_assertion_message
 #define g_get_assertion_message monoeg_get_assertion_message
-#define g_malloc monoeg_malloc
-#define g_malloc0 monoeg_malloc0
+#define g_malloc(x) monoeg_malloc_verbose(x, __FILE__ ":" STRINGIFY2(__LINE__))
+#define g_malloc0(x) monoeg_malloc0_verbose(x, __FILE__ ":" STRINGIFY2(__LINE__))
 #define g_ptr_array_grow monoeg_ptr_array_grow
-#define g_realloc monoeg_realloc
-#define g_try_malloc monoeg_try_malloc
-#define g_try_realloc monoeg_try_realloc
+#define g_realloc(ptr,size) monoeg_realloc_verbose(ptr,size,__FILE__ ":" STRINGIFY2(__LINE__))
+#define g_try_malloc(x) monoeg_try_malloc_verbose(x, __FILE__ ":" STRINGIFY2(__LINE__))
+#define g_try_realloc(ptr,size) monoeg_try_realloc_verbose(ptr,size,__FILE__ ":" STRINGIFY2(__LINE__))
 #define g_strdup monoeg_strdup
 #define g_ucs4_to_utf16_len monoeg_ucs4_to_utf16_len
 #define g_utf16_to_ucs4_len monoeg_utf16_to_ucs4_len

@@ -239,7 +239,7 @@ file_share_get (guint64 device, guint64 inode, guint32 new_sharemode, guint32 ne
 	 * the current process.
 	 */
 	if (!file_share_table)
-		file_share_table = g_hash_table_new_full (file_share_hash, file_share_equal, NULL, g_free);
+		file_share_table = g_hash_table_new_full (file_share_hash, file_share_equal, NULL, monoeg_free);
 
 	tmp.device = device;
 	tmp.inode = inode;

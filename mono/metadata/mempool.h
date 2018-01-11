@@ -24,15 +24,14 @@ mono_mempool_invalidate    (MonoMemPool *pool);
 MONO_API void
 mono_mempool_stats         (MonoMemPool *pool);
 
-MONO_API void*
-mono_mempool_alloc         (MonoMemPool *pool, unsigned int size);
+#define mono_mempool_alloc(pool, size) mono_mempool_alloc_verbose (pool, size, __FILE__ ":" STRINGIFY2(__LINE__))
+#define mono_mempool_alloc0(pool, size) mono_mempool_alloc0_verbose (pool, size, __FILE__ ":" STRINGIFY2(__LINE__))
 
-#define mono_mempool_alloc(pool, size) (g_cast (mono_mempool_alloc ((pool), (size))))
+void*
+mono_mempool_alloc_verbose (MonoMemPool *pool, unsigned int size, const char *filename);
 
-MONO_API void*
-mono_mempool_alloc0        (MonoMemPool *pool, unsigned int size);
-
-#define mono_mempool_alloc0(pool, size) (g_cast (mono_mempool_alloc0 ((pool), (size))))
+void*
+mono_mempool_alloc0_verbose (MonoMemPool *pool, unsigned int size, const char *filename);
 
 MONO_API mono_bool
 mono_mempool_contains_addr (MonoMemPool *pool, void* addr);

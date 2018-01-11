@@ -260,7 +260,7 @@ get_next_size (MonoMemPool *pool, int size)
  * \returns the address of a newly allocated memory block.
  */
 gpointer
-(mono_mempool_alloc) (MonoMemPool *pool, guint size)
+mono_mempool_alloc_verbose (MonoMemPool *pool, guint size, const char *filename)
 {
 	gpointer rval = pool->pos; // Return value
 
@@ -282,7 +282,7 @@ gpointer
 		// (In individual allocation mode, the constant will be 0 and this path will always be taken)
 		if (size >= MONO_MEMPOOL_PREFER_INDIVIDUAL_ALLOCATION_SIZE) {
 			guint new_size = SIZEOF_MEM_POOL + size;
-			MonoMemPool *np = (MonoMemPool *)g_malloc (new_size);
+			MonoMemPool *np = (MonoMemPool *)monoeg_malloc_verbose (new_size, filename);
 
 			np->next = pool->next;
 			np->size = new_size;
@@ -294,7 +294,7 @@ gpointer
 		} else {
 			// Notice: any unused memory at the end of the old head becomes simply abandoned in this case until the mempool is freed (see Bugzilla #35136)
 			guint new_size = get_next_size (pool, size);
-			MonoMemPool *np = (MonoMemPool *)g_malloc (new_size);
+			MonoMemPool *np = (MonoMemPool *)monoeg_malloc_verbose (new_size, filename);
 
 			np->next = pool->next;
 			np->size = new_size;
@@ -318,10 +318,10 @@ gpointer
  * same as \c mono_mempool_alloc, but fills memory with zero.
  */
 gpointer
-(mono_mempool_alloc0) (MonoMemPool *pool, guint size)
+mono_mempool_alloc0_verbose (MonoMemPool *pool, guint size, const char *filename)
 {
 	size = ALIGN_SIZE (size);
-	const gpointer rval = mono_mempool_alloc (pool, size);
+	const gpointer rval = mono_mempool_alloc_verbose (pool, size, filename);
 	if (rval)
 		memset (rval, 0, size);
 	return rval;

@@ -143,7 +143,7 @@ create_ppdb_file (MonoImage *ppdb_image)
 	ppdb = g_new0 (MonoPPDBFile, 1);
 	ppdb->image = ppdb_image;
 	ppdb->doc_hash = g_hash_table_new_full (NULL, NULL, NULL, (GDestroyNotify) doc_free);
-	ppdb->method_hash = g_hash_table_new_full (NULL, NULL, NULL, (GDestroyNotify) g_free);
+	ppdb->method_hash = g_hash_table_new_full (NULL, NULL, NULL, (GDestroyNotify) monoeg_free);
 	return ppdb;
 }
 

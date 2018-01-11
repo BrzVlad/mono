@@ -820,12 +820,15 @@ void
 mono_image_check_for_module_cctor (MonoImage *image);
 
 gpointer
-mono_image_alloc  (MonoImage *image, guint size);
+mono_image_alloc_verbose  (MonoImage *image, guint size, const char *filename);
 
 gpointer
-mono_image_alloc0 (MonoImage *image, guint size);
+mono_image_alloc0_verbose (MonoImage *image, guint size, const char *filename);
 
-#define mono_image_new0(image,type,size) ((type *) mono_image_alloc0 (image, sizeof (type)* (size)))
+#define mono_image_alloc(image,size) mono_image_alloc_verbose(image,size,__FILE__ ":" STRINGIFY2(__LINE__))
+#define mono_image_alloc0(image,size) mono_image_alloc0_verbose(image,size,__FILE__ ":" STRINGIFY2(__LINE__))
+
+#define mono_image_new0(image,type,size) ((type *) mono_image_alloc0_verbose (image, sizeof (type)* (size), __FILE__ ":" STRINGIFY2(__LINE__)))
 
 char*
 mono_image_strdup (MonoImage *image, const char *s);

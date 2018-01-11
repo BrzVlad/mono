@@ -181,7 +181,7 @@ save_old_signal_handler (int signo, struct sigaction *old_action)
 	handler_to_save->sa_flags = old_action->sa_flags;
 	
 	if (!mono_saved_signal_handlers)
-		mono_saved_signal_handlers = g_hash_table_new_full (NULL, NULL, NULL, g_free);
+		mono_saved_signal_handlers = g_hash_table_new_full (NULL, NULL, NULL, monoeg_free);
 	g_hash_table_insert (mono_saved_signal_handlers, GINT_TO_POINTER (signo), handler_to_save);
 }
 

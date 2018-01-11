@@ -330,7 +330,7 @@ count_queue (MonoLockFreeQueue *queue)
 
 	while ((node = mono_lock_free_queue_dequeue (queue))) {
 		count++;
-		mono_thread_hazardous_try_free (node, g_free);
+		mono_thread_hazardous_try_free (node, monoeg_free);
 	}
 
 	return count;
@@ -367,7 +367,7 @@ dump_classes_for_image (gpointer key, gpointer value, gpointer userdata)
 			MethodNode *mnode = (MethodNode*)node;
 			g_hash_table_insert (covered_methods, mnode->method, mnode->method);
 			count++;
-			mono_thread_hazardous_try_free (node, g_free);
+			mono_thread_hazardous_try_free (node, monoeg_free);
 		}
 	}
 	fully_covered = count;

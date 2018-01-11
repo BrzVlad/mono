@@ -3064,7 +3064,7 @@ mono_image_has_authenticode_entry (MonoImage *image)
 }
 
 gpointer
-mono_image_alloc (MonoImage *image, guint size)
+mono_image_alloc_verbose (MonoImage *image, guint size, const char *filename)
 {
 	gpointer res;
 
@@ -3072,14 +3072,14 @@ mono_image_alloc (MonoImage *image, guint size)
 	mono_atomic_fetch_add_i32 (&mono_perfcounters->loader_bytes, size);
 #endif
 	mono_image_lock (image);
-	res = mono_mempool_alloc (image->mempool, size);
+	res = mono_mempool_alloc_verbose (image->mempool, size, filename);
 	mono_image_unlock (image);
 
 	return res;
 }
 
 gpointer
-mono_image_alloc0 (MonoImage *image, guint size)
+mono_image_alloc0_verbose (MonoImage *image, guint size, const char *filename)
 {
 	gpointer res;
 
@@ -3087,7 +3087,7 @@ mono_image_alloc0 (MonoImage *image, guint size)
 	mono_atomic_fetch_add_i32 (&mono_perfcounters->loader_bytes, size);
 #endif
 	mono_image_lock (image);
-	res = mono_mempool_alloc0 (image->mempool, size);
+	res = mono_mempool_alloc0_verbose (image->mempool, size, filename);
 	mono_image_unlock (image);
 
 	return res;

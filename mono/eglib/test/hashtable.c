@@ -104,7 +104,7 @@ counter (gpointer key, gpointer value, gpointer user_data)
 static RESULT
 hash_grow (void)
 {
-	GHashTable *hash = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
+	GHashTable *hash = g_hash_table_new_full (g_str_hash, g_str_equal, monoeg_free, monoeg_free);
 	int i, count = 0;
 	
 	for (i = 0; i < 1000; i++)

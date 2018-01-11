@@ -3135,7 +3135,7 @@ mono_image_create_pefile (MonoReflectionModuleBuilder *mb, HANDLE file, MonoErro
 	mono_dynamic_stream_reset (&assembly->guid);
 	mono_dynamic_stream_reset (&assembly->sheap);
 
-	g_hash_table_foreach (assembly->blob_cache, (GHFunc)g_free, NULL);
+	g_hash_table_foreach (assembly->blob_cache, (GHFunc)monoeg_free, NULL);
 	g_hash_table_destroy (assembly->blob_cache);
 	assembly->blob_cache = NULL;
 

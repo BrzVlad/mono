@@ -139,6 +139,9 @@ type_get_qualified_name (MonoType *type, MonoAssembly *ass)
 }
 
 #ifndef DISABLE_REFLECTION_EMIT
+
+#define image_g_malloc(image,size) image_g_malloc_verbose(image, size, __FILE__ ":" STRINGIFY2(__LINE__))
+
 /**
  * mp_g_alloc:
  *
@@ -146,14 +149,14 @@ type_get_qualified_name (MonoType *type, MonoAssembly *ass)
  * from the C heap.
  */
 static gpointer
-image_g_malloc (MonoImage *image, guint size)
+image_g_malloc_verbose (MonoImage *image, guint size, const char *filename)
 {
 	MONO_REQ_GC_NEUTRAL_MODE;
 
 	if (image)
-		return mono_image_alloc (image, size);
+		return mono_image_alloc_verbose (image, size, filename);
 	else
-		return g_malloc (size);
+		return monoeg_malloc_verbose (size, filename);
 }
 #endif /* !DISABLE_REFLECTION_EMIT */
 
@@ -164,14 +167,14 @@ image_g_malloc (MonoImage *image, guint size)
  * from the C heap.
  */
 gpointer
-(mono_image_g_malloc0) (MonoImage *image, guint size)
+mono_image_g_malloc0_verbose (MonoImage *image, guint size, const char *filename)
 {
 	MONO_REQ_GC_NEUTRAL_MODE;
 
 	if (image)
-		return mono_image_alloc0 (image, size);
+		return mono_image_alloc0_verbose (image, size, filename);
 	else
-		return g_malloc0 (size);
+		return monoeg_malloc0_verbose (size, filename);
 }
 
 /**
