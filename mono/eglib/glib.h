@@ -138,10 +138,10 @@ gpointer monoeg_try_malloc (gsize x);
 gpointer monoeg_try_realloc_verbose (gpointer obj, gsize size, const char *filename);
 gpointer monoeg_try_realloc (gpointer obj, gsize size);
 
-void print_malloc_entries (void);
+void print_malloc_entries (gboolean);
 
-#define g_new(type,size)        ((type *) monoeg_malloc_verbose (sizeof (type) * (size), __FILE__))
-#define g_new0(type,size)       ((type *) monoeg_malloc0_verbose (sizeof (type)* (size), __FILE__))
+#define g_new(type,size)        ((type *) monoeg_malloc_verbose (sizeof (type) * (size), __FILE__ ":" STRINGIFY2(__LINE__)))
+#define g_new0(type,size)       ((type *) monoeg_malloc0_verbose (sizeof (type)* (size), __FILE__ ":" STRINGIFY2(__LINE__)))
 #define g_newa(type,size)       ((type *) alloca (sizeof (type) * (size)))
 
 #define g_memmove(dest,src,len) memmove (dest, src, len)

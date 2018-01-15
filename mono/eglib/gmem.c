@@ -75,6 +75,7 @@ g_mem_set_vtable (GMemVTable* vtable)
 typedef struct {
 	const char *filename;
 	gint64 balance;
+	gint64 runtime_balance;
 } MallocEntry;
 
 MallocEntry malloc_entries [2048];
@@ -95,58 +96,134 @@ static int comparer (const void *a, const void *b)
 		return -1;
 }
 
-void
-print_malloc_entries (void)
+static int runtime_comparer (const void *a, const void *b)
 {
-	qsort (malloc_entries, num_malloc_entries, sizeof (MallocEntry), comparer);
-	gint64 total_balance = 0;
-	for (int i = 0; i < num_malloc_entries; i++) {
-		fprintf (stderr, "Entry %d, name %s, balance %ld\n", i, malloc_entries [i].filename, malloc_entries [i].balance);
-		total_balance += malloc_entries [i].balance;
-	}
+	MallocEntry *m1 = (MallocEntry*)a;
+	MallocEntry *m2 = (MallocEntry*)b;
 
-	fprintf (stderr, "Total balance %ld\n", total_balance);
+	if (m1->runtime_balance > m2->runtime_balance)
+		return 1;
+	else if (m1->runtime_balance == m2->runtime_balance)
+		return 0;
+	else
+		return -1;
 }
 
+typedef struct {
+	gpointer ptr;
+	const char *name;
+	int size;
+} AllocEntry;
 
-static void report_balance (const char *name, int balance)
+#define ALLOC_ENTRIES_SIZE	10000000
+long allocated_entries = 0;
+AllocEntry entries [ALLOC_ENTRIES_SIZE];
+
+static guint
+mono_aligned_addr_hash (gconstpointer ptr)
 {
-	for (int i = 0; i < num_malloc_entries; i++) {
+        /* Same hashing we use for objects */
+        return (GPOINTER_TO_UINT (ptr) >> 3) * 2654435761u;
+}
+
+static void report_balance (const char *name, int balance, gpointer ptr)
+{
+	int i;
+
+	if (ptr == NULL || balance == 0)
+		return;
+
+	int start_index = mono_aligned_addr_hash (ptr) % ALLOC_ENTRIES_SIZE;
+	for (i = 0; i < ALLOC_ENTRIES_SIZE; i++) {
+		int index = (start_index + i) % ALLOC_ENTRIES_SIZE;
+		if (balance > 0) {
+			/* Add, looking for empty entry */
+			if (!entries [index].ptr) {
+				entries [index].ptr = ptr;
+				entries [index].name = name;
+				entries [index].size = balance;
+				allocated_entries ++;
+				break;
+			}
+		} else {
+			/* Remove, looking for entry with ptr */
+			if (entries [index].ptr == ptr) {
+				entries [index].ptr = NULL;
+				entries [index].name = NULL;
+				entries [index].size = 0;
+				allocated_entries --;
+				break;
+			}
+		}
+	}
+	g_assert (balance < 0 || i != ALLOC_ENTRIES_SIZE);
+
+	for (i = 0; i < num_malloc_entries; i++) {
 		if (strcmp (name, malloc_entries [i].filename) == 0) {
 			malloc_entries [i].balance += balance;
 			return;
 		}
 	}
+
 	malloc_entries [num_malloc_entries].filename = name;
 	malloc_entries [num_malloc_entries].balance = balance;
 	num_malloc_entries++;
 }
 
+void
+print_malloc_entries (gboolean full_logging)
+{
+	if (!full_logging) {
+		qsort (malloc_entries, num_malloc_entries, sizeof (MallocEntry), comparer);
+		gint64 total_balance = 0;
+		for (int i = 0; i < num_malloc_entries; i++) {
+			fprintf (stderr, "Entry %d, name %s, balance %ld\n", i, malloc_entries [i].filename, malloc_entries [i].balance);
+			total_balance += malloc_entries [i].balance;
+		}
+		fprintf (stderr, "Total balance %ld\n", total_balance);
+	} else {
+		for (int i = 0; i < num_malloc_entries; i++) {
+			malloc_entries [i].runtime_balance = 0;
+			for (int j = 0; j < ALLOC_ENTRIES_SIZE; j++) {
+				if (entries [j].ptr && strcmp (malloc_entries [i].filename, entries [j].name) == 0)
+					malloc_entries [i].runtime_balance += entries [j].size;
+			}
+		}
+		qsort (malloc_entries, num_malloc_entries, sizeof (MallocEntry), runtime_comparer);
+		gint64 total_balance = 0;
+		for (int i = 0; i < num_malloc_entries; i++) {
+			fprintf (stderr, "Entry %d, name %s, runtime_balance %ld, total balance %ld\n", i, malloc_entries [i].filename, malloc_entries [i].runtime_balance, malloc_entries [i].balance);
+			total_balance += malloc_entries [i].balance;
+		}
+		fprintf (stderr, "Total balance %ld\n", total_balance);
+	}
+}
+
 #define G_FREE_INTERNAL(_ptr) do {	\
 		size_t usable_size = malloc_usable_size (_ptr);	\
-		report_balance (filename, -usable_size);	\
+		report_balance (filename, -usable_size, _ptr);	\
 		__sync_fetch_and_sub (&verbose_malloc_memory, usable_size); \
 		free (_ptr);		\
 	} while (0)
 #define G_REALLOC_INTERNAL(_obj,_size,_ret) do {	\
 		size_t usable_size = malloc_usable_size (_obj);	\
-		report_balance (filename, -usable_size);	\
+		report_balance (filename, -usable_size, _obj);	\
 		__sync_fetch_and_sub (&verbose_malloc_memory, usable_size); \
 		_ret = realloc (_obj, _size);		\
 		usable_size = malloc_usable_size (_ret);	\
-		report_balance (filename, usable_size);	\
+		report_balance (filename, usable_size, _ret);	\
 		__sync_fetch_and_add (&verbose_malloc_memory, usable_size); \
 	} while (0)
 #define G_CALLOC_INTERNAL(_n,_s,_ret) do {	\
 		_ret = calloc (_n, _s);		\
 		size_t usable_size = malloc_usable_size (_ret);	\
-		report_balance (filename, usable_size);	\
+		report_balance (filename, usable_size, _ret);	\
 		__sync_fetch_and_add (&verbose_malloc_memory, usable_size); \
 	} while (0)
 #define G_MALLOC_INTERNAL(_size,_ret) do {	\
 		_ret = malloc (_size);		\
 		size_t usable_size = malloc_usable_size (_ret);	\
-		report_balance (filename, usable_size);	\
+		report_balance (filename, usable_size, _ret);	\
 		__sync_fetch_and_add (&verbose_malloc_memory, usable_size); \
 	} while (0)
 
