@@ -864,7 +864,7 @@ interp_transform_call (TransformData *td, MonoMethod *method, MonoMethod *target
 	if (target_method == NULL) {
 		if (calli) {
 			CHECK_STACK(td, 1);
-			native = (method->wrapper_type != MONO_WRAPPER_DELEGATE_INVOKE && td->sp [-1].type == STACK_TYPE_I);
+			native = method->wrapper_type != MONO_WRAPPER_DELEGATE_INVOKE && method->wrapper_type != MONO_WRAPPER_NONE;
 			--td->sp;
 			if (method->wrapper_type != MONO_WRAPPER_NONE)
 				csignature = (MonoMethodSignature *)mono_method_get_wrapper_data (method, token);
