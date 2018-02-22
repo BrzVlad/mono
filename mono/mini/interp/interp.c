@@ -1559,6 +1559,8 @@ interp_runtime_invoke (MonoMethod *method, void *obj, void **params, MonoObject 
 
 	MonoDomain *domain = mono_domain_get ();
 
+	if (method->flags & METHOD_ATTRIBUTE_PINVOKE_IMPL)
+		method = mono_marshal_get_native_wrapper (method, FALSE, FALSE);
 	MonoMethod *invoke_wrapper = mono_marshal_get_runtime_invoke_full (method, FALSE, TRUE);
 
 	//* <code>MonoObject *runtime_invoke (MonoObject *this_obj, void **params, MonoObject **exc, void* method)</code>
