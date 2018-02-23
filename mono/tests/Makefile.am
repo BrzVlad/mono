@@ -1030,7 +1030,6 @@ INTERP_DISABLED_TESTS = \
 	bug-48015.exe \
 	bug445361.exe \
 	bug-60862.exe \
-	calliGenericTest.exe \
 	cominterop.exe \
 	context-static.exe \
 	delegate-with-null-target.exe \
