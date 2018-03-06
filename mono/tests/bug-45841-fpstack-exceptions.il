@@ -44,7 +44,6 @@
 	ldstr "Exception 1"
     	newobj     instance void [mscorlib]System.OverflowException::.ctor(string)
     	throw
-			  pop
       IL_001c:  leave.s    IL_0021
 
     }  // end .try
@@ -60,7 +59,6 @@
 	ldstr "Exception 2"
     	newobj     instance void [mscorlib]System.OverflowException::.ctor(string)
     	throw
-			  pop
       IL_002e:  leave.s    IL_0033
 
     }  // end .try
@@ -91,7 +89,6 @@
 	ldstr "Exception 4"
     	newobj     instance void [mscorlib]System.OverflowException::.ctor(string)
     	throw
-		pop
       IL_005a:  leave.s    IL_005f
 
     }  // end .try
@@ -107,7 +104,6 @@
 	ldstr "Exception 5"
     	newobj     instance void [mscorlib]System.OverflowException::.ctor(string)
     	throw
-		pop
       IL_006c:  leave.s    IL_0071
 
     }  // end .try
@@ -123,7 +119,6 @@
 	ldstr "Exception 6"
     	newobj     instance void [mscorlib]System.OverflowException::.ctor(string)
     	throw
-		pop
       IL_0082:  leave.s    IL_0087
 
     }  // end .try
