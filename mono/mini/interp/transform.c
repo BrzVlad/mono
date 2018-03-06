@@ -3006,8 +3006,7 @@ generate (MonoMethod *method, MonoMethodHeader *header, InterpMethod *rtm, unsig
 		case CEE_THROW:
 			CHECK_STACK (td, 1);
 			SIMPLE_OP (td, MINT_THROW);
-			--td->sp;
-			generating_code = 0;
+			td->sp = td->stack;
 			break;
 		case CEE_LDFLDA: {
 			CHECK_STACK (td, 1);
