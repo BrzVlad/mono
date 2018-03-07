@@ -1619,6 +1619,55 @@ mini_get_interp_in_wrapper (MonoMethodSignature *sig)
 	return res;
 }
 
+/*
+ * mono_marshal_get_interp_pinvoke_wrapper:
+ *
+ *   This wrapper enables EH to resume directly to the interpreter code calling it. It is
+ * needed so EH can jump over the native frames directly to interp.
+ *
+ */
+MonoMethod*
+mini_get_interp_pinvoke_wrapper (void)
+{
+	static MonoMethod* ret = NULL;
+	MonoMethodSignature *sig;
+	MonoMethodBuilder *mb;
+	WrapperInfo *info;
+	gpointer tramp;
+
+	if (ret)
+		return ret;
+
+	tramp = mini_get_interp_to_native_trampoline ();
+
+	mb = mono_mb_new (mono_defaults.object_class, "interp_pinvoke", MONO_WRAPPER_UNKNOWN);
+
+	sig = mono_metadata_signature_alloc (mono_defaults.corlib, 2);
+	sig->ret = &mono_defaults.void_class->byval_arg;
+	sig->params [0] = &mono_defaults.int_class->byval_arg;
+	sig->params [1] = &mono_defaults.int_class->byval_arg;
+
+	/* This is the only thing that the wrapper needs to do */
+	mb->method->save_lmf = 1;
+
+#ifndef DISABLE_JIT
+	mono_mb_emit_byte (mb, CEE_LDARG_0);
+	mono_mb_emit_byte (mb, CEE_LDARG_1);
+	mono_mb_emit_byte (mb, MONO_CUSTOM_PREFIX);
+
+        mono_mb_emit_op (mb, CEE_MONO_JIT_ICALL_ADDR, tramp);
+        mono_mb_emit_calli (mb, sig);
+
+	mono_mb_emit_byte (mb, CEE_RET);
+#endif
+	info = mono_wrapper_info_create (mb, WRAPPER_SUBTYPE_INTERP_PINVOKE);
+	ret = mono_mb_create (mb, sig, 4, info);
+	mono_mb_free (mb);
+
+	return ret;
+}
+
+
 MonoMethodSignature*
 mini_get_gsharedvt_out_sig_wrapper_signature (gboolean has_this, gboolean has_ret, int param_count)
 {

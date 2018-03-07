@@ -1166,15 +1166,11 @@ ves_pinvoke_method (InterpFrame *frame, MonoMethodSignature *sig, MonoFuncV addr
 
 	g_assert (!frame->imethod);
 	if (!mono_interp_to_native_trampoline) {
-		if (mono_aot_only) {
-			mono_interp_to_native_trampoline = mono_aot_get_trampoline ("interp_to_native_trampoline");
-		} else {
-			MonoTrampInfo *info;
-			mono_interp_to_native_trampoline = mono_arch_get_interp_to_native_trampoline (&info);
-			// TODO:
-			// mono_tramp_info_register (info, NULL);
-		}
+		MonoError error;
+		MonoMethod *jit_wrapper = mini_get_interp_pinvoke_wrapper ();
+		mono_interp_to_native_trampoline = mono_jit_compile_method_jit_only (jit_wrapper, &error);
 	}
+
 #ifdef MONO_ARCH_HAVE_INTERP_PINVOKE_TRAMP
 	CallContext ccontext;
 	mono_arch_set_native_call_context (&ccontext, frame, sig);

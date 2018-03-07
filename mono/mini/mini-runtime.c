@@ -4128,6 +4128,9 @@ register_icalls (void)
 	register_icall (mono_debug_personality, "mono_debug_personality", "int int int ptr ptr ptr", TRUE);
 #endif
 
+	if (mono_use_interpreter)
+		register_dyn_icall (mini_get_interp_to_native_trampoline (), "mono_arch_interp_to_native", "void ptr ptr", TRUE);
+
 	register_dyn_icall (mono_get_throw_exception (), "mono_arch_throw_exception", "void object", TRUE);
 	register_dyn_icall (mono_get_rethrow_exception (), "mono_arch_rethrow_exception", "void object", TRUE);
 	register_dyn_icall (mono_get_throw_corlib_exception (), "mono_arch_throw_corlib_exception", "void ptr", TRUE);

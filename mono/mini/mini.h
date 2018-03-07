@@ -2030,6 +2030,7 @@ char*             mono_get_rgctx_fetch_trampoline_name (int slot);
 gpointer          mini_get_nullified_class_init_trampoline (void);
 gpointer          mini_get_single_step_trampoline (void);
 gpointer          mini_get_breakpoint_trampoline (void);
+gpointer          mini_get_interp_to_native_trampoline (void);
 gpointer          mini_add_method_trampoline (MonoMethod *m, gpointer compiled_method, gboolean add_static_rgctx_tramp, gboolean add_unbox_tramp);
 gpointer          mini_add_method_wrappers_llvmonly (MonoMethod *m, gpointer compiled_method, gboolean caller_gsharedvt, gboolean add_unbox_tramp, gpointer *out_arg);
 gboolean          mini_jit_info_is_gsharedvt (MonoJitInfo *ji);
@@ -2538,6 +2539,7 @@ MonoMethod* mini_get_gsharedvt_out_sig_wrapper (MonoMethodSignature *sig);
 MonoMethodSignature* mini_get_gsharedvt_out_sig_wrapper_signature (gboolean has_this, gboolean has_ret, int param_count);
 gboolean mini_gsharedvt_runtime_invoke_supported (MonoMethodSignature *sig);
 MonoMethod* mini_get_interp_in_wrapper (MonoMethodSignature *sig);
+MonoMethod* mini_get_interp_pinvoke_wrapper (void);
 
 /* SIMD support */
 

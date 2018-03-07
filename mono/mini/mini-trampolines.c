@@ -1797,3 +1797,34 @@ mini_get_breakpoint_trampoline (void)
 
 	return trampoline;
 }
+
+/*
+ * mini_get_interp_to_native_trampoline:
+ *
+ *   Returns the trampoline used for pinvoke transitions
+ */
+gpointer
+mini_get_interp_to_native_trampoline (void)
+{
+#ifndef DISABLE_INTERPRETER
+	static gpointer trampoline;
+
+	if (!trampoline) {
+		gpointer tramp;
+
+		if (mono_aot_only) {
+			tramp = mono_aot_get_trampoline ("interp_to_native_trampoline");
+		} else {
+			MonoTrampInfo *info;
+			tramp = mono_arch_get_interp_to_native_trampoline (&info);
+			mono_tramp_info_register (info, NULL);
+		}
+		mono_memory_barrier ();
+		trampoline = tramp;
+	}
+	return trampoline;
+#else
+	g_assert_not_reached ();
+	return NULL;
+#endif
+}
