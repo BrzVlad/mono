@@ -7549,6 +7549,62 @@ emit_aotconst (MonoCompile *cfg, guint8 *code, int dreg, int patch_type, gpointe
 	return code;
 }
 
+gpointer
+mono_arch_get_static_rgctx_trampoline2 (gpointer arg, gpointer addr)
+{
+	guint8 *code, *start;
+	GSList *unwind_ops;
+	int buf_len = 128;
+	MonoDomain *domain = mono_domain_get ();
+	int stack_size;
+	start = code = mono_domain_code_reserve (domain, buf_len);
+
+	MonoJitInfo *jinfo = mono_jit_info_table_find (mono_domain_get (), addr);
+	CallInfo *cinfo = get_call_info (NULL, jinfo->d.method->signature);
+
+	stack_size = ALIGN_TO (cinfo->stack_usage, MONO_ARCH_FRAME_ALIGNMENT);
+
+	unwind_ops = mono_arch_get_cie_program ();
+
+	ARM_PUSH (code, (1 << ARMREG_IP) | (1 << ARMREG_R7) | (1 << ARMREG_LR) | (1 << MONO_ARCH_RGCTX_REG));
+	ARM_MOV_REG_REG (code, ARMREG_R7, ARMREG_SP);
+
+	ARM_SUB_REG_IMM8 (code, ARMREG_SP, ARMREG_SP, stack_size);
+	int size = stack_size;
+	int dreg = ARMREG_SP;
+	int sreg = ARMREG_R7;
+	int doffset = 0;
+	int soffset = 16;
+	while (size >= 4) {
+		ARM_LDR_IMM (code, ARMREG_LR, sreg, soffset);
+		ARM_STR_IMM (code, ARMREG_LR, dreg, doffset);
+		doffset += 4;
+		soffset += 4;
+		size -= 4;
+	}
+
+	ARM_LDR_IMM (code, MONO_ARCH_RGCTX_REG, ARMREG_PC, 12);
+	ARM_LDR_IMM (code, ARMREG_IP, ARMREG_PC, 12);
+	ARM_BLX_REG (code, ARMREG_IP);
+	ARM_MOV_REG_REG (code, ARMREG_SP, ARMREG_R7);
+	ARM_POP (code, (1 << ARMREG_IP) | (1 << ARMREG_R7) | (1 << ARMREG_PC) | (1 << MONO_ARCH_RGCTX_REG));
+	*(guint32*)code = (guint32)arg;
+	code += 4;
+	*(guint32*)code = (guint32)addr;
+	code += 4;
+
+	g_assert ((code - start) <= buf_len);
+
+	mono_arch_flush_icache (start, code - start);
+	MONO_PROFILER_RAISE (jit_code_buffer, (start, code - start, MONO_PROFILER_CODE_BUFFER_GENERICS_TRAMPOLINE, NULL));
+
+	mono_tramp_info_register (mono_tramp_info_create (NULL, start, code - start, NULL, unwind_ops), domain);
+
+	g_free (cinfo);
+	return start;
+}
+
+
 guint8*
 mono_arm_emit_aotconst (gpointer ji_list, guint8 *code, guint8 *buf, int dreg, int patch_type, gconstpointer data)
 {
