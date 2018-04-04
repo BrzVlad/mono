@@ -1063,6 +1063,9 @@ MONO_API gboolean
 mono_metadata_load_generic_param_constraints_checked (MonoImage *image, guint32 token,
 					      MonoGenericContainer *container, MonoError *error);
 
+void
+mono_register_icall (gpointer func, const char *name, const char *sigstr, gboolean no_wrapper);
+
 MonoMethodSignature*
 mono_create_icall_signature (const char *sigstr);
 
