@@ -8317,6 +8317,19 @@ type_from_typename (char *type_name)
 	return m_class_get_byval_arg (klass);
 }
 
+void
+mono_register_icall (gpointer func, const char *name, const char *sigstr, gboolean no_wrapper)
+{
+	MonoMethodSignature *sig;
+
+	if (sigstr)
+		sig = mono_create_icall_signature (sigstr);
+	else
+		sig = NULL;
+
+	mono_register_jit_icall_full (func, name, sig, no_wrapper, no_wrapper ? name : NULL);
+}
+
 /**
  * LOCKING: Take the corlib image lock.
  */
