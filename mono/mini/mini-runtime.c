@@ -4368,6 +4368,9 @@ register_icalls (void)
 	register_icall_no_wrapper (mono_tls_set_domain, "mono_tls_set_domain", "void ptr");
 	register_icall_no_wrapper (mono_tls_set_sgen_thread_info, "mono_tls_set_sgen_thread_info", "void ptr");
 	register_icall_no_wrapper (mono_tls_set_lmf_addr, "mono_tls_set_lmf_addr", "void ptr");
+
+	if (mono_use_interpreter)
+		mini_get_interp_callbacks ()->register_icalls ();
 }
 
 MonoJitStats mono_jit_stats = {0};
