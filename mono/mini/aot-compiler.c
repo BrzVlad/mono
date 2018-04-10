@@ -194,6 +194,7 @@ typedef struct MonoAotOptions {
 	int nrgctx_trampolines;
 	int nimt_trampolines;
 	int ngsharedvt_arg_trampolines;
+	int nftnptr_arg_trampolines;
 	int nrgctx_fetch_trampolines;
 	gboolean print_skipped_methods;
 	gboolean stats;
@@ -1866,6 +1867,55 @@ arch_emit_specific_trampoline_pages (MonoAotCompile *acfg)
 		emit_bytes (acfg, buf, code - buf);
 	}
 
+#ifdef MONO_ARCH_HAVE_FTNPTR_ARG_TRAMPOLINE
+#define FTNPTR_ARG_TRAMP_SIZE 40
+	/*
+	 * Similar to the other gsharing trampolines, but this one passes the
+	 * argument in ARMREG_IP. Used only on arm where the rgctx reg is not
+	 * scratch.
+	 */
+	sprintf (symbol, "%sftnptr_arg_trampolines_page", acfg->user_symbol_prefix);
+	emit_global (acfg, symbol, TRUE);
+	emit_label (acfg, symbol);
+	count = (pagesize - FTNPTR_ARG_TRAMP_SIZE) / 8;
+	code = buf;
+
+	imm8 = mono_arm_is_rotated_imm8 (pagesize, &rot_amount);
+	ARM_SUB_REG_IMM (code, ARMREG_IP, ARMREG_IP, imm8, rot_amount);
+	/*
+	 * We have 2 stack slots, one where we store the target address and one
+	 * where we store the data section
+	 */
+	ARM_SUB_REG_IMM8 (code, ARMREG_SP, ARMREG_SP, 8);
+	ARM_STR_IMM (code, ARMREG_IP, ARMREG_SP, 0);
+
+	/* Save the target address on stack */
+	ARM_LDR_IMM (code, ARMREG_IP, ARMREG_IP, -4);
+	ARM_STR_IMM (code, ARMREG_IP, ARMREG_SP, 4);
+
+	/* Load argument in ARMREG_IP */
+	ARM_LDR_IMM (code, ARMREG_IP, ARMREG_SP, 0);
+	ARM_LDR_IMM (code, ARMREG_IP, ARMREG_IP, -8);
+
+	/* Pop target address in pc */
+	ARM_ADD_REG_IMM8 (code, ARMREG_SP, ARMREG_SP, 4);
+	ARM_POP (code, 1 << ARMREG_PC);
+	/* Align the size to 8 bytes just in case */
+	ARM_NOP (code);
+	g_assert (code - buf == FTNPTR_ARG_TRAMP_SIZE);
+	/* Emit it */
+	emit_bytes (acfg, buf, code - buf);
+
+	for (i = 0; i < count; ++i) {
+		code = buf;
+		ARM_PUSH (code, 1 << ARMREG_PC);
+		ARM_B (code, 0);
+		arm_patch (code - 4, code - FTNPTR_ARG_TRAMP_SIZE - 8 * (i + 1));
+		g_assert (code - buf == 8);
+		emit_bytes (acfg, buf, code - buf);
+	}
+#endif
+
 	/* now the imt trampolines: each specific trampolines puts in the ip register
 	 * the instruction pointer address, so the generic trampoline at the start of the page
 	 * subtracts 4096 to get to the data page and loads the values
@@ -1874,6 +1924,7 @@ arch_emit_specific_trampoline_pages (MonoAotCompile *acfg)
 	sprintf (symbol, "%simt_trampolines_page", acfg->user_symbol_prefix);
 	emit_global (acfg, symbol, TRUE);
 	emit_label (acfg, symbol);
+	count = (pagesize - IMT_TRAMP_SIZE) / 8;
 	code = buf;
 	/* Need at least two free registers, plus a slot for storing the pc */
 	ARM_PUSH (code, (1 << ARMREG_R0)|(1 << ARMREG_R1)|(1 << ARMREG_R2));
@@ -1934,6 +1985,7 @@ arch_emit_specific_trampoline_pages (MonoAotCompile *acfg)
 	acfg->tramp_page_code_offsets [MONO_AOT_TRAMP_STATIC_RGCTX] = 16;
 	acfg->tramp_page_code_offsets [MONO_AOT_TRAMP_IMT] = 72;
 	acfg->tramp_page_code_offsets [MONO_AOT_TRAMP_GSHAREDVT_ARG] = 16;
+	acfg->tramp_page_code_offsets [MONO_AOT_TRAMP_FTNPTR_ARG] = FTNPTR_ARG_TRAMP_SIZE;
 
 	/* Unwind info for specifc trampolines */
 	sprintf (symbol, "%sspecific_trampolines_page_gen_p", acfg->user_symbol_prefix);
@@ -1981,6 +2033,8 @@ arch_emit_specific_trampoline_pages (MonoAotCompile *acfg)
 	mono_add_unwind_op_def_cfa (unwind_ops, 0, 0, ARMREG_SP, 0);
 	save_unwind_info (acfg, symbol, unwind_ops);
 	mono_free_unwind_info (unwind_ops);
+
+	/* FIXME no unwind info for ftntpr_arg trampoline */
 #elif defined(TARGET_ARM64)
 	arm64_emit_specific_trampoline_pages (acfg);
 #endif
@@ -2645,6 +2699,37 @@ arch_emit_gsharedvt_arg_trampoline (MonoAotCompile *acfg, int offset, int *tramp
 	g_assert_not_reached ();
 #endif
 }	
+
+static void
+arch_emit_ftnptr_arg_trampoline (MonoAotCompile *acfg, int offset, int *tramp_size)
+{
+#if defined(TARGET_ARM)
+	guint8 buf [128];
+	guint8 *code;
+
+	*tramp_size = 32;
+	code = buf;
+
+	/* Load target address and push it on stack */
+	ARM_LDR_IMM (code, ARMREG_IP, ARMREG_PC, 16);
+        ARM_LDR_REG_REG (code, ARMREG_IP, ARMREG_PC, ARMREG_IP);
+	ARM_PUSH (code, 1 << ARMREG_IP);
+        /* Load argument in ARMREG_IP */
+	ARM_LDR_IMM (code, ARMREG_IP, ARMREG_PC, 8);
+        ARM_LDR_REG_REG (code, ARMREG_IP, ARMREG_PC, ARMREG_IP);
+	/* Branch */
+	ARM_POP (code, 1 << ARMREG_PC);
+
+        g_assert (code - buf == 24);
+
+        /* Emit it */
+        emit_bytes (acfg, buf, code - buf);
+        emit_symbol_diff (acfg, acfg->got_symbol, ".", (offset * sizeof (gpointer)) - 4 + 16);
+        emit_symbol_diff (acfg, acfg->got_symbol, ".", ((offset + 1) * sizeof (gpointer)) - 4 + 8);
+#else
+	g_assert_not_reached ();
+#endif
+}
 
 /* END OF ARCH SPECIFIC CODE */
 
@@ -7093,6 +7178,9 @@ emit_trampolines (MonoAotCompile *acfg)
 			case MONO_AOT_TRAMP_GSHAREDVT_ARG:
 				sprintf (symbol, "gsharedvt_arg_trampolines");
 				break;
+			case MONO_AOT_TRAMP_FTNPTR_ARG:
+				sprintf (symbol, "ftnptr_arg_trampolines");
+				break;
 			default:
 				g_assert_not_reached ();
 			}
@@ -7126,6 +7214,10 @@ emit_trampolines (MonoAotCompile *acfg)
 				case MONO_AOT_TRAMP_GSHAREDVT_ARG:
 					arch_emit_gsharedvt_arg_trampoline (acfg, tramp_got_offset, &tramp_size);				
 					tramp_got_offset += 2;
+					break;
+				case MONO_AOT_TRAMP_FTNPTR_ARG:
+					arch_emit_ftnptr_arg_trampoline (acfg, tramp_got_offset, &tramp_size);
+					tramp_got_offset += 1;
 					break;
 				default:
 					g_assert_not_reached ();
@@ -7413,6 +7505,8 @@ mono_aot_parse_options (const char *aot_options, MonoAotOptions *opts)
 			opts->nimt_trampolines = atoi (arg + strlen ("nimt-trampolines="));
 		} else if (str_begins_with (arg, "ngsharedvt-trampolines=")) {
 			opts->ngsharedvt_arg_trampolines = atoi (arg + strlen ("ngsharedvt-trampolines="));
+		} else if (str_begins_with (arg, "nftnptr-arg-trampolines=")) {
+			opts->nftnptr_arg_trampolines = atoi (arg + strlen ("nftnptr-arg-trampolines="));
 		} else if (str_begins_with (arg, "tool-prefix=")) {
 			opts->tool_prefix = g_strdup (arg + strlen ("tool-prefix="));
 		} else if (str_begins_with (arg, "ld-flags=")) {
@@ -7540,6 +7634,7 @@ mono_aot_parse_options (const char *aot_options, MonoAotOptions *opts)
 		opts->nrgctx_trampolines = 0;
 		opts->nimt_trampolines = 0;
 		opts->ngsharedvt_arg_trampolines = 0;
+		opts->nftnptr_arg_trampolines = 0;
 	}
 
 	g_ptr_array_free (args, /*free_seg=*/TRUE);
@@ -10335,7 +10430,9 @@ emit_aot_file_info (MonoAotCompile *acfg, MonoAotFileInfo *info)
 		symbols [sindex ++] = "static_rgctx_trampolines";
 		symbols [sindex ++] = "imt_trampolines";
 		symbols [sindex ++] = "gsharedvt_arg_trampolines";
+		symbols [sindex ++] = "ftnptr_arg_trampolines";
 	} else {
+		symbols [sindex ++] = NULL;
 		symbols [sindex ++] = NULL;
 		symbols [sindex ++] = NULL;
 		symbols [sindex ++] = NULL;
@@ -12459,6 +12556,9 @@ mono_compile_assembly (MonoAssembly *ass, guint32 opts, const char *aot_options,
 	acfg->aot_opts.nimt_trampolines = 512;
 	acfg->aot_opts.nrgctx_fetch_trampolines = 128;
 	acfg->aot_opts.ngsharedvt_arg_trampolines = 512;
+#ifdef MONO_ARCH_HAVE_FTNPTR_ARG_TRAMPOLINE
+	acfg->aot_opts.nftnptr_arg_trampolines = 128;
+#endif
 	acfg->aot_opts.llvm_path = g_strdup ("");
 	acfg->aot_opts.temp_path = g_strdup ("");
 #ifdef MONOTOUCH
@@ -12616,6 +12716,10 @@ mono_compile_assembly (MonoAssembly *ass, guint32 opts, const char *aot_options,
 		acfg->num_trampolines [MONO_AOT_TRAMP_GSHAREDVT_ARG] = mono_aot_mode_is_full (&acfg->aot_opts) ? acfg->aot_opts.ngsharedvt_arg_trampolines : 0;
 #endif
 
+#ifdef MONO_ARCH_HAVE_FTNPTR_ARG_TRAMPOLINE
+	acfg->num_trampolines [MONO_AOT_TRAMP_FTNPTR_ARG] = mono_aot_mode_is_interp (&acfg->aot_opts) ? acfg->aot_opts.nftnptr_arg_trampolines : 0;
+#endif
+
 	acfg->temp_prefix = mono_img_writer_get_temp_label_prefix (NULL);
 
 	arch_init (acfg);
@@ -12696,11 +12800,14 @@ mono_compile_assembly (MonoAssembly *ass, guint32 opts, const char *aot_options,
 #endif
 
 	if (mono_aot_mode_is_interp (&acfg->aot_opts)) {
+		MonoMethod *wrapper = mini_get_interp_lmf_wrapper ();
+		add_method (acfg, wrapper);
+
 		for (int i = 0; i < sizeof (interp_in_static_sigs) / sizeof (const char *); i++) {
 			MonoMethodSignature *sig = mono_create_icall_signature (interp_in_static_sigs [i]);
 			sig = mono_metadata_signature_dup_full (mono_get_corlib (), sig);
 			sig->pinvoke = FALSE;
-			MonoMethod *wrapper = mini_get_interp_in_wrapper (sig);
+			wrapper = mini_get_interp_in_wrapper (sig);
 			add_method (acfg, wrapper);
 		}
 	}

@@ -1995,6 +1995,8 @@ mono_main (int argc, char* argv[])
 			error_if_aot_unsupported ();
 			mono_compile_aot = TRUE;
 			aot_options = &argv [i][6];
+			if (strstr (aot_options, "interp"))
+				mono_enable_interp (NULL);
 #endif
 		} else if (strncmp (argv [i], "--apply-bindings=", 17) == 0) {
 			extra_bindings_config_file = &argv[i][17];

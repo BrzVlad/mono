@@ -2219,6 +2219,7 @@ if (container_assm_name && !container_amodule) {
 	amodule->trampolines [MONO_AOT_TRAMP_STATIC_RGCTX] = (guint8 *)info->static_rgctx_trampolines;
 	amodule->trampolines [MONO_AOT_TRAMP_IMT] = (guint8 *)info->imt_trampolines;
 	amodule->trampolines [MONO_AOT_TRAMP_GSHAREDVT_ARG] = (guint8 *)info->gsharedvt_arg_trampolines;
+	amodule->trampolines [MONO_AOT_TRAMP_FTNPTR_ARG] = (guint8 *)info->ftnptr_arg_trampolines;
 
 	if (!strcmp (assembly->aname.name, "mscorlib"))
 		mscorlib_aot_module = amodule;
@@ -5333,6 +5334,8 @@ read_page_trampoline_uwinfo (MonoTrampInfo *info, int tramp_type, gboolean is_ge
 		sprintf (symbol_name, "imt_trampolines_page_%s_p", is_generic ? "gen" : "sp");
 	else if (tramp_type == MONO_AOT_TRAMP_GSHAREDVT_ARG)
 		sprintf (symbol_name, "gsharedvt_trampolines_page_%s_p", is_generic ? "gen" : "sp");
+	else if (tramp_type == MONO_AOT_TRAMP_FTNPTR_ARG)
+		sprintf (symbol_name, "ftnptr_arg_trampolines_page_%s_p", is_generic ? "gen" : "sp");
 	else
 		g_assert_not_reached ();
 
@@ -5381,6 +5384,8 @@ get_new_trampoline_from_page (int tramp_type)
 		tpage = load_function (amodule, "imt_trampolines_page");
 	else if (tramp_type == MONO_AOT_TRAMP_GSHAREDVT_ARG)
 		tpage = load_function (amodule, "gsharedvt_arg_trampolines_page");
+	else if (tramp_type == MONO_AOT_TRAMP_FTNPTR_ARG)
+		tpage = load_function (amodule, "ftnptr_arg_trampolines_page");
 	else
 		g_error ("Incorrect tramp type for trampolines page");
 	g_assert (tpage);
@@ -5526,6 +5531,21 @@ get_new_gsharedvt_arg_trampoline_from_page (gpointer tramp, gpointer arg)
 	data [0] = arg;
 	data [1] = tramp;
 	/*g_warning ("new rgctx trampoline at %p for data %p, tramp %p (stored at %p)", code, arg, tramp, data);*/
+	return code;
+}
+
+static gpointer
+get_new_ftnptr_arg_trampoline_from_page (gpointer tramp, gpointer arg)
+{
+	void *code;
+	gpointer *data;
+
+	code = get_new_trampoline_from_page (MONO_AOT_TRAMP_FTNPTR_ARG);
+
+	data = (gpointer*)((char*)code - MONO_AOT_TRAMP_PAGE_SIZE);
+	data [0] = arg;
+	data [1] = tramp;
+
 	return code;
 }
 
@@ -5841,6 +5861,28 @@ mono_aot_get_gsharedvt_arg_trampoline (gpointer arg, gpointer addr)
 	/* The caller expects an ftnptr */
 	return mono_create_ftnptr (mono_domain_get (), code);
 }
+
+#ifdef MONO_ARCH_HAVE_FTNPTR_ARG_TRAMPOLINE
+gpointer
+mono_aot_get_ftnptr_arg_trampoline (gpointer arg, gpointer addr)
+{
+	MonoAotModule *amodule;
+	guint8 *code;
+	guint32 got_offset;
+
+	if (USE_PAGE_TRAMPOLINES) {
+		code = (guint8 *)get_new_ftnptr_arg_trampoline_from_page (addr, arg);
+	} else {
+		code = (guint8 *)get_numerous_trampoline (MONO_AOT_TRAMP_FTNPTR_ARG, 2, &amodule, &got_offset, NULL);
+
+		amodule->got [got_offset] = arg;
+		amodule->got [got_offset + 1] = addr;
+	}
+
+	/* The caller expects an ftnptr */
+	return mono_create_ftnptr (mono_domain_get (), code);
+}
+#endif
  
 /*
  * mono_aot_set_make_unreadable:
