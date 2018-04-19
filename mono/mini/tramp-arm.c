@@ -1054,6 +1054,13 @@ mono_arch_get_static_rgctx_trampoline (gpointer arg, gpointer addr)
 }
 
 gpointer
+mono_arch_get_ftnptr_arg_trampoline (gpointer arg, gpointer addr)
+{
+	g_assert_not_reached ();
+	return NULL;
+}
+
+gpointer
 mono_arch_create_rgctx_lazy_fetch_trampoline (guint32 slot, MonoTrampInfo **info, gboolean aot)
 {
 	g_assert_not_reached ();

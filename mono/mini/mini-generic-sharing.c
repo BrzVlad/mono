@@ -1602,14 +1602,13 @@ mini_create_interp_lmf_wrapper (gpointer target)
 	MonoMethodSignature *sig;
 	MonoMethodBuilder *mb;
 	WrapperInfo *info;
-	MonoType *int_type = mono_get_int_type ();
 
 	mb = mono_mb_new (mono_defaults.object_class, "interp_lmf", MONO_WRAPPER_UNKNOWN);
 
 	sig = mono_metadata_signature_alloc (mono_defaults.corlib, 2);
-	sig->ret = mono_get_void_type ();;
-	sig->params [0] = int_type;
-	sig->params [1] = int_type;
+	sig->ret = &mono_defaults.void_class->byval_arg;
+	sig->params [0] = &mono_defaults.int_class->byval_arg;
+	sig->params [1] = &mono_defaults.int_class->byval_arg;
 
 	/* This is the only thing that the wrapper needs to do */
 	mb->method->save_lmf = 1;
@@ -1638,7 +1637,7 @@ mini_get_interp_lmf_wrapper (void)
 	if (wrapper)
 		return wrapper;
 
-	gpointer target = (gpointer)mono_find_jit_icall_by_name ("interp_entry_from_trampoline")->func;
+	gpointer target = (gpointer)mono_find_jit_icall_by_name ("mono_interp_entry_from_trampoline")->func;
 	wrapper = mini_create_interp_lmf_wrapper (target);
 
 	return wrapper;

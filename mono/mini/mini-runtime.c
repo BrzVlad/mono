@@ -2086,7 +2086,7 @@ lookup_start:
 		if (mono_aot_mode == MONO_AOT_MODE_INTERP && method->wrapper_type == MONO_WRAPPER_UNKNOWN) {
 			WrapperInfo *info = mono_marshal_get_wrapper_info (method);
 			g_assert (info);
-			if (info->subtype == WRAPPER_SUBTYPE_INTERP_IN)
+			if (info->subtype == WRAPPER_SUBTYPE_INTERP_IN || info->subtype == WRAPPER_SUBTYPE_INTERP_LMF)
 				/* AOT'd wrappers for interp must be owned by root domain */
 				domain = mono_get_root_domain ();
 		}
@@ -3822,6 +3822,12 @@ mono_ee_api_version (void)
 	return MONO_EE_API_VERSION;
 }
 
+void
+mono_interp_entry_from_trampoline (gpointer context, gpointer method)
+{
+	mini_get_interp_callbacks ()->get_entry_from_trampoline (context, method);
+}
+
 MonoDomain *
 mini_init (const char *filename, const char *runtime_version)
 {
@@ -4369,8 +4375,7 @@ register_icalls (void)
 	register_icall_no_wrapper (mono_tls_set_sgen_thread_info, "mono_tls_set_sgen_thread_info", "void ptr");
 	register_icall_no_wrapper (mono_tls_set_lmf_addr, "mono_tls_set_lmf_addr", "void ptr");
 
-	if (mono_use_interpreter)
-		mini_get_interp_callbacks ()->register_icalls ();
+	register_icall_no_wrapper (mono_interp_entry_from_trampoline, "mono_interp_entry_from_trampoline", "void ptr ptr");
 }
 
 MonoJitStats mono_jit_stats = {0};

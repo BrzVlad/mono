@@ -24,10 +24,10 @@
 #  _$(1)_PATH
 define RuntimeTemplate
 
-__$(1)_CFLAGS=$(if $(RELEASE),-O2 -g,-O0 -ggdb3 -fno-omit-frame-pointer) $$(_$(1)_CFLAGS)
-__$(1)_CXXFLAGS=$(if $(RELEASE),-O2 -g,-O0 -ggdb3 -fno-omit-frame-pointer) $$(_$(1)_CXXFLAGS)
-__$(1)_CPPFLAGS=$(if $(RELEASE),-O2 -g,-O0 -ggdb3 -fno-omit-frame-pointer) $$(_$(1)_CPPFLAGS)
-__$(1)_CXXCPPFLAGS=$(if $(RELEASE),-O2 -g,-O0 -ggdb3 -fno-omit-frame-pointer) $$(_$(1)_CXXCPPFLAGS)
+__$(1)_CFLAGS=$(if $(RELEASE),-O0 -ggdb3,-O0 -ggdb3 -fno-omit-frame-pointer) $$(_$(1)_CFLAGS)
+__$(1)_CXXFLAGS=$(if $(RELEASE),-O0 -ggdb3,-O0 -ggdb3 -fno-omit-frame-pointer) $$(_$(1)_CXXFLAGS)
+__$(1)_CPPFLAGS=$(if $(RELEASE),-O0 -ggdb3,-O0 -ggdb3 -fno-omit-frame-pointer) $$(_$(1)_CPPFLAGS)
+__$(1)_CXXCPPFLAGS=$(if $(RELEASE),-O0 -ggdb3,-O0 -ggdb3 -fno-omit-frame-pointer) $$(_$(1)_CXXCPPFLAGS)
 
 __$(1)_CONFIGURE_ENVIRONMENT = \
 	$(if $$(_$(1)_AR),AR="$$(_$(1)_AR)") \
