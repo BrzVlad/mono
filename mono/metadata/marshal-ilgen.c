@@ -3789,12 +3789,17 @@ emit_delegate_invoke_internal_ilgen (MonoMethodBuilder *mb, MonoMethodSignature 
 	/*static methods with bound first arg can have null target and still be bound*/
 	if (!static_method_with_first_arg_bound) {
 		/* if target != null */
+		if (strcmp (mono_method_full_name (method, 1), "MonoTests.System.DelegateTest/FooDelegate:Invoke (MonoTests.System.DelegateTest/Iface,string)") == 0)
+			mono_mb_emit_byte (mb, CEE_BREAK);
 		mono_mb_emit_ldloc (mb, local_target);
 		pos0 = mono_mb_emit_branch (mb, CEE_BRFALSE);
 
 		/* then call this->method_ptr nonstatic */
 		if (callvirt) {
 			// FIXME:
+			fprintf (stderr, "Oh noes, wtf\n");
+			if (strcmp (mono_method_full_name (method, 1), "MonoTests.System.DelegateTest/FooDelegate:Invoke (MonoTests.System.DelegateTest/Iface,string)") == 0)
+				mono_mb_emit_byte (mb, CEE_BREAK);
 			mono_mb_emit_exception_full (mb, "System", "NotImplementedException", "");
 		} else {
 			mono_mb_emit_ldloc (mb, local_target);

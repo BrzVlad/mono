@@ -8105,14 +8105,18 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 			ip++;
 			MONO_ADD_INS (cfg->cbb, ins);
 			break;
-		case CEE_BREAK:
-			if (mini_should_insert_breakpoint (cfg->method)) {
-				ins = mono_emit_jit_icall (cfg, mini_get_dbg_callbacks ()->user_break, NULL);
-			} else {
-				MONO_INST_NEW (cfg, ins, OP_NOP);
-			}
+		case CEE_BREAK: {
+		//	if (mini_should_insert_breakpoint (cfg->method)) {
+		//		ins = mono_emit_jit_icall (cfg, mini_get_dbg_callbacks ()->user_break, NULL);
+		//	} else {
+		//		MONO_INST_NEW (cfg, ins, OP_NOP);
+		//	}
+			MonoInst *brk;
+			MONO_INST_NEW (cfg, brk, OP_BREAK);
+			MONO_ADD_INS (cfg->cbb, brk);
 			ip++;
-			MONO_ADD_INS (cfg->cbb, ins);
+		}
+		//	MONO_ADD_INS (cfg->cbb, ins);
 			break;
 		case CEE_LDARG_0:
 		case CEE_LDARG_1:
@@ -12713,7 +12717,7 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 				/* 
 				 * Optimize the common case of ldftn+delegate creation
 				 */
-				if ((sp > stack_start) && (ip + 6 + 5 < end) && ip_in_bb (cfg, cfg->cbb, ip + 6) && (ip [6] == CEE_NEWOBJ)) {
+				if (0 && (sp > stack_start) && (ip + 6 + 5 < end) && ip_in_bb (cfg, cfg->cbb, ip + 6) && (ip [6] == CEE_NEWOBJ)) {
 					MonoMethod *ctor_method = mini_get_method (cfg, method, read32 (ip + 7), NULL, generic_context);
 					if (ctor_method && (m_class_get_parent (ctor_method->klass) == mono_defaults.multicastdelegate_class)) {
 						MonoInst *target_ins, *handle_ins;

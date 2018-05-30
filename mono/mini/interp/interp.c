@@ -364,8 +364,8 @@ interp_pop_lmf (MonoLMFExt *ext)
 	mono_pop_lmf (&ext->lmf);
 }
 
-static InterpMethod*
-get_virtual_method (InterpMethod *imethod, MonoObject *obj)
+InterpMethod*
+mono_interp_get_virtual_method (InterpMethod *imethod, MonoObject *obj)
 {
 	MonoMethod *m = imethod->method;
 	MonoDomain *domain = imethod->domain;
@@ -2520,7 +2520,8 @@ interp_exec_method_full (InterpFrame *frame, ThreadContext *context, guint16 *st
 			MINT_IN_BREAK;
 		MINT_IN_CASE(MINT_BREAK)
 			++ip;
-			do_debugger_tramp (mini_get_dbg_callbacks ()->user_break, frame);
+			asm ("int $3");
+//			do_debugger_tramp (mini_get_dbg_callbacks ()->user_break, frame);
 			MINT_IN_BREAK;
 		MINT_IN_CASE(MINT_LDNULL) 
 			sp->data.p = NULL;
@@ -2809,7 +2810,7 @@ interp_exec_method_full (InterpFrame *frame, ThreadContext *context, guint16 *st
 				MonoObject *this_arg = sp->data.p;
 				MonoClass *this_class = this_arg->vtable->klass;
 
-				child_frame.imethod = get_virtual_method (child_frame.imethod, this_arg);
+				child_frame.imethod = mono_interp_get_virtual_method (child_frame.imethod, this_arg);
 				if (m_class_is_valuetype (this_class) && m_class_is_valuetype (child_frame.imethod->method->klass)) {
 					/* unbox */
 					gpointer *unboxed = mono_object_unbox (this_arg);
@@ -4912,7 +4913,7 @@ array_constructed:
 			if (!sp->data.p)
 				THROW_EX (mono_get_exception_null_reference (), ip - 2);
 				
-			sp->data.p = get_virtual_method (m, sp->data.p);
+			sp->data.p = mono_interp_get_virtual_method (m, sp->data.p);
 			++sp;
 			MINT_IN_BREAK;
 		}

@@ -2867,18 +2867,20 @@ generate (MonoMethod *method, MonoMethodHeader *header, InterpMethod *rtm, unsig
 		case CEE_LDSTR: {
 			token = mono_metadata_token_index (read32 (td->ip + 1));
 			td->ip += 5;
-			if (method->wrapper_type == MONO_WRAPPER_NONE) {
+//			if (method->wrapper_type == MONO_WRAPPER_NONE) {
 				MonoString *s = mono_ldstr_checked (domain, image, token, error);
 				goto_if_nok (error, exit);
 				/* GC won't scan code stream, but reference is held by metadata
 				 * machinery so we are good here */
 				ADD_CODE (td, MINT_LDSTR);
 				ADD_CODE (td, get_data_item_index (td, s));
-			} else {
-				/* defer allocation to execution-time */
-				ADD_CODE (td, MINT_LDSTR_TOKEN);
-				ADD_CODE (td, get_data_item_index (td, GUINT_TO_POINTER (token)));
-			}
+//			} else {
+//				fprintf (stderr, "Add ldstr_token method %s\n", mono_method_full_name (method, 1));
+//				asm ("int $3");
+//				/* defer allocation to execution-time */
+//				ADD_CODE (td, MINT_LDSTR_TOKEN);
+//				ADD_CODE (td, get_data_item_index (td, GUINT_TO_POINTER (token)));
+//			}
 			PUSH_TYPE(td, STACK_TYPE_O, mono_defaults.string_class);
 			break;
 		}
@@ -4687,11 +4689,25 @@ mono_interp_transform_method (InterpMethod *imethod, ThreadContext *context, Int
 					nm = mono_marshal_get_icall_wrapper (mi->sig, wrapper_name, mi->func, TRUE);
 					g_free (wrapper_name);
 				} else if (*name == 'I' && (strcmp (name, "Invoke") == 0)) {
+					
 					MonoDelegate *del = frame->stack_args [0].data.p;
-					if (del && del->method && del->method->flags & METHOD_ATTRIBUTE_STATIC)
+					fprintf (stderr, "Delegate invoke %s\n", mono_method_full_name (method, 1));
+					asm ("int $3");
+					///////////////////////////
+					// This is a piece of shit. For a invoke method, we look at the delegate argument and resolve
+					// the delegate invoke. Are you serious ? There should be a separate imethod for delegate + Invoke
+					// pair. When we resolve the method ?
+					///////////////////////////
+
+					if (del && del->method && del->target &&
+							del->method->flags & METHOD_ATTRIBUTE_VIRTUAL &&
+							del->method->flags & METHOD_ATTRIBUTE_ABSTRACT &&
+							mono_class_is_abstract (del->method->klass))
+						del->method_ptr = mono_interp_get_virtual_method (del->method_ptr, del->target);
+//					if (del && del->method && del->method->flags & METHOD_ATTRIBUTE_STATIC)
 						nm = mono_marshal_get_delegate_invoke (method, del);
-					else
-						nm = mono_marshal_get_delegate_invoke (method, NULL);
+//					else
+//						nm = mono_marshal_get_delegate_invoke (method, NULL);
 				} else if (*name == 'B' && (strcmp (name, "BeginInvoke") == 0)) {
 					nm = mono_marshal_get_delegate_begin_invoke (method);
 				} else if (*name == 'E' && (strcmp (name, "EndInvoke") == 0)) {

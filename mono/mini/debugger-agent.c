@@ -5220,28 +5220,28 @@ user_break_cb (StackFrameInfo *frame, MonoContext *ctx, gpointer user_data)
 static void
 debugger_agent_user_break (void)
 {
-	if (agent_config.enabled) {
-		MonoContext ctx;
-		int suspend_policy;
-		GSList *events;
-		UserBreakCbData data;
-
-		memset (&data, 0, sizeof (UserBreakCbData));
-		data.ctx = &ctx;
-
-		/* Obtain a context */
-		MONO_CONTEXT_SET_IP (&ctx, NULL);
-		mono_walk_stack_with_ctx (user_break_cb, NULL, (MonoUnwindOptions)0, &data);
-		g_assert (data.found);
-
-		mono_loader_lock ();
-		events = create_event_list (EVENT_KIND_USER_BREAK, NULL, NULL, NULL, &suspend_policy);
-		mono_loader_unlock ();
-
-		process_event (EVENT_KIND_USER_BREAK, NULL, 0, &ctx, events, suspend_policy);
-	} else if (mini_debug_options.native_debugger_break) {
+//	if (agent_config.enabled) {
+//		MonoContext ctx;
+//		int suspend_policy;
+//		GSList *events;
+//		UserBreakCbData data;
+//
+//		memset (&data, 0, sizeof (UserBreakCbData));
+//		data.ctx = &ctx;
+//
+//		/* Obtain a context */
+//		MONO_CONTEXT_SET_IP (&ctx, NULL);
+//		mono_walk_stack_with_ctx (user_break_cb, NULL, (MonoUnwindOptions)0, &data);
+//		g_assert (data.found);
+//
+//		mono_loader_lock ();
+//		events = create_event_list (EVENT_KIND_USER_BREAK, NULL, NULL, NULL, &suspend_policy);
+//		mono_loader_unlock ();
+//
+//		process_event (EVENT_KIND_USER_BREAK, NULL, 0, &ctx, events, suspend_policy);
+//	} else if (mini_debug_options.native_debugger_break) {
 		G_BREAKPOINT ();
-	}
+//	}
 }
 
 static const char*
