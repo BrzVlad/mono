@@ -4151,6 +4151,36 @@ arm_patch (guchar *code, const guchar *target)
 	arm_patch_general (NULL, NULL, code, target);
 }
 
+void
+arm_patch_thumb (guchar *code, const guchar *target)
+{
+	guint16 *code16 = (guint16*)code;
+	guint16 ins = *code16;
+	guint32 tval = GPOINTER_TO_UINT (target);
+
+	if ((ins & 0xf000) == 0xd000) {
+		/* the diff starts 4 bytes from the branch opcode */
+		gint diff = target - code - 4;
+
+		if (diff >= -256 && diff <= 254) {
+			diff >>= 1;
+			*code16 = (ins & 0xff00) | (diff & 0xff);
+		} else {
+			g_assert_not_reached ();
+		}
+	} else if ((ins & 0xf800) == 0xe000) {
+		gint diff = target - code - 4;
+		if (diff >= -2048 && diff <= 2046) {
+			diff >>= 1;
+			*code16 = (ins & 0xf800) | (diff & 0x7ff);
+		} else {
+			g_assert_not_reached ();
+		}
+	} else {
+		g_assert_not_reached ();
+	}
+}
+
 /* 
  * Return the >= 0 uimm8 value if val can be represented with a byte + rotation
  * (with the rotation amount in *rot_amount. rot_amount is already adjusted

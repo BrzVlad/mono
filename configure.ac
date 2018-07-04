@@ -4092,6 +4092,7 @@ if test "x$host" != "x$target"; then
 		TARGET=ARM;
 		arch_target=arm;
 		AC_DEFINE(TARGET_ARM, 1, [...])
+		AC_DEFINE(TARGET_ARM_THUMB, 1, [...])
 		ACCESS_UNALIGNED="no"
 		CPPFLAGS="$CPPFLAGS -D__ARM_EABI__"
 		# Can't use tls, since it depends on the runtime detection of tls offsets
@@ -4201,6 +4202,7 @@ AMD64)
 	;;
 ARM)
 	AC_DEFINE(TARGET_ARM, 1, [...])
+	AC_DEFINE(TARGET_ARM_THUMB, 1, [...])
 	;;
 ARM64)
 	AC_DEFINE(TARGET_ARM64, 1, [...])
