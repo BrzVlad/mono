@@ -589,3 +589,30 @@ OPDEF(MINT_PROF_ENTER, "prof_enter", 1, MintOpNoArgs)
 
 OPDEF(MINT_INTRINS_BYREFERENCE_CTOR, "intrins_byreference_ctor", 2, MintOpClassToken)
 OPDEF(MINT_INTRINS_BYREFERENCE_GET_VALUE, "intrins_byreference_get_value", 1, MintOpNoArgs)
+
+// OPS that use cached stackvals
+
+OPDEF(MINT_C0_LDC_I4_0, "ldc.c0.i4.0", 1, MintOpNoArgs)
+OPDEF(MINT_C0_LDC_I4_1, "ldc.c0.i4.1", 1, MintOpNoArgs)
+OPDEF(MINT_C1_LDC_I4_0, "ldc.c1.i4.0", 1, MintOpNoArgs)
+OPDEF(MINT_C1_LDC_I4_1, "ldc.c1.i4.1", 1, MintOpNoArgs)
+
+OPDEF(MINT_C0_LDC_I4, "ldc.c0.i4", 3, MintOpInt)
+OPDEF(MINT_C1_LDC_I4, "ldc.c1.i4", 3, MintOpInt)
+
+OPDEF(MINT_C0_LDC_I4_S, "ldc.c0.i4.s", 3, MintOpShortInt)
+OPDEF(MINT_C1_LDC_I4_S, "ldc.c1.i4.s", 3, MintOpShortInt)
+
+OPDEF(MINT_C0_LDLOC_I4, "ldloc.c0.i4", 2, MintOpUShortInt)
+OPDEF(MINT_C1_LDLOC_I4, "ldloc.c1.i4", 2, MintOpUShortInt)
+
+OPDEF(MINT_C1_STLOC_I4, "stloc.c1.i4", 2, MintOpUShortInt)
+
+OPDEF(MINT_C1_BLT_I4_S, "blt.c1.i4.s", 2, MintOpBranch) 
+
+OPDEF(MINT_C1_ADD_I4, "add.c1.i4", 1, MintOpNoArgs)
+OPDEF(MINT_C1_ADD1_I4, "add1.c1.i4", 1, MintOpNoArgs)
+OPDEF(MINT_C1_MUL_I4, "mul.c1.i4", 1, MintOpNoArgs)
+
+OPDEF(MINT_C1_RET, "ret.c1", 1, MintOpNoArgs)
+OPDEF(MINT_C1_DUMMY, "dummy.c1", 1, MintOpNoArgs)

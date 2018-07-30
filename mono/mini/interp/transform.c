@@ -93,6 +93,8 @@ typedef struct
 	GHashTable *data_hash;
 	int *clause_indexes;
 	gboolean gen_sdb_seq_points;
+	gboolean use_stack_cache;
+	int cached_on_stack;
 	GPtrArray *seq_points;
 	InterpBasicBlock **offset_to_bb;
 	InterpBasicBlock *entry_bb;
@@ -345,7 +347,13 @@ handle_branch (TransformData *td, int short_op, int long_op, int offset)
 		g_ptr_array_add (td->relocs, reloc);
 	}
 	if (shorten_branch) {
-		ADD_CODE(td, short_op);
+		if (td->use_stack_cache && long_op == MINT_BLT_I4) {
+			g_assert (td->cached_on_stack);
+			ADD_CODE (td, MINT_C1_BLT_I4_S);
+			td->cached_on_stack = 0;
+		} else {
+			ADD_CODE(td, short_op);
+		}
 		ADD_CODE(td, offset);
 	} else {
 		ADD_CODE(td, long_op);
@@ -424,7 +432,16 @@ binary_arith_op(TransformData *td, int mint_op)
 	}
 	op = mint_op + type1 - STACK_TYPE_I4;
 	CHECK_STACK(td, 2);
-	ADD_CODE(td, op);
+	if (td->use_stack_cache) {
+		g_assert (td->cached_on_stack);
+		if (mint_op == MINT_ADD_I4)
+			ADD_CODE (td, MINT_C1_ADD_I4);
+		else if (mint_op == MINT_MUL_I4)
+			ADD_CODE (td, MINT_C1_MUL_I4);
+		else
+			g_assert_not_reached ();
+	} else 
+		ADD_CODE(td, op);
 	--td->sp;
 }
 
@@ -676,14 +693,26 @@ load_local(TransformData *td, int n)
 		g_assert (mt < MINT_TYPE_VT);
 		if (!td->gen_sdb_seq_points &&
 			mt == MINT_TYPE_I4 && !td->is_bb_start [td->in_start - td->il_code] && td->last_new_ip != NULL &&
-			td->last_new_ip [0] == MINT_STLOC_I4 && td->last_new_ip [1] == offset) {
-			td->last_new_ip [0] = MINT_STLOC_NP_I4;
+			(td->last_new_ip [0] == MINT_STLOC_I4 || (td->last_new_ip [0] == MINT_C1_STLOC_I4 && !td->cached_on_stack)) && td->last_new_ip [1] == offset) {
+				if (td->last_new_ip [0] == MINT_C1_STLOC_I4) {
+//					asm ("int $3");
+					td->cached_on_stack = 1;
+				} else
+					td->last_new_ip [0] = MINT_STLOC_NP_I4;
 		} else if (!td->gen_sdb_seq_points &&
 				   mt == MINT_TYPE_O && !td->is_bb_start [td->in_start - td->il_code] && td->last_new_ip != NULL &&
 				   td->last_new_ip [0] == MINT_STLOC_O && td->last_new_ip [1] == offset) {
 			td->last_new_ip [0] = MINT_STLOC_NP_O;
 		} else {
-			ADD_CODE(td, MINT_LDLOC_I1 + (mt - MINT_TYPE_I1));
+			if (td->use_stack_cache) {
+				if (td->cached_on_stack)
+					ADD_CODE(td, MINT_C1_LDLOC_I4);
+				else
+					ADD_CODE(td, MINT_C0_LDLOC_I4);
+				td->cached_on_stack = 1;
+			} else {
+				ADD_CODE(td, MINT_LDLOC_I1 + (mt - MINT_TYPE_I1));
+			}
 			ADD_CODE(td, offset); /*FIX for large offset */
 		}
 		if (mt == MINT_TYPE_O)
@@ -718,7 +747,13 @@ store_local_general (TransformData *td, int offset, MonoType *type)
 			POP_VT(td, size);
 	} else {
 		g_assert (mt < MINT_TYPE_VT);
-		ADD_CODE(td, MINT_STLOC_I1 + (mt - MINT_TYPE_I1));
+		if (td->use_stack_cache) {
+			g_assert (td->cached_on_stack);
+			ADD_CODE (td, MINT_C1_STLOC_I4);
+			td->cached_on_stack--;
+		} else {
+			ADD_CODE(td, MINT_STLOC_I1 + (mt - MINT_TYPE_I1));
+		}
 		ADD_CODE(td, offset); /*FIX for large offset */
 	}
 	--td->sp;
@@ -1992,6 +2027,8 @@ generate (MonoMethod *method, MonoMethodHeader *header, InterpMethod *rtm, unsig
 	td = &transform_data;
 
 	td->method = method;
+	td->use_stack_cache = strcmp (method->name, "Main") == 0;
+	td->cached_on_stack = 0;
 	td->rtm = rtm;
 	td->is_bb_start = is_bb_start;
 	td->il_code = header->code;
@@ -2305,17 +2342,37 @@ generate (MonoMethod *method, MonoMethodHeader *header, InterpMethod *rtm, unsig
 				SIMPLE_OP(td, MINT_CEQ0_I4);
 				td->ip += 2;
 			} else {
-				SIMPLE_OP(td, MINT_LDC_I4_0);
+				if (td->use_stack_cache) {
+					if (td->cached_on_stack)
+						SIMPLE_OP(td, MINT_C1_LDC_I4_0);
+					else
+						SIMPLE_OP(td, MINT_C0_LDC_I4_0);
+					td->cached_on_stack = 1;
+				} else { 
+					SIMPLE_OP(td, MINT_LDC_I4_0);
+				}
 				PUSH_SIMPLE_TYPE(td, STACK_TYPE_I4);
 			}
 			break;
 		case CEE_LDC_I4_1:
 			if (!td->is_bb_start[td->ip + 1 - td->il_code] && 
 				(td->ip [1] == CEE_ADD || td->ip [1] == CEE_SUB) && td->sp [-1].type == STACK_TYPE_I4) {
-				ADD_CODE(td, td->ip [1] == CEE_ADD ? MINT_ADD1_I4 : MINT_SUB1_I4);
+				if (td->use_stack_cache) {
+					g_assert (td->cached_on_stack);
+					ADD_CODE(td, MINT_C1_ADD1_I4);
+				} else		
+					ADD_CODE(td, td->ip [1] == CEE_ADD ? MINT_ADD1_I4 : MINT_SUB1_I4);
 				td->ip += 2;
 			} else {
-				SIMPLE_OP(td, MINT_LDC_I4_1);
+				if (td->use_stack_cache) {
+					if (td->cached_on_stack)
+						SIMPLE_OP(td, MINT_C1_LDC_I4_1);
+					else
+						SIMPLE_OP(td, MINT_C0_LDC_I4_1);
+					td->cached_on_stack = 1;
+				} else { 
+					SIMPLE_OP(td, MINT_LDC_I4_1);
+				}
 				PUSH_SIMPLE_TYPE(td, STACK_TYPE_I4);
 			}
 			break;
@@ -2326,18 +2383,36 @@ generate (MonoMethod *method, MonoMethodHeader *header, InterpMethod *rtm, unsig
 		case CEE_LDC_I4_6:
 		case CEE_LDC_I4_7:
 		case CEE_LDC_I4_8:
-			SIMPLE_OP(td, (*td->ip - CEE_LDC_I4_0) + MINT_LDC_I4_0);
+			if (td->use_stack_cache) {
+				g_assert_not_reached ();
+			} else { 
+				SIMPLE_OP(td, (*td->ip - CEE_LDC_I4_0) + MINT_LDC_I4_0);
+			}
 			PUSH_SIMPLE_TYPE(td, STACK_TYPE_I4);
 			break;
 		case CEE_LDC_I4_S: 
-			ADD_CODE(td, MINT_LDC_I4_S);
+			if (td->use_stack_cache) {
+				if (td->cached_on_stack)
+					ADD_CODE (td, MINT_C1_LDC_I4_S);
+				else
+					ADD_CODE (td, MINT_C0_LDC_I4_S);
+				td->cached_on_stack = 1;
+			} else 
+				ADD_CODE(td, MINT_LDC_I4_S);
 			ADD_CODE(td, ((gint8 *) td->ip) [1]);
 			td->ip += 2;
 			PUSH_SIMPLE_TYPE(td, STACK_TYPE_I4);
 			break;
 		case CEE_LDC_I4:
 			i32 = read32 (td->ip + 1);
-			ADD_CODE(td, MINT_LDC_I4);
+			if (td->use_stack_cache) {
+				if (td->cached_on_stack)
+					ADD_CODE (td, MINT_C1_LDC_I4);
+				else
+					ADD_CODE (td, MINT_C0_LDC_I4);
+				td->cached_on_stack = 1;
+			} else 
+				ADD_CODE(td, MINT_LDC_I4);
 			WRITE32(td, &i32);
 			td->ip += 5;
 			PUSH_SIMPLE_TYPE(td, STACK_TYPE_I4);
@@ -2454,7 +2529,11 @@ generate (MonoMethod *method, MonoMethodHeader *header, InterpMethod *rtm, unsig
 			}
 
 			if (vt_size == 0)
-				SIMPLE_OP(td, ult->type == MONO_TYPE_VOID ? MINT_RET_VOID : MINT_RET);
+				if (td->use_stack_cache) {
+					g_assert (td->cached_on_stack);
+					SIMPLE_OP(td, MINT_C1_RET);
+				} else 
+					SIMPLE_OP(td, ult->type == MONO_TYPE_VOID ? MINT_RET_VOID : MINT_RET);
 			else {
 				ADD_CODE(td, MINT_RET_VT);
 				WRITE32(td, &vt_size);

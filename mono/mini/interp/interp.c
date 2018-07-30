@@ -2503,8 +2503,9 @@ interp_create_method_pointer (MonoMethod *method, MonoError *error)
 
 #if COUNT_OPS
 static int opcode_counts[512];
+long total_opcodes_exec;
 
-#define COUNT_OP(op) opcode_counts[op]++
+#define COUNT_OP(op) total_opcodes_exec++
 #else
 #define COUNT_OP(op) 
 #endif
@@ -2562,6 +2563,7 @@ interp_exec_method_full (InterpFrame *frame, ThreadContext *context, guint16 *st
 	const unsigned short *endfinally_ip = NULL;
 	const unsigned short *ip = NULL;
 	register stackval *sp;
+	int tos1 = 0;
 	InterpMethod *rtm = NULL;
 #if DEBUG_INTERP
 	gint tracing = global_tracing;
@@ -2636,6 +2638,9 @@ interp_exec_method_full (InterpFrame *frame, ThreadContext *context, guint16 *st
 		sp->data.p = filter_exception;
 		sp++;
 	}
+
+//	if (strcmp (frame->imethod->method->name, "Main") == 0)
+//		asm ("int $3");
 
 	/*
 	 * using while (ip < end) may result in a 15% performance drop, 
@@ -5546,6 +5551,93 @@ interp_exec_method_full (InterpFrame *frame, ThreadContext *context, guint16 *st
 			ip += 2;
 			MINT_IN_BREAK;
 		}
+		MINT_IN_CASE(MINT_C0_LDC_I4_0)
+			tos1 = 0;
+			++ip;
+			MINT_IN_BREAK;
+		MINT_IN_CASE(MINT_C0_LDC_I4_1)
+			tos1 = 1;
+			++ip;
+			MINT_IN_BREAK;
+		MINT_IN_CASE(MINT_C1_LDC_I4_0)
+			sp->data.i = tos1;
+			++sp;
+			tos1 = 0;
+			MINT_IN_BREAK;
+		MINT_IN_CASE(MINT_C1_LDC_I4_1)
+			sp->data.i = tos1;
+			++sp;
+			tos1 = 1;
+			MINT_IN_BREAK;
+		MINT_IN_CASE(MINT_C0_LDC_I4)
+			ip++;
+			tos1 = READ32 (ip);
+                        ip += 2;
+			MINT_IN_BREAK;
+		MINT_IN_CASE(MINT_C1_LDC_I4)
+			sp->data.i = tos1;
+                        ++sp;
+			ip++;
+			tos1 = READ32 (ip);
+                        ip += 2;
+			MINT_IN_BREAK;
+		MINT_IN_CASE(MINT_C0_LDC_I4_S)
+			ip++;
+			tos1 = *(const short *)ip;
+                        ip++;
+			MINT_IN_BREAK;
+		MINT_IN_CASE(MINT_C1_LDC_I4_S)
+			sp->data.i = tos1;
+                        ++sp;
+			ip++;
+			tos1 = *(const short *)ip;
+                        ip++;
+			MINT_IN_BREAK;
+		MINT_IN_CASE(MINT_C0_LDLOC_I4)
+			tos1 = * (gint32 *)(locals + * (guint16 *)(ip + 1));
+			ip += 2; \
+			MINT_IN_BREAK;
+		MINT_IN_CASE(MINT_C1_LDLOC_I4)
+			sp->data.i = tos1;
+			tos1 = * (gint32 *)(locals + * (guint16 *)(ip + 1));
+			ip += 2;
+			++sp;
+			MINT_IN_BREAK;
+		MINT_IN_CASE(MINT_C1_STLOC_I4)
+			* (gint32*)(locals + * (guint16 *)(ip + 1)) = tos1;
+			ip += 2;
+			MINT_IN_BREAK;
+		MINT_IN_CASE(MINT_C1_BLT_I4_S)
+			sp --;
+			if (sp[0].data.i < tos1)
+				ip += * (gint16 *)(ip + 1);
+			else
+				ip += 2;
+			MINT_IN_BREAK;
+		MINT_IN_CASE(MINT_C1_ADD_I4)
+			tos1 = sp [-1].data.i + tos1;
+			sp--;
+			++ip;
+			MINT_IN_BREAK;
+		MINT_IN_CASE(MINT_C1_ADD1_I4)
+			tos1++;
+			++ip;
+			MINT_IN_BREAK;
+		MINT_IN_CASE(MINT_C1_MUL_I4)
+			tos1 = sp [-1].data.i * tos1;
+			sp--;
+			++ip;
+			MINT_IN_BREAK;
+		MINT_IN_CASE(MINT_C1_DUMMY)
+			--sp;
+			sp [-1].data.i = sp [-1].data.i * sp [0].data.i;
+			++ip;
+			MINT_IN_BREAK;
+		MINT_IN_CASE(MINT_C1_RET)
+			frame->retval->data.i = tos1;
+			if (sp > frame->stack)
+				g_warning ("ret: more values on stack: %d", sp-frame->stack);
+			goto exit_frame;
 		MINT_IN_DEFAULT
 			g_print ("Unimplemented opcode: %04x %s at 0x%x\n", *ip, mono_interp_opname[*ip], ip-rtm->code);
 			THROW_EX (mono_get_exception_execution_engine ("Unimplemented opcode"), ip);
