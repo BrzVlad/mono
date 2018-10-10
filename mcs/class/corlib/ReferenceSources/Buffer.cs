@@ -6,11 +6,18 @@ using nuint = System.UInt32;
 
 using System.Runtime.CompilerServices;
 using System.Runtime;
+using System.Runtime.InteropServices;
 
 namespace System
 {
 	partial class Buffer
 	{
+		[MethodImplAttribute(MethodImplOptions.InternalCall)]
+		internal static extern unsafe bool InternalMemcpy (byte *dest, byte *src, int count);
+
+		[StructLayout(LayoutKind.Sequential)]
+		private struct Block16 { int a; int b; int c; int d; }
+
 		public static int ByteLength (Array array)
 		{
 			// note: the other methods in this class also use ByteLength to test for
@@ -129,6 +136,7 @@ namespace System
 				((int*)dest) [1] = ((int*)src) [1];
 				((int*)dest) [2] = ((int*)src) [2];
 				((int*)dest) [3] = ((int*)src) [3];
+//				((Block16*)dest) [0] = ((Block16*)src) [0];
 				dest += 16;
 				src += 16;
 				size -= 16;
@@ -191,6 +199,11 @@ namespace System
 		}
 
 		internal static unsafe void Memcpy (byte *dest, byte *src, int len) {
+			// For bigger lengths, we use the heavily optimized native code
+			if (len > 1024) {
+				InternalMemcpy (dest, src, len);
+				return;
+			}
 			// FIXME: if pointers are not aligned, try to align them
 			// so a faster routine can be used. Handle the case where
 			// the pointers can't be reduced to have the same alignment
