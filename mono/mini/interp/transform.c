@@ -3172,7 +3172,8 @@ generate (MonoMethod *method, MonoMethodHeader *header, InterpMethod *rtm, unsig
 			goto_if_nok (error, exit);
 
 			if (m_class_is_valuetype (klass)) {
-				ADD_CODE (td, MINT_CPOBJ);
+				int mt = mint_type (m_class_get_byval_arg (klass)) == MINT_TYPE_VT;
+				ADD_CODE (td, (mt == MINT_TYPE_VT) ? MINT_CPOBJ_VT : MINT_CPOBJ);
 				ADD_CODE (td, get_data_item_index(td, klass));
 			} else {
 				ADD_CODE (td, MINT_LDIND_REF);
@@ -3201,9 +3202,23 @@ generate (MonoMethod *method, MonoMethodHeader *header, InterpMethod *rtm, unsig
 				POP_VT (td, tos_size);
 			}
 
-			ADD_CODE(td, MINT_LDOBJ);
-			ADD_CODE(td, get_data_item_index(td, klass));
+			const unsigned char *next_ip = td->ip + 5;
+			/* Optimize LDOBJ + STOBJ pair */
+			if (next_ip + 4 < end && next_ip [0] == CEE_STOBJ && !is_bb_start [next_ip - td->il_code] && read32 (next_ip + 1) == token) {
+				int val_size = mono_class_value_size (klass, NULL);
+				ADD_CODE(td, MINT_LDC_I4);
+				WRITE32(td, &val_size);
+				PUSH_SIMPLE_TYPE(td, STACK_TYPE_I4);
+				ADD_CODE (td, MINT_CPBLK);
+				td->ip = next_ip + 5;
+				break;
+			}
+
 			int mt = mint_type (m_class_get_byval_arg (klass));
+
+			ADD_CODE(td, (mt == MINT_TYPE_VT) ? MINT_LDOBJ_VT: MINT_LDOBJ);
+			ADD_CODE(td, get_data_item_index(td, klass));
+
 			if (mt == MINT_TYPE_VT) {
 				size = mono_class_value_size (klass, NULL);
 				PUSH_VT (td, size);

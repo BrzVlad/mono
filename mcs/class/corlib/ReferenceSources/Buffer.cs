@@ -118,25 +118,14 @@ namespace System
 			Memcpy (dst, src, (int) sourceBytesToCopy);
 		}
 
-		internal static unsafe void memcpy4 (byte *dest, byte *src, int size) {
-			/*while (size >= 32) {
-				// using long is better than int and slower than double
-				// FIXME: enable this only on correct alignment or on platforms
-				// that can tolerate unaligned reads/writes of doubles
-				((double*)dest) [0] = ((double*)src) [0];
-				((double*)dest) [1] = ((double*)src) [1];
-				((double*)dest) [2] = ((double*)src) [2];
-				((double*)dest) [3] = ((double*)src) [3];
-				dest += 32;
-				src += 32;
-				size -= 32;
-			}*/
+		// dest and src are pointer aligned
+		internal static unsafe void memcpy_p (byte *dest, byte *src, int size) {
 			while (size >= 16) {
-				((int*)dest) [0] = ((int*)src) [0];
-				((int*)dest) [1] = ((int*)src) [1];
-				((int*)dest) [2] = ((int*)src) [2];
-				((int*)dest) [3] = ((int*)src) [3];
-//				((Block16*)dest) [0] = ((Block16*)src) [0];
+				((Block16*)dest) [0] = ((Block16*)src) [0];
+				//((int*)dest) [0] = ((int*)src) [0];
+				//((int*)dest) [1] = ((int*)src) [1];
+				//((int*)dest) [2] = ((int*)src) [2];
+				//((int*)dest) [3] = ((int*)src) [3];
 				dest += 16;
 				src += 16;
 				size -= 16;
@@ -154,6 +143,31 @@ namespace System
 				--size;
 			}
 		}
+#if BIT64
+		internal static unsafe void memcpy4 (byte *dest, byte *src, int size) {
+			while (size >= 16) {
+				((int*)dest) [0] = ((int*)src) [0];
+				((int*)dest) [1] = ((int*)src) [1];
+				((int*)dest) [2] = ((int*)src) [2];
+				((int*)dest) [3] = ((int*)src) [3];
+				dest += 16;
+				src += 16;
+				size -= 16;
+			}
+			while (size >= 4) {
+				((int*)dest) [0] = ((int*)src) [0];
+				dest += 4;
+				src += 4;
+				size -= 4;
+			}
+			while (size > 0) {
+				((byte*)dest) [0] = ((byte*)src) [0];
+				dest += 1;
+				src += 1;
+				--size;
+			}
+		}
+#endif
 		internal static unsafe void memcpy2 (byte *dest, byte *src, int size) {
 			while (size >= 8) {
 				((short*)dest) [0] = ((short*)src) [0];
@@ -200,7 +214,7 @@ namespace System
 
 		internal static unsafe void Memcpy (byte *dest, byte *src, int len) {
 			// For bigger lengths, we use the heavily optimized native code
-			if (len > 1024) {
+			if (len > 128) {
 				InternalMemcpy (dest, src, len);
 				return;
 			}
@@ -208,7 +222,11 @@ namespace System
 			// so a faster routine can be used. Handle the case where
 			// the pointers can't be reduced to have the same alignment
 			// (just ignore the issue on x86?)
+#if BIT64
+			if ((((int)dest | (int)src) & 7) != 0) {
+#else
 			if ((((int)dest | (int)src) & 3) != 0) {
+#endif
 				if (((int)dest & 1) != 0 && ((int)src & 1) != 0 && len >= 1) {
 					dest [0] = src [0];
 					++dest;
@@ -221,6 +239,14 @@ namespace System
 					src += 2;
 					len -= 2;
 				}
+#if BIT64
+				if (((int)dest & 4) != 0 && ((int)src & 4) != 0 && len >= 4) {
+					((int*)dest) [0] = ((int*)src) [0];
+					dest += 4;
+					src += 4;
+					len -= 4;
+				}
+#endif
 				if ((((int)dest | (int)src) & 1) != 0) {
 					memcpy1 (dest, src, len);
 					return;
@@ -229,8 +255,14 @@ namespace System
 					memcpy2 (dest, src, len);
 					return;
 				}
+#if BIT64
+				if ((((int)dest | (int)src) & 4) != 0) {
+					memcpy4 (dest, src, len);
+					return;
+				}
+#endif
 			}
-			memcpy4 (dest, src, len);
+			memcpy_p (dest, src, len);
 		}
 
 		internal static unsafe void Memmove (byte *dest, byte *src, uint len)

@@ -3941,10 +3941,17 @@ interp_exec_method_full (InterpFrame *frame, ThreadContext *context, guint16 *st
 			g_assert (m_class_is_valuetype (c));
 			/* if this assertion fails, we need to add a write barrier */
 			g_assert (!MONO_TYPE_IS_REFERENCE (m_class_get_byval_arg (c)));
-			if (mint_type (m_class_get_byval_arg (c)) == MINT_TYPE_VT)
-				stackval_from_data (m_class_get_byval_arg (c), &sp [-2], sp [-1].data.p, FALSE);
-			else
-				stackval_from_data (m_class_get_byval_arg (c), (stackval*)sp [-2].data.p, sp [-1].data.p, FALSE);
+			stackval_from_data (m_class_get_byval_arg (c), (stackval*)sp [-2].data.p, sp [-1].data.p, FALSE);
+			ip += 2;
+			sp -= 2;
+			MINT_IN_BREAK;
+		}
+		MINT_IN_CASE(MINT_CPOBJ_VT) {
+			c = (MonoClass*)rtm->data_items[* (guint16 *)(ip + 1)];
+			g_assert (m_class_is_valuetype (c));
+			/* if this assertion fails, we need to add a write barrier */
+			g_assert (!MONO_TYPE_IS_REFERENCE (m_class_get_byval_arg (c)));
+			stackval_from_data (m_class_get_byval_arg (c), &sp [-2], sp [-1].data.p, FALSE);
 			ip += 2;
 			sp -= 2;
 			MINT_IN_BREAK;
@@ -3954,7 +3961,15 @@ interp_exec_method_full (InterpFrame *frame, ThreadContext *context, guint16 *st
 			c = (MonoClass*)rtm->data_items[* (guint16 *)(ip + 1)];
 			ip += 2;
 			p = sp [-1].data.p;
-			if (mint_type (m_class_get_byval_arg (c)) == MINT_TYPE_VT && !m_class_is_enumtype (c)) {
+			stackval_from_data (m_class_get_byval_arg (c), &sp [-1], p, FALSE);
+			MINT_IN_BREAK;
+		}
+		MINT_IN_CASE(MINT_LDOBJ_VT) {
+			void *p;
+			c = (MonoClass*)rtm->data_items[* (guint16 *)(ip + 1)];
+			ip += 2;
+			p = sp [-1].data.p;
+			if (!m_class_is_enumtype (c)) {
 				int size = mono_class_value_size (c, NULL);
 				sp [-1].data.p = vt_sp;
 				vt_sp += ALIGN_TO (size, MINT_VT_ALIGNMENT);
