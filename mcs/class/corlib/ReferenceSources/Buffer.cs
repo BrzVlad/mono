@@ -12,6 +12,9 @@ namespace System
 {
 	partial class Buffer
 	{
+		[MethodImplAttribute(MethodImplOptions.InternalCall)]
+		internal static extern unsafe bool InternalMemcpy (byte *dest, byte *src, int count);
+
 		[StructLayout(LayoutKind.Sequential)]
 		private struct Block16 { int a; int b; int c; int d; }
 
@@ -206,6 +209,11 @@ namespace System
 		}
 
 		internal static unsafe void Memcpy (byte *dest, byte *src, int len) {
+			// For bigger lengths, we use the heavily optimized native code
+			if (len > 32) {
+				InternalMemcpy (dest, src, len);
+				return;
+			}
 			// FIXME: if pointers are not aligned, try to align them
 			// so a faster routine can be used. Handle the case where
 			// the pointers can't be reduced to have the same alignment
