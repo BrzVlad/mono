@@ -228,6 +228,15 @@ set_resume_state (ThreadContext *context, InterpFrame *frame)
 		goto main_loop;													\
 	} while (0)
 
+#define CHECK_RESUME_STATE(context) do { \
+		if ((context)->has_resume_state) { \
+			if (frame == (context)->handler_frame) \
+				SET_RESUME_STATE (context); \
+			else \
+				goto exit_frame; \
+		} \
+	} while (0);
+
 static void
 set_context (ThreadContext *context)
 {
@@ -767,10 +776,7 @@ fill_in_trace (MonoException *exception, InterpFrame *frame)
 #define THROW_EX_GENERAL(exception,ex_ip, rethrow)		\
 	do {							\
 		interp_throw (context, (exception), (frame), (ex_ip), (rethrow)); \
-		if (frame == context->handler_frame) \
-			SET_RESUME_STATE (context); \
-		else \
-			goto exit_frame; \
+		CHECK_RESUME_STATE(context); \
 	} while (0)
 
 #define THROW_EX(exception,ex_ip) THROW_EX_GENERAL ((exception), (ex_ip), FALSE)
@@ -2875,12 +2881,7 @@ interp_exec_method_full (InterpFrame *frame, ThreadContext *context, guint16 *st
 
 			interp_exec_method (&child_frame, context);
 
-			if (context->has_resume_state) {
-				if (frame == context->handler_frame)
-					SET_RESUME_STATE (context);
-				else
-					goto exit_frame;
-			}
+			CHECK_RESUME_STATE (context);
 
 			CHECK_CHILD_EX (child_frame, ip - 2);
 
@@ -2901,12 +2902,7 @@ interp_exec_method_full (InterpFrame *frame, ThreadContext *context, guint16 *st
 
 			sp = do_icall (frame, csignature, opcode, sp, target_ip);
 			EXCEPTION_CHECKPOINT;
-			if (context->has_resume_state) {
-				if (frame == context->handler_frame)
-					SET_RESUME_STATE (context);
-				else
-					goto exit_frame;
-			}
+			CHECK_RESUME_STATE (context);
 			ip += 3;
 			MINT_IN_BREAK;
 		}
@@ -2955,12 +2951,7 @@ interp_exec_method_full (InterpFrame *frame, ThreadContext *context, guint16 *st
 				ves_pinvoke_method (&child_frame, csignature, (MonoFuncV) code, FALSE, context);
 			}
 
-			if (context->has_resume_state) {
-				if (frame == context->handler_frame)
-					SET_RESUME_STATE (context);
-				else
-					goto exit_frame;
-			}
+			CHECK_RESUME_STATE (context);
 
 			CHECK_CHILD_EX (child_frame, ip - 2);
 
@@ -3013,12 +3004,8 @@ interp_exec_method_full (InterpFrame *frame, ThreadContext *context, guint16 *st
 
 			interp_exec_method (&child_frame, context);
 
-			if (context->has_resume_state) {
-				if (frame == context->handler_frame)
-					SET_RESUME_STATE (context);
-				else
-					goto exit_frame;
-			}
+			CHECK_RESUME_STATE (context);
+
 			CHECK_CHILD_EX (child_frame, ip - 2);
 
 			if (!is_void) {
@@ -3038,19 +3025,14 @@ interp_exec_method_full (InterpFrame *frame, ThreadContext *context, guint16 *st
 				MonoException *ex = mono_error_convert_to_exception (error);
 				THROW_EX (ex, ip);
 			}
+			/*
+			 * If this bit is set, it means the call has thrown the exception, and we
+			 * reached this point because the EH code in mono_handle_exception ()
+			 * unwound all the JITted frames below us. mono_interp_set_resume_state ()
+			 * has set the fields in context to indicate where we have to resume execution.
+			 */
+			CHECK_RESUME_STATE (context);
 
-			if (context->has_resume_state) {
-				/*
-				 * If this bit is set, it means the call has thrown the exception, and we
-				 * reached this point because the EH code in mono_handle_exception ()
-				 * unwound all the JITted frames below us. mono_interp_set_resume_state ()
-				 * has set the fields in context to indicate where we have to resume execution.
-				 */
-				if (frame == context->handler_frame)
-					SET_RESUME_STATE (context);
-				else
-					goto exit_frame;
-			}
 			if (rmethod->rtype->type != MONO_TYPE_VOID)
 				sp++;
 
@@ -4057,12 +4039,7 @@ interp_exec_method_full (InterpFrame *frame, ThreadContext *context, guint16 *st
 
 			interp_exec_method (&child_frame, context);
 
-			if (context->has_resume_state) {
-				if (frame == context->handler_frame)
-					SET_RESUME_STATE (context);
-				else
-					goto exit_frame;
-			}
+			CHECK_RESUME_STATE (context);
 			CHECK_CHILD_EX (child_frame, ip);
 			if (vt)
 				*sp = valuetype_this;
@@ -4139,12 +4116,7 @@ interp_exec_method_full (InterpFrame *frame, ThreadContext *context, guint16 *st
 
 			interp_exec_method (&child_frame, context);
 
-			if (context->has_resume_state) {
-				if (frame == context->handler_frame)
-					SET_RESUME_STATE (context);
-				else
-					goto exit_frame;
-			}
+			CHECK_RESUME_STATE (context);
 
 			CHECK_CHILD_EX (child_frame, ip - 2);
 			/*
@@ -5289,12 +5261,7 @@ interp_exec_method_full (InterpFrame *frame, ThreadContext *context, guint16 *st
 			frame->ip = ip;
 			sp = do_icall (frame, NULL, *ip, sp, rtm->data_items [*(guint16 *)(ip + 1)]);
 			EXCEPTION_CHECKPOINT;
-			if (context->has_resume_state) {
-				if (frame == context->handler_frame)
-					SET_RESUME_STATE (context);
-				else
-					goto exit_frame;
-			}
+			CHECK_RESUME_STATE (context);
 			ip += 2;
 			MINT_IN_BREAK;
 		MINT_IN_CASE(MINT_MONO_LDPTR) 
@@ -5363,12 +5330,7 @@ interp_exec_method_full (InterpFrame *frame, ThreadContext *context, guint16 *st
 				 */
 				do_debugger_tramp (ss_tramp, frame);
 
-				if (context->has_resume_state) {
-					if (frame == context->handler_frame)
-						SET_RESUME_STATE (context);
-					else
-						goto exit_frame;
-				}
+				CHECK_RESUME_STATE (context);
 			}
 			++ip;
 			MINT_IN_BREAK;
@@ -5390,12 +5352,7 @@ interp_exec_method_full (InterpFrame *frame, ThreadContext *context, guint16 *st
 			/* Use the same trampoline as the JIT */
 			do_debugger_tramp (bp_tramp, frame);
 
-			if (context->has_resume_state) {
-				if (frame == context->handler_frame)
-					SET_RESUME_STATE (context);
-				else
-					goto exit_frame;
-			}
+			CHECK_RESUME_STATE (context);
 
 			++ip;
 			MINT_IN_BREAK;
