@@ -78,17 +78,6 @@
 #pragma warning(disable:4102) // label' : unreferenced label
 #endif
 
-/* Arguments that are passed when invoking only a finally/filter clause from the frame */
-typedef struct {
-	/* Where we start the frame execution from */
-	guint16 *start_with_ip;
-	/* When exiting this clause we also exit the frame */
-	int exit_clause;
-	/* Exception that we are filtering */
-	MonoException *filter_exception;
-	InterpFrame *base_frame;
-} FrameClauseArgs;
-
 static inline void
 init_frame (InterpFrame *frame, InterpFrame *parent_frame, InterpMethod *rmethod, stackval *method_args, stackval *method_retval)
 {
@@ -2643,6 +2632,7 @@ interp_exec_method_full (InterpFrame *frame, ThreadContext *context, FrameClause
 
 	frame->ex = NULL;
 	frame->ip = NULL;
+	frame->clause_args = clause_args;
 	debug_enter (frame, &tracing);
 
 	rtm = frame->imethod;
@@ -5940,6 +5930,26 @@ interp_set_resume_state (MonoJitTlsData *jit_tls, MonoException *ex, MonoJitExce
 }
 
 /*
+ * interp_is_handler_in_frame
+ *
+ * Returns whether the handler is in the frame's range of execution, when it being called for executing
+ * finally/filter clauses.
+ */
+static gboolean
+interp_is_handler_in_frame (StackFrameInfo *frame, gpointer handler_ip)
+{
+	InterpFrame *iframe = (InterpFrame*)frame->interp_frame;
+
+	if (iframe->clause_args) {
+		if (iframe->clause_args->start_with_ip < handler_ip && handler_ip < iframe->clause_args->end_at_ip)
+			return TRUE;
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+/*
  * interp_run_finally:
  *
  *   Run the finally clause identified by CLAUSE_INDEX in the intepreter frame given by
@@ -5947,7 +5957,7 @@ interp_set_resume_state (MonoJitTlsData *jit_tls, MonoException *ex, MonoJitExce
  * Return TRUE if the finally clause threw an exception.
  */
 static gboolean
-interp_run_finally (StackFrameInfo *frame, int clause_index, gpointer handler_ip)
+interp_run_finally (StackFrameInfo *frame, int clause_index, gpointer handler_ip, gpointer handler_ip_end)
 {
 	InterpFrame *iframe = (InterpFrame*)frame->interp_frame;
 	ThreadContext *context = get_context ();
@@ -5956,6 +5966,7 @@ interp_run_finally (StackFrameInfo *frame, int clause_index, gpointer handler_ip
 
 	memset (&clause_args, 0, sizeof (FrameClauseArgs));
 	clause_args.start_with_ip = (guint16*) handler_ip;
+	clause_args.end_at_ip = (guint16*) handler_ip_end;
 	clause_args.exit_clause = clause_index;
 
 	interp_exec_method_full (iframe, context, &clause_args);
@@ -5974,7 +5985,7 @@ interp_run_finally (StackFrameInfo *frame, int clause_index, gpointer handler_ip
  * frame->interp_frame.
  */
 static gboolean
-interp_run_filter (StackFrameInfo *frame, MonoException *ex, int clause_index, gpointer handler_ip)
+interp_run_filter (StackFrameInfo *frame, MonoException *ex, int clause_index, gpointer handler_ip, gpointer handler_ip_end)
 {
 	InterpFrame *iframe = (InterpFrame*)frame->interp_frame;
 	ThreadContext *context = get_context ();
@@ -5993,6 +6004,7 @@ interp_run_filter (StackFrameInfo *frame, MonoException *ex, int clause_index, g
 
 	memset (&clause_args, 0, sizeof (FrameClauseArgs));
 	clause_args.start_with_ip = (guint16*) handler_ip;
+	clause_args.end_at_ip = (guint16*) handler_ip_end;
 	clause_args.filter_exception = ex;
 	clause_args.base_frame = iframe;
 
@@ -6186,6 +6198,7 @@ mono_ee_interp_init (const char *opts)
 	c.get_remoting_invoke = interp_get_remoting_invoke;
 	c.set_resume_state = interp_set_resume_state;
 	c.run_finally = interp_run_finally;
+	c.is_handler_in_frame = interp_is_handler_in_frame;
 	c.run_filter = interp_run_filter;
 	c.frame_iter_init = interp_frame_iter_init;
 	c.frame_iter_next = interp_frame_iter_next;

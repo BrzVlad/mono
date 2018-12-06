@@ -81,13 +81,19 @@ stub_set_resume_state (MonoJitTlsData *jit_tls, MonoException *ex, MonoJitExcept
 }
 
 static gboolean
-stub_run_finally (StackFrameInfo *frame, int clause_index, gpointer handler_ip)
+stub_is_handler_in_frame (StackFrameInfo *frame, gpointer handler_ip)
 {
 	g_assert_not_reached ();
 }
 
 static gboolean
-stub_run_filter (StackFrameInfo *frame, MonoException *ex, int clause_index, gpointer handler_ip)
+stub_run_finally (StackFrameInfo *frame, int clause_index, gpointer handler_ip, gpointer handler_ip_end)
+{
+	g_assert_not_reached ();
+}
+
+static gboolean
+stub_run_filter (StackFrameInfo *frame, MonoException *ex, int clause_index, gpointer handler_ip, gpointer handler_ip_end)
 {
 	g_assert_not_reached ();
 	return FALSE;
@@ -153,6 +159,7 @@ mono_interp_stub_init (void)
 	c.get_remoting_invoke = stub_get_remoting_invoke;
 	c.set_resume_state = stub_set_resume_state;
 	c.run_finally = stub_run_finally;
+	c.is_handler_in_frame = stub_is_handler_in_frame;
 	c.run_filter = stub_run_filter;
 	c.frame_iter_init = stub_frame_iter_init;
 	c.frame_iter_next = stub_frame_iter_next;

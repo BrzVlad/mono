@@ -125,6 +125,23 @@ typedef struct _InterpMethod
 	MonoProfilerCallInstrumentationFlags prof_flags;
 } InterpMethod;
 
+/* Arguments that are passed when invoking only a finally/filter clause from the frame */
+typedef struct {
+	/* Where we start the frame execution from */
+	guint16 *start_with_ip;
+	/*
+	 * End ip of the exit_clause. We need it so we know whether the resume
+	 * state is for this frame (which is called from EH) or for the original
+	 * frame further down the stack.
+	 */
+	guint16 *end_at_ip;
+	/* When exiting this clause we also exit the frame */
+	int exit_clause;
+	/* Exception that we are filtering */
+	MonoException *filter_exception;
+	InterpFrame *base_frame;
+} FrameClauseArgs;
+
 struct _InterpFrame {
 	InterpFrame *parent; /* parent */
 	InterpMethod  *imethod; /* parent */
@@ -139,6 +156,7 @@ struct _InterpFrame {
 	unsigned char  invoke_trap;
 	const unsigned short  *ip;
 	MonoException     *ex;
+	FrameClauseArgs *clause_args;
 };
 
 typedef struct {
