@@ -59,5 +59,8 @@ extern MintOpArgType mono_interp_opargtype[];
 extern char* mono_interp_dis_mintop(const unsigned short *base, const guint16 *ip);
 extern const guint16* mono_interp_dis_mintop_len (const guint16 *ip);
 
+/* Opcodes that don't affect the stack */
+#define MINT_OP_NO_STACK(op) ((op) == MINT_STLOC_NP_I4 || (op) == MINT_STLOC_NP_O)
+
 #endif
 

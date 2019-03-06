@@ -675,6 +675,44 @@ store_arg(TransformData *td, int n)
 	--td->sp;
 }
 
+static unsigned short*
+get_prev_instruction (TransformData *td, unsigned short *ip)
+{
+	int prev_offset = mono_bitset_find_last (td->opcode_bitmap, ip - td->new_code);
+	if (prev_offset == -1)
+		return NULL;
+	return &td->new_code [prev_offset];
+}
+
+static gboolean
+squash_ldloc (TransformData *td, int mt, int offset)
+{
+	unsigned short *prev_ip = td->new_ip;
+	if (td->gen_sdb_seq_points)
+		return FALSE;
+	if (td->is_bb_start [td->in_start - td->il_code])
+		return FALSE;
+	/*
+	 * Search for a stloc pair for the ldloc that we are emitting. We ignore instructions
+	 * that don't change the stack. If we found the corresponding stloc, we change it to np
+	 * version, that also doesn't affect the stack.
+	 */
+	while ((prev_ip = get_prev_instruction (td, prev_ip))) {
+		if (mt == MINT_TYPE_I4 && prev_ip [0] == MINT_STLOC_I4 && prev_ip [1] == offset) {
+			prev_ip [0] = MINT_STLOC_NP_I4;
+			return TRUE;
+		} else if (mt == MINT_TYPE_O &&	prev_ip [0] == MINT_STLOC_O && prev_ip [1] == offset) {
+			prev_ip [0] = MINT_STLOC_NP_O;
+			return TRUE;
+		} else if (!MINT_OP_NO_STACK (prev_ip [0])) {
+			break;
+		}
+	}
+
+	return FALSE;
+}
+
+
 static void
 load_local_general (TransformData *td, int offset, MonoType *type)
 {
@@ -689,15 +727,7 @@ load_local_general (TransformData *td, int offset, MonoType *type)
 		WRITE32(td, &size);
 	} else {
 		g_assert (mt < MINT_TYPE_VT);
-		if (!td->gen_sdb_seq_points &&
-			mt == MINT_TYPE_I4 && !td->is_bb_start [td->in_start - td->il_code] && td->last_new_ip != NULL &&
-			td->last_new_ip [0] == MINT_STLOC_I4 && td->last_new_ip [1] == offset) {
-			td->last_new_ip [0] = MINT_STLOC_NP_I4;
-		} else if (!td->gen_sdb_seq_points &&
-				   mt == MINT_TYPE_O && !td->is_bb_start [td->in_start - td->il_code] && td->last_new_ip != NULL &&
-				   td->last_new_ip [0] == MINT_STLOC_O && td->last_new_ip [1] == offset) {
-			td->last_new_ip [0] = MINT_STLOC_NP_O;
-		} else {
+		if (!squash_ldloc (td, mt, offset)) {
 			ADD_OPCODE(td, MINT_LDLOC_I1 + (mt - MINT_TYPE_I1));
 			ADD_CODE(td, offset); /*FIX for large offset */
 		}
@@ -2273,7 +2303,9 @@ init_bb_start (TransformData *td, MonoMethodHeader *header)
 	ip = header->code;
 	end = ip + header->code_size;
 
-	td->is_bb_start [0] = 1;
+	/* the inlined method continues in the same basic block */
+	if (!td->inlined_method)
+		td->is_bb_start [0] = 1;
 	while (ip < end) {
 		in = *ip;
 		if (in == 0xfe) {
