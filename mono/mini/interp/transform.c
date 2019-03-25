@@ -1196,6 +1196,20 @@ interp_handle_intrinsics (TransformData *td, MonoMethod *target_method, MonoMeth
 			td->ip += 5;
 			return TRUE;
 		}
+	} else if (target_method->klass == mono_defaults.object_class) {
+		if (!strcmp (tm, "InternalGetHashCode")) {
+			interp_add_ins (td, MINT_GET_HASHCODE);
+
+			SET_SIMPLE_TYPE (td->sp - 1, STACK_TYPE_I4);
+			td->ip += 5;
+			return TRUE;
+		} else if (!strcmp (tm, "GetType")) {
+			interp_add_ins (td, MINT_GET_TYPE);
+
+			SET_SIMPLE_TYPE (td->sp - 1, STACK_TYPE_O);
+			td->ip += 5;
+			return TRUE;
+		}
 	}
 	return FALSE;
 }
