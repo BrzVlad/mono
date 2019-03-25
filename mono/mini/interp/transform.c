@@ -1147,7 +1147,9 @@ interp_handle_intrinsics (TransformData *td, MonoMethod *target_method, MonoMeth
 			*op = MINT_LDLEN;
 		} else if (!strcmp (tm, "Address")) {
 			*op = readonly ? MINT_LDELEMA : MINT_LDELEMA_TC;
-		} else if (!strcmp (tm, "UnsafeMov") || !strcmp (tm, "UnsafeLoad") || !strcmp (tm, "Set") || !strcmp (tm, "Get")) {
+		} else if (!strcmp (tm, "UnsafeMov") || !strcmp (tm, "UnsafeLoad") || !strcmp (tm, "Set") || !strcmp (tm, "Get") ||
+				(!strcmp (tm, "GetGenericValueImpl") && csignature->param_count + csignature->hasthis == 3) ||
+				(!strcmp (tm, "SetGenericValueImpl") && csignature->param_count + csignature->hasthis == 3)) {
 			*op = MINT_CALLRUN;
 		} else if (!strcmp (tm, "UnsafeStore")) {
 			g_error ("TODO ArrayClass::UnsafeStore");
@@ -1238,6 +1240,14 @@ interp_handle_intrinsics (TransformData *td, MonoMethod *target_method, MonoMeth
 			td->ip += 5;
 			return TRUE;
 		}
+	} else if (target_method->klass == mono_defaults.object_class && !strcmp (tm, "InternalGetHashCode")) {
+		MonoJitICallInfo *info = mono_find_jit_icall_by_name ("mono_object_hash_internal");
+		interp_add_ins (td, MINT_ICALL_P_P);
+		td->last_ins->data [0] = get_data_item_index (td, (gpointer)info->func);
+
+		SET_SIMPLE_TYPE (td->sp - 1, STACK_TYPE_I4);
+		td->ip += 5;
+		return TRUE;
 	}
 	return FALSE;
 }

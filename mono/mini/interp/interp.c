@@ -997,13 +997,13 @@ ves_array_set (InterpFrame *frame, stackval *sp, MonoMethodSignature *sig)
 
 	int val_index = 1 + m_class_get_rank (ac);
 	if (sp [val_index].data.p && !m_class_is_valuetype (m_class_get_element_class (mono_object_class (o)))) {
-		ERROR_DECL (error);
-		MonoObject *isinst = mono_object_isinst_checked (sp [val_index].data.o, m_class_get_element_class (mono_object_class (o)), error);
-		mono_error_cleanup (error);
-		if (!isinst) {
-			frame->ex = mono_get_exception_array_type_mismatch ();
-			return;
-		}
+//		ERROR_DECL (error);
+//		MonoObject *isinst = mono_object_isinst_checked (sp [val_index].data.o, m_class_get_element_class (mono_object_class (o)), error);
+//		mono_error_cleanup (error);
+//		if (!isinst) {
+//			frame->ex = mono_get_exception_array_type_mismatch ();
+//			return;
+//		}
 	}
 
 	gint32 esize = mono_array_element_size (ac);
@@ -1485,6 +1485,14 @@ ves_imethod (InterpFrame *frame, MonoMethod *method, MonoMethodSignature *sig, s
 		}
 		if (!strcmp (name, "UnsafeLoad")) {
 			ves_array_get (frame, sp, retval, sig, FALSE);
+			return;
+		}
+		if (!strncmp (name, "Set", 3)) {
+			ves_icall_System_Array_SetGenericValueImpl ((MonoArray*)sp->data.p, sp [1].data.i, sp [2].data.p);
+			return;
+		}
+		if (!strncmp (name, "Get", 3)) {
+			ves_icall_System_Array_GetGenericValueImpl ((MonoArray*)sp->data.p, sp [1].data.i, sp [2].data.p);
 			return;
 		}
 	} else if (mini_class_is_system_array (method->klass)) {
