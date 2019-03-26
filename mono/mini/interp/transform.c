@@ -1210,6 +1210,22 @@ interp_handle_intrinsics (TransformData *td, MonoMethod *target_method, MonoMeth
 			td->ip += 5;
 			return TRUE;
 		}
+	} else if (target_method->klass == mono_defaults.monitor_class) {
+		if (!strcmp (tm, "Enter")) {
+			if (csignature->param_count == 2 && csignature->params [1]->byref) {
+				interp_add_ins (td, MINT_MONITOR_ENTER_V4);
+				td->ip += 5;
+				return TRUE;
+			} else {
+				interp_add_ins (td, MINT_MONITOR_ENTER);
+				td->ip += 5;
+				return TRUE;
+			}
+		} else if (!strcmp (tm, "Exit")) {
+			interp_add_ins (td, MINT_MONITOR_EXIT);
+			td->ip += 5;
+			return TRUE;
+		}
 	}
 	return FALSE;
 }

@@ -661,6 +661,9 @@ OPDEF(MINT_START_ABORT_PROT, "start_abort_protected", 1, MintOpNoArgs)
 
 OPDEF(MINT_GET_HASHCODE, "get.hashcode", 1, MintOpNoArgs)
 OPDEF(MINT_GET_TYPE, "get.type", 1, MintOpNoArgs)
+OPDEF(MINT_MONITOR_ENTER, "monitor.enter", 1, MintOpNoArgs)
+OPDEF(MINT_MONITOR_ENTER_V4, "monitor.enter.v4", 1, MintOpNoArgs)
+OPDEF(MINT_MONITOR_EXIT, "monitor.exit", 1, MintOpNoArgs)
 
 /*
  * This needs to be an opcode because we need to trigger the enter event after

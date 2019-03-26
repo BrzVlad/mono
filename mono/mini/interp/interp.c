@@ -6227,6 +6227,39 @@ interp_exec_method_full (InterpFrame *frame, ThreadContext *context, FrameClause
 			ip++;
 			MINT_IN_BREAK;
 		}
+		MINT_IN_CASE(MINT_MONITOR_ENTER) {
+			if (!sp[-1].data.o)
+				THROW_EX (mono_get_exception_null_reference (), ip);
+			if (!mono_monitor_enter_fast (sp [-1].data.o)) {
+				mono_monitor_enter_internal (sp [-1].data.o);
+				EXCEPTION_CHECKPOINT;
+			}
+			sp--;
+			ip++;
+			MINT_IN_BREAK;
+		}
+		MINT_IN_CASE(MINT_MONITOR_ENTER_V4) {
+			if (!sp[-1].data.o)
+				THROW_EX (mono_get_exception_null_reference (), ip);
+			if (!mono_monitor_enter_v4_fast (sp [-1].data.o, sp [-2].data.p)) {
+				mono_monitor_enter_v4_internal (sp [-1].data.o, sp [-2].data.p);
+				EXCEPTION_CHECKPOINT;
+			}
+			sp -= 2;
+			ip++;
+			MINT_IN_BREAK;
+		}
+		MINT_IN_CASE(MINT_MONITOR_EXIT) {
+			if (!sp[-1].data.o)
+				THROW_EX (mono_get_exception_null_reference (), ip);
+			if (!mono_monitor_exit_fast (sp [-1].data.o)) {
+				mono_monitor_exit_internal (sp [-1].data.o);
+				EXCEPTION_CHECKPOINT;
+			}
+			sp--;
+			ip++;
+			MINT_IN_BREAK;
+		}
 
 		MINT_IN_DEFAULT
 			g_print ("Unimplemented opcode: %04x %s at 0x%x\n", *ip, mono_interp_opname[*ip], ip-imethod->code);

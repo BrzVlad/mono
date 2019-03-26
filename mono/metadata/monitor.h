@@ -121,6 +121,9 @@ mono_monitor_enter_v4_fast (MonoObject *obj, MonoBoolean *lock_taken);
 guint32
 mono_monitor_get_object_monitor_gchandle (MonoObject *object);
 
+guint32
+mono_monitor_exit_fast (MonoObject *obj);
+
 void
 mono_monitor_threads_sync_members_offset (int *status_offset, int *nest_offset);
 #define MONO_THREADS_SYNC_MEMBER_OFFSET(o)	((o)>>8)

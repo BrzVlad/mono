@@ -641,7 +641,7 @@ mono_object_hash (MonoObject* obj)
 }
 
 static gboolean
-mono_monitor_ensure_owned (LockWord lw, guint32 id)
+mono_monitor_is_owned (LockWord lw, guint32 id)
 {
 	if (lock_word_is_flat (lw)) {
 		if (lock_word_get_owner (lw) == id)
@@ -650,6 +650,14 @@ mono_monitor_ensure_owned (LockWord lw, guint32 id)
 		if (mon_status_get_owner (lock_word_get_inflated_lock (lw)->status) == id)
 			return TRUE;
 	}
+	return FALSE;
+}
+
+static gboolean
+mono_monitor_ensure_owned (LockWord lw, guint32 id)
+{
+	if (mono_monitor_is_owned (lw, id))
+		return TRUE;
 
 	ERROR_DECL (error);
 	mono_error_set_synchronization_lock (error, "Object synchronization method was called from an unsynchronized block of code.");
@@ -1077,6 +1085,34 @@ mono_monitor_enter_fast (MonoObject *obj)
 	return mono_monitor_try_enter_internal (obj, 0, FALSE) == 1;
 }
 
+static void
+mono_monitor_do_exit (MonoObject *obj, LockWord lw)
+{
+	LOCK_DEBUG (g_message ("%s: (%d) Unlocking %p", __func__, mono_thread_info_get_small_id (), obj));
+
+	if (G_UNLIKELY (lock_word_is_inflated (lw)))
+		mono_monitor_exit_inflated (obj);
+	else
+		mono_monitor_exit_flat (obj, lw);
+}
+
+guint32
+mono_monitor_exit_fast (MonoObject *obj)
+{
+	LockWord lw;
+
+	if (G_UNLIKELY (!obj))
+		return FALSE;
+
+	lw.sync = obj->synchronisation;
+
+	if (!mono_monitor_is_owned (lw, mono_thread_info_get_small_id ()))
+		return FALSE;
+
+	mono_monitor_do_exit (obj, lw);
+	return TRUE;
+}
+
 /**
  * mono_monitor_try_enter:
  */
@@ -1097,8 +1133,6 @@ mono_monitor_exit_internal (MonoObject *obj)
 {
 	LockWord lw;
 	
-	LOCK_DEBUG (g_message ("%s: (%d) Unlocking %p", __func__, mono_thread_info_get_small_id (), obj));
-
 	if (G_UNLIKELY (!obj)) {
 		ERROR_DECL (error);
 		mono_error_set_argument_null (error, "obj", "");
@@ -1111,10 +1145,7 @@ mono_monitor_exit_internal (MonoObject *obj)
 	if (!mono_monitor_ensure_owned (lw, mono_thread_info_get_small_id ()))
 		return;
 
-	if (G_UNLIKELY (lock_word_is_inflated (lw)))
-		mono_monitor_exit_inflated (obj);
-	else
-		mono_monitor_exit_flat (obj, lw);
+	mono_monitor_do_exit (obj, lw);
 }
 
 /**
