@@ -4686,8 +4686,10 @@ register_icalls (void)
 
 	register_icall_with_wrapper (mono_monitor_enter_internal, "mono_monitor_enter_internal", "int32 obj");
 	register_icall_with_wrapper (mono_monitor_enter_v4_internal, "mono_monitor_enter_v4_internal", "void obj ptr");
+	register_icall_with_wrapper (mono_monitor_exit_internal, "mono_monitor_exit_internal", "void obj");
 	register_icall_no_wrapper (mono_monitor_enter_fast, "mono_monitor_enter_fast", "int obj");
 	register_icall_no_wrapper (mono_monitor_enter_v4_fast, "mono_monitor_enter_v4_fast", "int obj ptr");
+	register_icall_no_wrapper (mono_monitor_exit_fast, "mono_monitor_exit_fast", "int obj");
 
 #ifdef TARGET_IOS
 	register_icall (pthread_getspecific, "pthread_getspecific", "ptr ptr", TRUE);

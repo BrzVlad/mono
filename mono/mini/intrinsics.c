@@ -740,16 +740,19 @@ mini_emit_inst_for_method (MonoCompile *cfg, MonoMethod *cmethod, MonoMethodSign
 			return NULL;
 	} else if (cmethod->klass == mono_defaults.monitor_class) {
 		gboolean is_enter = FALSE;
+		gboolean is_exit = FALSE;
 		gboolean is_v4 = FALSE;
 
 		if (!strcmp (cmethod->name, "Enter") && fsig->param_count == 2 && fsig->params [1]->byref) {
 			is_enter = TRUE;
 			is_v4 = TRUE;
-		}
-		if (!strcmp (cmethod->name, "Enter") && fsig->param_count == 1)
+		} else if (!strcmp (cmethod->name, "Enter") && fsig->param_count == 1) {
 			is_enter = TRUE;
+		} else if (!strcmp (cmethod->name, "Exit")) {
+			is_exit = TRUE;
+		}
 
-		if (is_enter) {
+		if (0 && (is_enter || is_exit)) {
 			/*
 			 * To make async stack traces work, icalls which can block should have a wrapper.
 			 * For Monitor.Enter, emit two calls: a fastpath which doesn't have a wrapper, and a slowpath, which does.
@@ -758,10 +761,14 @@ mini_emit_inst_for_method (MonoCompile *cfg, MonoMethod *cmethod, MonoMethodSign
 
 			NEW_BBLOCK (cfg, end_bb);
 
-			ins = mono_emit_jit_icall (cfg, is_v4 ? (gpointer)mono_monitor_enter_v4_fast : (gpointer)mono_monitor_enter_fast, args);
+			ins = mono_emit_jit_icall (cfg, is_exit ?
+				(gpointer)mono_monitor_exit_fast :
+				(is_v4 ? (gpointer)mono_monitor_enter_v4_fast : (gpointer)mono_monitor_enter_fast), args);
 			MONO_EMIT_NEW_BIALU_IMM (cfg, OP_ICOMPARE_IMM, -1, ins->dreg, 0);
 			MONO_EMIT_NEW_BRANCH_BLOCK (cfg, OP_IBNE_UN, end_bb);
-			ins = mono_emit_jit_icall (cfg, is_v4 ? (gpointer)mono_monitor_enter_v4_internal : (gpointer)mono_monitor_enter_internal, args);
+			ins = mono_emit_jit_icall (cfg, is_exit ?
+				(gpointer)mono_monitor_exit_internal :
+				(is_v4 ? (gpointer)mono_monitor_enter_v4_internal : (gpointer)mono_monitor_enter_internal), args);
 			MONO_START_BB (cfg, end_bb);
 			return ins;
 		}
