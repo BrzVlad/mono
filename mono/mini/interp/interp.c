@@ -1963,8 +1963,8 @@ interp_entry (InterpEntryData *data)
 static MONO_NO_OPTIMIZATION MONO_NEVER_INLINE stackval *
 do_icall (InterpFrame *frame, MonoMethodSignature *sig, int op, stackval *sp, gpointer ptr)
 {
-	MonoLMFExt ext;
-	INTERP_PUSH_LMF_WITH_CTX (frame, ext, &&exit_icall);
+//	MonoLMFExt ext;
+//	INTERP_PUSH_LMF_WITH_CTX (frame, ext, &&exit_icall);
 
 	switch (op) {
 	case MINT_ICALL_V_V: {
@@ -2071,10 +2071,10 @@ do_icall (InterpFrame *frame, MonoMethodSignature *sig, int op, stackval *sp, gp
 	if (sig)
 		stackval_from_data (sig->ret, &sp [-1], (char*) &sp [-1].data.p, sig->pinvoke);
 
-	interp_pop_lmf (&ext);
-
-	goto exit_icall; // prevent unused label warning in some configurations
-exit_icall:
+//	interp_pop_lmf (&ext);
+//
+//	goto exit_icall; // prevent unused label warning in some configurations
+//exit_icall:
 	return sp;
 }
 

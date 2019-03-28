@@ -1240,7 +1240,7 @@ interp_transform_internal_calls (MonoMethod *method, MonoMethod *target_method, 
 			target_method = mono_marshal_get_synchronized_wrapper (target_method);
 
 		if (target_method->iflags & METHOD_IMPL_ATTRIBUTE_INTERNAL_CALL && !is_virtual && !mono_class_is_marshalbyref (target_method->klass) && m_class_get_rank (target_method->klass) == 0)
-			target_method = mono_marshal_get_native_wrapper (target_method, TRUE, FALSE);
+			target_method = mono_marshal_get_native_wrapper (target_method, FALSE, FALSE);
 	}
 	return target_method;
 }
@@ -1407,9 +1407,9 @@ interp_method_check_inlining (TransformData *td, MonoMethod *method)
 			return FALSE;
 	}
 
-	/* We currently access at runtime the wrapper data */
-	if (method->wrapper_type != MONO_WRAPPER_NONE)
-		return FALSE;
+//	/* We currently access at runtime the wrapper data */
+//	if (method->wrapper_type != MONO_WRAPPER_NONE)
+//		return FALSE;
 
 	return TRUE;
 }
@@ -1761,7 +1761,7 @@ interp_transform_call (TransformData *td, MonoMethod *method, MonoMethod *target
 	}
 
 	/* Don't inline methods that do calls */
-	if (op == -1 && td->inlined_method)
+	if (td->inlined_method && !native && op == -1)
 		return FALSE;
 
 	td->sp -= csignature->param_count + !!csignature->hasthis;
@@ -2542,22 +2542,25 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 	} else {
 		int offset;
 		arg_offsets = (guint32*) g_malloc ((!!signature->hasthis + signature->param_count) * sizeof (guint32));
-		/* Allocate locals to store inlined method args from stack */
-		for (i = signature->param_count - 1; i >= 0; i--) {
-			offset = create_interp_local (td, signature->params [i]);
-			arg_offsets [i + !!signature->hasthis] = offset;
-			store_local_general (td, offset, signature->params [i]);
-		}
 
-		if (signature->hasthis) {
-			/*
-			 * If this is value type, it is passed by address and not by value.
-			 * FIXME We should use MINT_TYPE_P instead of MINT_TYPE_O
-			 */
-			MonoType *type = mono_get_object_type ();
-			offset = create_interp_local (td, type);
-			arg_offsets [0] = offset;
-			store_local_general (td, offset, type);
+		if (strcmp (method->name, "Enter") && strcmp (method->name, "Exit")) {
+			/* Allocate locals to store inlined method args from stack */
+			for (i = signature->param_count - 1; i >= 0; i--) {
+				offset = create_interp_local (td, signature->params [i]);
+				arg_offsets [i + !!signature->hasthis] = offset;
+				store_local_general (td, offset, signature->params [i]);
+			}
+
+			if (signature->hasthis) {
+				/*
+				 * If this is value type, it is passed by address and not by value.
+				 * FIXME We should use MINT_TYPE_P instead of MINT_TYPE_O
+				 */
+				MonoType *type = mono_get_object_type ();
+				offset = create_interp_local (td, type);
+				arg_offsets [0] = offset;
+				store_local_general (td, offset, type);
+			}
 		}
 	}
 
@@ -2643,8 +2646,10 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 			int arg_n = *td->ip - CEE_LDARG_0;
 			if (td->method == method)
 				load_arg (td, arg_n);
-			else
-				load_local_general (td, arg_offsets [arg_n], get_arg_type (signature, arg_n));
+			else {
+				if (strcmp (method->name, "Enter") && strcmp (method->name, "Exit"))
+					load_local_general (td, arg_offsets [arg_n], get_arg_type (signature, arg_n));
+			}
 			++td->ip;
 			break;
 		}
@@ -5705,7 +5710,7 @@ mono_interp_transform_method (InterpMethod *imethod, ThreadContext *context, Mon
 
 		/* assumes all internal calls with an array this are built in... */
 		if (method->iflags & METHOD_IMPL_ATTRIBUTE_INTERNAL_CALL && (! mono_method_signature_internal (method)->hasthis || m_class_get_rank (method->klass) == 0)) {
-			nm = mono_marshal_get_native_wrapper (method, TRUE, FALSE);
+			nm = mono_marshal_get_native_wrapper (method, FALSE, FALSE);
 			signature = mono_method_signature_internal (nm);
 		} else {
 			const char *name = method->name;

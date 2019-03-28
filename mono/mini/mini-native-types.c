@@ -473,7 +473,6 @@ MonoType*
 mini_native_type_replace_type (MonoType *type)
 {
 	MonoClass *klass;
-
 	if (type->type != MONO_TYPE_VALUETYPE)
 		return type;
 	klass = type->data.klass;
