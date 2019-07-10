@@ -36,6 +36,14 @@
  * So far, we never supported inlined fast tls on full-aot systems.
  */
 
+/*
+ * On windows we only know how to emit fast tls for TlsGet. Use TlsGet for these variables
+ * even if we have __thread support.
+ */
+#ifdef HOST_WIN32
+#undef MONO_KEYWORD_THREAD
+#endif
+
 #ifdef MONO_KEYWORD_THREAD
 
 /* tls attribute */
