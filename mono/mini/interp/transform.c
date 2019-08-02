@@ -2642,7 +2642,9 @@ init_bb_start (TransformData *td, MonoMethodHeader *header)
 	ip = header->code;
 	end = ip + header->code_size;
 
-	td->is_bb_start [0] = 1;
+	/* inlined method continues the basic block of parent method */
+	if (!td->inlined_method)
+		td->is_bb_start [0] = 1;
 	while (ip < end) {
 		in = *ip;
 		if (in == 0xfe) {
@@ -2677,6 +2679,9 @@ init_bb_start (TransformData *td, MonoMethodHeader *header)
 		case MonoInlineBrTarget:
 			offset = read32 (ip + 1);
 			ip += 5;
+			/* this branch is ignored */
+			if (offset == 0 && in == MONO_CEE_BR)
+				break;
 			backwards = offset < 0;
 			offset += ip - header->code;
 			g_assert (offset >= 0 && offset < header->code_size);
@@ -2685,6 +2690,9 @@ init_bb_start (TransformData *td, MonoMethodHeader *header)
 		case MonoShortInlineBrTarget:
 			offset = ((gint8 *)ip) [1];
 			ip += 2;
+			/* this branch is ignored */
+			if (offset == 0 && in == MONO_CEE_BR_S)
+				break;
 			backwards = offset < 0;
 			offset += ip - header->code;
 			g_assert (offset >= 0 && offset < header->code_size);
