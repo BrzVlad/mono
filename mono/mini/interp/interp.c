@@ -219,7 +219,7 @@ static void debug_enter (InterpFrame *frame, int *tracing)
 #define MINT_IN_CASE(x) LAB_ ## x:
 #define MINT_IN_DISPATCH(op) goto *in_labels[op];
 #if DEBUG_INTERP
-#define MINT_IN_BREAK if (tracing > 1) MINT_IN_DISPATCH(*ip); else { COUNT_OP(*ip); goto *in_labels[*ip]; }
+#define MINT_IN_BREAK if (tracing > 1) { MINT_IN_DISPATCH(*ip); } else { COUNT_OP(*ip); goto *in_labels[*ip]; }
 #else
 #define MINT_IN_BREAK { COUNT_OP(*ip); goto *in_labels[*ip]; }
 #endif
@@ -6272,6 +6272,21 @@ interp_exec_method_full (InterpFrame *frame, ThreadContext *context, FrameClause
 			memcpy(locals + * (guint16 *)(ip + 1), sp->data.p, i32);
 			vt_sp -= ALIGN_TO (i32, MINT_VT_ALIGNMENT);
 			ip += 4;
+			MINT_IN_BREAK;
+
+#define MOVLOC(argtype) \
+	* (argtype *)(locals + * (guint16 *)(ip + 2)) = * (argtype *)(locals + * (guint16 *)(ip + 1)); \
+	ip += 3;
+
+		MINT_IN_CASE(MINT_MOVLOC_1) MOVLOC(guint8); MINT_IN_BREAK;
+		MINT_IN_CASE(MINT_MOVLOC_2) MOVLOC(guint16); MINT_IN_BREAK;
+		MINT_IN_CASE(MINT_MOVLOC_4) MOVLOC(guint32); MINT_IN_BREAK;
+		MINT_IN_CASE(MINT_MOVLOC_8) MOVLOC(guint64); MINT_IN_BREAK;
+
+		MINT_IN_CASE(MINT_MOVLOC_VT)
+			i32 = READ32(ip + 3);
+			memcpy(locals + * (guint16 *)(ip + 2), locals + * (guint16*)(ip + 1), i32);
+			ip += 5;
 			MINT_IN_BREAK;
 
 		MINT_IN_CASE(MINT_LOCALLOC) {
