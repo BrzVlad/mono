@@ -127,7 +127,7 @@ mono_threads_state_poll (void)
 	mono_threads_state_poll_with_info (mono_thread_info_current_unchecked ());
 }
 
-static void
+static MONO_NO_OPTIMIZATION void
 mono_threads_state_poll_with_info (MonoThreadInfo *info)
 {
 	g_assert (mono_threads_is_blocking_transition_enabled ());
@@ -314,7 +314,7 @@ mono_threads_enter_gc_safe_region_unbalanced (gpointer *stackpointer)
 	return mono_threads_enter_gc_safe_region_unbalanced_internal (&stackdata);
 }
 
-static gpointer
+static MONO_NO_OPTIMIZATION gpointer
 mono_threads_enter_gc_safe_region_unbalanced_with_info (MonoThreadInfo *info, MonoStackData *stackdata)
 {
 	if (!mono_threads_is_blocking_transition_enabled ())
