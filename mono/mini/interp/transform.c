@@ -1382,6 +1382,33 @@ interp_handle_magic_type_intrinsics (TransformData *td, MonoMethod *target_metho
 	g_error ("TODO: interp_transform_call %s:%s", m_class_get_name (target_method->klass), tm);
 }
 
+static gboolean
+interp_handle_intptr_intrinsics (TransformData *td, MonoMethod *target_method, MonoMethodSignature *csignature)
+{
+	const char *tm = target_method->name;
+
+	if (!strcmp ("op_Implicit", tm ) || !strcmp ("op_Explicit", tm)) {
+		MonoType *src = csignature->params [0];
+		MonoType *dst = csignature->ret;
+		int align;
+
+		int src_size = mono_type_size (src, &align);
+		int dst_size = mono_type_size (dst, &align);
+
+		if (src_size > dst_size) {
+			interp_add_ins (td, MINT_CONV_I4_I8);
+		} else if (src_size < dst_size) {
+			interp_add_ins (td, MINT_CONV_I8_I4);
+		}
+
+		SET_TYPE (td->sp - 1, stack_type [mint_type (dst)], mono_class_from_mono_type_internal (dst));
+		td->ip += 5;
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
 /* Return TRUE if call transformation is finished */
 static gboolean
 interp_handle_intrinsics (TransformData *td, MonoMethod *target_method, MonoClass *constrained_class, MonoMethodSignature *csignature, gboolean readonly, int *op)
@@ -1401,6 +1428,8 @@ interp_handle_intrinsics (TransformData *td, MonoMethod *target_method, MonoClas
 		}
 	} else if (type_index >= 0) {
 		return interp_handle_magic_type_intrinsics (td, target_method, csignature, type_index);
+	} else if (target_method->klass == mono_defaults.int_class) {
+		return interp_handle_intptr_intrinsics (td, target_method, csignature);
 	} else if (mono_class_is_subclass_of_internal (target_method->klass, mono_defaults.array_class, FALSE)) {
 		if (!strcmp (tm, "get_Rank")) {
 			*op = MINT_ARRAY_RANK;
