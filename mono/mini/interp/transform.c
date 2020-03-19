@@ -843,6 +843,7 @@ create_interp_local (TransformData *td, MonoType *type)
 	td->locals [td->locals_size].flags = 0;
 	td->locals [td->locals_size].indirects = 0;
 	td->locals [td->locals_size].offset = -1;
+	printf ("Method %s, Created interp local %d of type %d\n", td->method->name, td->locals_size, mint_type (type));
 	td->locals_size++;
 	return td->locals_size - 1;
 }
@@ -7309,6 +7310,18 @@ retry:
 		} else if (MINT_IS_BINOP (ins->opcode)) {
 			ins = interp_fold_binop (td, sp, ins);
 			sp--;
+		} else if (ins->opcode == MINT_LDLOCA_S && MINT_IS_LDFLD (ins->next->opcode) &&
+				td->locals [ins->data [0]].mt == (ins->next->opcode - MINT_LDFLD_I1)) {
+			// We have a local represented as a 
+			int local = ins->data [0];
+			int fld_offset = ins->next->data [0];
+			if (fld_offset == 0 && td->locals [local].mt == MINT_TYPE_I8) {
+				interp_clear_ins (td, ins);
+				interp_clear_ins (td, ins->next);
+				InterpInst *new_ins = interp_insert_ins (td, ins, MINT_LDLOC_I8);
+				new_ins->data [0] = local;
+				td->locals [local].indirects--;
+			}
 		} else if (ins->opcode >= MINT_STFLD_I1 && ins->opcode <= MINT_STFLD_P && (mono_interp_opt & INTERP_OPT_SUPER_INSTRUCTIONS)) {
 			StackContentInfo *src = &sp [-2];
 			if (src->ins) {
