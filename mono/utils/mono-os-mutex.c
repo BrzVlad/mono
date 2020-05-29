@@ -59,10 +59,6 @@ mono_os_cond_timedwait (mono_cond_t *cond, mono_mutex_t *mutex, guint32 timeout_
 	ts.tv_sec = tv.tv_sec;
 	ts.tv_nsec = tv.tv_usec * 1000;
 #else
-	/* cond is using CLOCK_MONOTONIC as time source */
-	res = clock_gettime (CLOCK_MONOTONIC, &ts);
-	if (G_UNLIKELY (res != 0))
-		g_error ("%s: clock_gettime failed with \"%s\" (%d)", __func__, g_strerror (errno), errno);
 #endif
 
 	ts.tv_sec += timeout_ms / 1000;

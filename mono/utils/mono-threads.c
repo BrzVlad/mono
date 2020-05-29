@@ -1733,39 +1733,6 @@ mono_thread_info_sleep (guint32 ms, gboolean *alerted)
 #endif
 		} while (1);
 	} else {
-#if defined (HAVE_CLOCK_NANOSLEEP) && !defined(__PASE__)
-		int ret;
-		struct timespec start, target;
-
-		/* Use clock_nanosleep () to prevent time drifting problems when nanosleep () is interrupted by signals */
-		ret = clock_gettime (CLOCK_MONOTONIC, &start);
-		g_assert (ret == 0);
-
-		target = start;
-		target.tv_sec += ms / 1000;
-		target.tv_nsec += (ms % 1000) * 1000000;
-		if (target.tv_nsec > 999999999) {
-			target.tv_nsec -= 999999999;
-			target.tv_sec ++;
-		}
-
-		do {
-			ret = clock_nanosleep (CLOCK_MONOTONIC, TIMER_ABSTIME, &target, NULL);
-		} while (ret != 0);
-#elif HOST_WIN32
-		Sleep (ms);
-#else
-		int ret;
-		struct timespec req, rem;
-
-		req.tv_sec = ms / 1000;
-		req.tv_nsec = (ms % 1000) * 1000000;
-
-		do {
-			memset (&rem, 0, sizeof (rem));
-			ret = nanosleep (&req, &rem);
-		} while (ret != 0);
-#endif /* __linux__ */
 	}
 
 	MONO_EXIT_GC_SAFE;

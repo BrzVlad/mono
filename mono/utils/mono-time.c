@@ -191,20 +191,6 @@ mono_100ns_ticks (void)
 	}
 	return now * timebase.numer / timebase.denom;
 #elif defined(CLOCK_MONOTONIC) && !defined(__PASE__)
-	/* !__PASE__ is defined because i 7.1 doesn't have clock_getres */
-	struct timespec tspec;
-	static struct timespec tspec_freq = {0};
-	static int can_use_clock = 0;
-	if (!tspec_freq.tv_nsec) {
-		can_use_clock = clock_getres (CLOCK_MONOTONIC, &tspec_freq) == 0;
-		/*printf ("resolution: %lu.%lu\n", tspec_freq.tv_sec, tspec_freq.tv_nsec);*/
-	}
-	if (can_use_clock) {
-		if (clock_gettime (CLOCK_MONOTONIC, &tspec) == 0) {
-			/*printf ("time: %lu.%lu\n", tspec.tv_sec, tspec.tv_nsec); */
-			return ((gint64)tspec.tv_sec * MTICKS_PER_SEC + tspec.tv_nsec / 100);
-		}
-	}
 #endif
 	if (gettimeofday (&tv, NULL) == 0)
 		return ((gint64)tv.tv_sec * 1000000 + tv.tv_usec) * 10;
@@ -296,10 +282,8 @@ mono_clock_get_time_ns (mono_clock_id_t clk_id)
 {	
 	struct timespec ts;
 
-	if (clock_gettime (clk_id, &ts) == -1)
-		g_error ("%s: clock_gettime () returned -1, errno = %d", __func__, errno);
 
-	return ((guint64) ts.tv_sec * 1000000000) + (guint64) ts.tv_nsec;
+	return 0;
 }
 
 #else
