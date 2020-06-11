@@ -4634,7 +4634,7 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 					InterpInst *newobj_fast;
 
 					if (is_vt) {
-						newobj_fast = interp_add_ins (td, is_vtst ? MINT_NEWOBJ_VTST_FAST : MINT_NEWOBJ_VT_FAST);
+						newobj_fast = interp_add_ins (td, is_vtst ? MINT_NEWOBJ_VTST: MINT_NEWOBJ_VT);
 						if (is_vtst)
 							newobj_fast->data [2] = vtsize;
 					} else {
@@ -6474,8 +6474,8 @@ get_inst_stack_usage (TransformData *td, InterpInst *ins, int *pop, int *push)
 			*push = imethod->rtype->type != MONO_TYPE_VOID;
 			break;
 		}
-		case MINT_NEWOBJ_VT_FAST:
-		case MINT_NEWOBJ_VTST_FAST:
+		case MINT_NEWOBJ_VT:
+		case MINT_NEWOBJ_VTST:
 		case MINT_NEWOBJ_FAST: {
 			int param_count = ins->data [1];
 			gboolean is_inlined = ins->data [0] == INLINED_METHOD_FLAG;
@@ -7357,7 +7357,7 @@ retry:
 				// value of the stack, so it is not considered for further optimizations.
 				sp->val.type = STACK_VALUE_NONE;
 			}
-		} else if ((ins->opcode >= MINT_NEWOBJ_FAST && ins->opcode <= MINT_NEWOBJ_VTST_FAST) && ins->data [0] == INLINED_METHOD_FLAG) {
+		} else if ((ins->opcode >= MINT_NEWOBJ_FAST && ins->opcode <= MINT_NEWOBJ_VTST) && ins->data [0] == INLINED_METHOD_FLAG) {
 			int param_count = ins->data [1];
 			// memmove the stack values while clearing ins, to prevent instruction removal
 			for (int i = 1; i <= param_count; i++) {

@@ -5084,8 +5084,8 @@ call:
 			MINT_IN_BREAK;
 		}
 
-		MINT_IN_CASE(MINT_NEWOBJ_VT_FAST)
-		MINT_IN_CASE(MINT_NEWOBJ_VTST_FAST) {
+		MINT_IN_CASE(MINT_NEWOBJ_VT)
+		MINT_IN_CASE(MINT_NEWOBJ_VTST) {
 			guint16 imethod_index = ip [1];
 			gboolean is_inlined = imethod_index == INLINED_METHOD_FLAG;
 
@@ -5097,7 +5097,7 @@ call:
 				memmove (sp + 2, sp, param_count * sizeof (stackval));
 			}
 
-			gboolean const vtst = *ip == MINT_NEWOBJ_VTST_FAST;
+			gboolean const vtst = *ip == MINT_NEWOBJ_VTST;
 			if (vtst) {
 				memset (vt_sp, 0, ip [3]);
 				ip += 4;
