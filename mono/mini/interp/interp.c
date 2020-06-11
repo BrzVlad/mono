@@ -5083,10 +5083,43 @@ call:
 
 			MINT_IN_BREAK;
 		}
+		MINT_IN_CASE(MINT_NEWOBJ_VT_INLINED) {
+			// The ctor was inlined, this only allocates the valuetype and sets up the stack
+			guint16 param_count = ip [1];
+			stackval *base_sp = sp - param_count;
+
+			// Make room for extra parameter and result.
+			if (param_count)
+				memmove (base_sp + 2, base_sp, param_count * sizeof (stackval));
+
+			memset (base_sp, 0, sizeof (*sp));
+			base_sp [1].data.p = &base_sp [0].data;
+
+			sp += 2;
+			ip += 2;
+			MINT_IN_BREAK;
+		}
+		MINT_IN_CASE(MINT_NEWOBJ_VTST_INLINED) {
+			// The ctor was inlined, this only allocates the valuetype and sets up the stack
+			guint16 param_count = ip [1];
+			stackval *base_sp = sp - param_count;
+
+			// Make room for extra parameter and result.
+			if (param_count)
+				memmove (base_sp + 2, base_sp, param_count * sizeof (stackval));
+
+			guint16 vt_res_size = ip [2];
+			memset (vt_sp, 0, vt_res_size);
+			base_sp [0].data.p = vt_sp;
+			base_sp [1].data.p = vt_sp;
+
+			vt_sp += ALIGN_TO (vt_res_size, MINT_VT_ALIGNMENT);
+			sp += 2;
+			ip += 3;
+			MINT_IN_BREAK;
+		}
 		MINT_IN_CASE(MINT_NEWOBJ_VT) {
 			guint16 imethod_index = ip [1];
-			gboolean is_inlined = imethod_index == INLINED_METHOD_FLAG;
-
 			guint16 const param_count = ip [2];
 
 			// Make room for extra parameter and result.
@@ -5101,22 +5134,15 @@ call:
 			memset (sp, 0, sizeof (*sp));
 			sp [1].data.p = &sp [0].data; // valuetype_this == result
 
-			if (is_inlined) {
-				sp += param_count + 2;
-				MINT_IN_BREAK;
-			}
 			cmethod = (InterpMethod*)frame->imethod->data_items [imethod_index];
-			}
 			// call_newobj captures the pattern where the return value is placed
 			// on the stack before the call, instead of the call forming it.
 call_newobj:
 			++sp; // Point sp at added extra param, after return value.
 			goto call;
-
+		}
 		MINT_IN_CASE(MINT_NEWOBJ_VTST) {
 			guint16 imethod_index = ip [1];
-			gboolean is_inlined = imethod_index == INLINED_METHOD_FLAG;
-
 			guint16 const param_count = ip [2];
 
 			// Make room for extra parameter and result.
@@ -5133,17 +5159,11 @@ call_newobj:
 			sp [1].data.p = vt_sp;
 			sp [0].data.p = vt_sp;
 
-			if (is_inlined) {
-				vt_sp += ALIGN_TO (ip [-1], MINT_VT_ALIGNMENT);
-				sp += param_count + 2;
-				MINT_IN_BREAK;
-			}
 			cmethod = (InterpMethod*)frame->imethod->data_items [imethod_index];
-			}
 
 			++sp; // Point sp at added extra param, after return value.
 			goto call;
-
+		}
 		MINT_IN_CASE(MINT_NEWOBJ) {
 			guint32 const token = ip [1];
 

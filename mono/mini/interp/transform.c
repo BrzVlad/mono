@@ -4666,7 +4666,17 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 						goto_if_nok (error, exit);
 
 						if (interp_inline_method (td, m, mheader, error)) {
-							newobj_fast->data [0] = INLINED_METHOD_FLAG;
+							// Replace the original instruction with the inlined version
+							if (is_vtst) {
+								newobj_fast->opcode = MINT_NEWOBJ_VTST_INLINED;
+								newobj_fast->data [0] = csignature->param_count;
+								newobj_fast->data [1] = vtsize;
+							} else  if (is_vt) {
+								newobj_fast->opcode = MINT_NEWOBJ_VT_INLINED;
+								newobj_fast->data [0] = csignature->param_count;
+							} else {
+								newobj_fast->data [0] = INLINED_METHOD_FLAG;
+							}
 							break;
 						}
 					}
@@ -6478,16 +6488,8 @@ get_inst_stack_usage (TransformData *td, InterpInst *ins, int *pop, int *push)
 		case MINT_NEWOBJ_VTST:
 		case MINT_NEWOBJ_FAST: {
 			int param_count = ins->data [1];
-			gboolean is_inlined = ins->data [0] == INLINED_METHOD_FLAG;
-			if (is_inlined) {
-				// This needs to be handled explictly during cprop, in order to properly
-				// keep track of stack contents
-				*pop = 0;
-				*push = 2;
-			} else {
-				*pop = param_count;
-				*push = 1;
-			}
+			*pop = param_count;
+			*push = 1;
 			break;
 		}
 		case MINT_NEWOBJ_ARRAY:
@@ -7357,8 +7359,10 @@ retry:
 				// value of the stack, so it is not considered for further optimizations.
 				sp->val.type = STACK_VALUE_NONE;
 			}
-		} else if ((ins->opcode >= MINT_NEWOBJ_FAST && ins->opcode <= MINT_NEWOBJ_VTST) && ins->data [0] == INLINED_METHOD_FLAG) {
-			int param_count = ins->data [1];
+		} else if ((ins->opcode == MINT_NEWOBJ_FAST && ins->data [0] == INLINED_METHOD_FLAG) ||
+				ins->opcode == MINT_NEWOBJ_VT_INLINED ||
+				ins->opcode == MINT_NEWOBJ_VTST_INLINED) {
+			int param_count = (ins->opcode == MINT_NEWOBJ_FAST) ? ins->data [1] : ins->data [0];
 			// memmove the stack values while clearing ins, to prevent instruction removal
 			for (int i = 1; i <= param_count; i++) {
 				sp [-i + 2] = sp [-i];
