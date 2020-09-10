@@ -187,7 +187,6 @@ typedef struct {
 	stackval *sp;
 	unsigned char *vt_sp;
 	const unsigned short  *ip;
-	GSList *finally_ips;
 } InterpState;
 
 struct InterpFrame {

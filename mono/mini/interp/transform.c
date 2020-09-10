@@ -6127,19 +6127,30 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 		}
 		case CEE_LEAVE:
 		case CEE_LEAVE_S: {
-			int offset;
+			int target_offset;
 
 			if (*td->ip == CEE_LEAVE)
-				offset = 5 + read32 (td->ip + 1);
+				target_offset = 5 + read32 (td->ip + 1);
 			else
-				offset = 2 + (gint8)td->ip [1];
+				target_offset = 2 + (gint8)td->ip [1];
 
 			td->sp = td->stack;
+
+			for (i = 0; i < header->num_clauses; ++i) {
+				MonoExceptionClause *clause = &header->clauses [i];
+				if (clause->flags != MONO_EXCEPTION_CLAUSE_FINALLY)
+					continue;
+				if (MONO_OFFSET_IN_CLAUSE (clause, (td->ip - header->code)) &&
+						(!MONO_OFFSET_IN_CLAUSE (clause, target_offset))) {
+					handle_branch (td, MINT_CALL_HANDLER_S, MINT_CALL_HANDLER, clause->handler_offset - in_offset); 
+				}
+			}
+
 			if (td->clause_indexes [in_offset] != -1) {
 				/* LEAVE instructions in catch clauses need to check for abort exceptions */
-				handle_branch (td, MINT_LEAVE_S_CHECK, MINT_LEAVE_CHECK, offset);
+				handle_branch (td, MINT_LEAVE_S_CHECK, MINT_LEAVE_CHECK, target_offset);
 			} else {
-				handle_branch (td, MINT_LEAVE_S, MINT_LEAVE, offset);
+				handle_branch (td, MINT_LEAVE_S, MINT_LEAVE, target_offset);
 			}
 
 			if (*td->ip == CEE_LEAVE)
@@ -6906,7 +6917,7 @@ emit_compacted_instruction (TransformData *td, guint16* start_ip, InterpInst *in
 		}
 	} else if ((opcode >= MINT_BRFALSE_I4_S && opcode <= MINT_BRTRUE_R8_S) ||
 			(opcode >= MINT_BEQ_I4_S && opcode <= MINT_BLT_UN_R8_S) ||
-			opcode == MINT_BR_S || opcode == MINT_LEAVE_S || opcode == MINT_LEAVE_S_CHECK) {
+			opcode == MINT_BR_S || opcode == MINT_LEAVE_S || opcode == MINT_LEAVE_S_CHECK || opcode == MINT_CALL_HANDLER_S) {
 		const int br_offset = start_ip - td->new_code;
 		if (ins->info.target_bb->native_offset >= 0) {
 			// Backwards branch. We can already patch it.
@@ -6922,7 +6933,7 @@ emit_compacted_instruction (TransformData *td, guint16* start_ip, InterpInst *in
 		}
 	} else if ((opcode >= MINT_BRFALSE_I4 && opcode <= MINT_BRTRUE_R8) ||
 			(opcode >= MINT_BEQ_I4 && opcode <= MINT_BLT_UN_R8) ||
-			opcode == MINT_BR || opcode == MINT_LEAVE || opcode == MINT_LEAVE_CHECK) {
+			opcode == MINT_BR || opcode == MINT_LEAVE || opcode == MINT_LEAVE_CHECK || opcode == MINT_CALL_HANDLER) {
 		const int br_offset = start_ip - td->new_code;
 		if (ins->info.target_bb->native_offset >= 0) {
 			// Backwards branch. We can already patch it

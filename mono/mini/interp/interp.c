@@ -348,21 +348,15 @@ int mono_interp_traceopt = 0;
 
 #endif
 
-static GSList*
-clear_resume_state (ThreadContext *context, GSList *finally_ips)
+static void
+clear_resume_state (ThreadContext *context)
 {
-	/* We have thrown an exception from a finally block. Some of the leave targets were unwound already */
-	while (finally_ips &&
-		   finally_ips->data >= context->handler_ei->try_start &&
-		   finally_ips->data < context->handler_ei->try_end)
-		finally_ips = g_slist_remove (finally_ips, finally_ips->data);
 	context->has_resume_state = 0;
 	context->handler_frame = NULL;
 	context->handler_ei = NULL;
 	g_assert (context->exc_gchandle);
 	mono_gchandle_free_internal (context->exc_gchandle);
 	context->exc_gchandle = 0;
-	return finally_ips;
 }
 
 /*
@@ -427,26 +421,6 @@ mono_interp_error_cleanup (MonoError* error)
 	mono_error_cleanup (error); /* FIXME: don't swallow the error */
 	error_init_reuse (error); // one instruction, so this function is good inline candidate
 }
-
-static MONO_NEVER_INLINE void
-ves_real_abort (int line, MonoMethod *mh,
-		const unsigned short *ip, stackval *stack, stackval *sp)
-{
-	ERROR_DECL (error);
-	MonoMethodHeader *header = mono_method_get_header_checked (mh, error);
-	mono_error_cleanup (error); /* FIXME: don't swallow the error */
-	g_printerr ("Execution aborted in method: %s::%s\n", m_class_get_name (mh->klass), mh->name);
-	g_printerr ("Line=%d IP=0x%04lx, Aborted execution\n", line, ip-(const unsigned short *) header->code);
-	g_printerr ("0x%04x %02x\n", ip-(const unsigned short *) header->code, *ip);
-	mono_metadata_free_mh (header);
-	g_assert_not_reached ();
-}
-
-#define ves_abort() \
-	do {\
-		ves_real_abort(__LINE__, frame->imethod->method, ip, frame->stack, sp); \
-		THROW_EX (mono_get_exception_execution_engine (NULL), ip); \
-	} while (0);
 
 static InterpMethod*
 lookup_imethod (MonoDomain *domain, MonoMethod *method)
@@ -3385,7 +3359,6 @@ method_entry (ThreadContext *context, InterpFrame *frame,
 	frame->state.ip = ip;  \
 	frame->state.sp = sp; \
 	frame->state.vt_sp = vt_sp; \
-	frame->state.finally_ips = finally_ips; \
 	} while (0)
 
 /* Load and clear state from FRAME */
@@ -3393,7 +3366,6 @@ method_entry (ThreadContext *context, InterpFrame *frame,
 	ip = frame->state.ip; \
 	sp = frame->state.sp; \
 	vt_sp = frame->state.vt_sp; \
-	finally_ips = frame->state.finally_ips; \
 	locals = (unsigned char *)frame->stack; \
 	frame->state.ip = NULL; \
 	} while (0)
@@ -3404,7 +3376,6 @@ method_entry (ThreadContext *context, InterpFrame *frame,
 	locals = (unsigned char *)(frame)->stack; \
 	vt_sp = (unsigned char *) locals + (frame)->imethod->total_locals_size; \
 	sp = (stackval*)(vt_sp + (frame)->imethod->vt_stack_size); \
-	finally_ips = NULL; \
 	} while (0)
 
 #if PROFILE_INTERP
@@ -3429,7 +3400,6 @@ interp_exec_method (InterpFrame *frame, ThreadContext *context, FrameClauseArgs 
 	stackval *sp;
 	unsigned char *vt_sp;
 	unsigned char *locals = NULL;
-	GSList *finally_ips = NULL;
 
 #if DEBUG_INTERP
 	int tracing = global_tracing;
@@ -3484,6 +3454,10 @@ interp_exec_method (InterpFrame *frame, ThreadContext *context, FrameClauseArgs 
 
 	if (clause_args && clause_args->filter_exception) {
 		sp->data.p = clause_args->filter_exception;
+		sp++;
+	} else if (clause_args) {
+		// This is finally clause. Mark return IP so we return to EH from it */
+		sp->data.p = NULL;
 		sp++;
 	}
 
@@ -6538,31 +6512,27 @@ call_newobj:
 			gboolean pending_abort = mono_threads_end_abort_protected_block ();
 			ip ++;
 
-			// After mono_threads_end_abort_protected_block to conserve stack.
-			const int clause_index = *ip;
-
-			// clause_args stores the clause args only for the first frame that
-			// we started executing in interp_exec_method. If we are exiting the
-			// current frame at this finally clause, we need to make sure that
-			// this is the first frame invoked with interp_exec_method.
-			if (clause_args && clause_args->exec_frame == frame && clause_index == clause_args->exit_clause)
+			sp--;
+			if (!sp->data.p) {
+				// this clause was called from EH, return to eh
+				g_assert (clause_args && clause_args->exec_frame == frame);
 				goto exit_clause;
+			}
 
-			// endfinally empties the stack
 			vt_sp = (guchar*)frame->stack + frame->imethod->total_locals_size;
 			sp = (stackval*)(vt_sp + frame->imethod->vt_stack_size);
-
-			if (finally_ips) {
-				ip = (const guint16*)finally_ips->data;
-				finally_ips = g_slist_remove (finally_ips, ip);
-				/* Throw abort after the last finally block to avoid confusing EH */
-				if (pending_abort && !finally_ips)
-					EXCEPTION_CHECKPOINT;
-				// goto main_loop instead of MINT_IN_DISPATCH helps the compiler and therefore conserves stack.
-				// This is a slow/rare path and conserving stack is preferred over its performance otherwise.
-				goto main_loop;
-			}
-			ves_abort();
+			ip = (const guint16*)sp->data.p;
+			// FIXME pending abort ?
+			MINT_IN_BREAK;
+		}
+		MINT_IN_CASE(MINT_CALL_HANDLER)
+		MINT_IN_CASE(MINT_CALL_HANDLER_S) {
+			gboolean short_offset = opcode == MINT_CALL_HANDLER_S;
+			// push on stack ip of the next instruction
+			sp->data.p = (gpointer) (short_offset ? (ip + 2) : (ip + 3));
+			sp++;
+			// jump to clause
+			ip += short_offset ? (short)*(ip + 1) : (gint32)READ32 (ip + 1);
 			MINT_IN_BREAK;
 		}
 
@@ -6570,7 +6540,6 @@ call_newobj:
 		MINT_IN_CASE(MINT_LEAVE_S)
 		MINT_IN_CASE(MINT_LEAVE_CHECK)
 		MINT_IN_CASE(MINT_LEAVE_S_CHECK) {
-			guint32 ip_offset = ip - frame->imethod->code;
 			// leave empties the stack
 			vt_sp = (guchar*)frame->stack + frame->imethod->total_locals_size;
 			sp = (stackval*)(vt_sp + frame->imethod->vt_stack_size);
@@ -6584,40 +6553,8 @@ call_newobj:
 					THROW_EX (abort_exc, ip);
 			}
 
-			opcode = *ip; // Refetch to avoid register/stack pressure.
 			gboolean const short_offset = opcode == MINT_LEAVE_S || opcode == MINT_LEAVE_S_CHECK;
 			ip += short_offset ? (short)*(ip + 1) : (gint32)READ32 (ip + 1);
-			const guint16 *endfinally_ip = ip;
-			GSList *old_list = finally_ips;
-#if DEBUG_INTERP
-			if (tracing)
-				g_print ("* Handle finally IL_%04x\n", endfinally_ip - frame->imethod->code);
-#endif
-			finally_ips = g_slist_prepend (finally_ips, (void *)endfinally_ip);
-
-			for (int i = frame->imethod->num_clauses - 1; i >= 0; i--) {
-				MonoExceptionClause* const clause = &frame->imethod->clauses [i];
-				if (MONO_OFFSET_IN_CLAUSE (clause, ip_offset) && !(MONO_OFFSET_IN_CLAUSE (clause, endfinally_ip - frame->imethod->code))) {
-					if (clause->flags == MONO_EXCEPTION_CLAUSE_FINALLY) {
-						ip = frame->imethod->code + clause->handler_offset;
-						finally_ips = g_slist_prepend (finally_ips, (gpointer) ip);
-#if DEBUG_INTERP
-						if (tracing)
-							g_print ("* Found finally at IL_%04x with exception: %s\n", clause->handler_offset, context->has_resume_state ? "yes": "no");
-#endif
-					}
-				}
-			}
-
-			if (old_list != finally_ips && finally_ips) {
-				ip = (const guint16*)finally_ips->data;
-				finally_ips = g_slist_remove (finally_ips, ip);
-				// goto main_loop instead of MINT_IN_DISPATCH helps the compiler and therefore conserves stack.
-				// This is a slow/rare path and conserving stack is preferred over its performance otherwise.
-				goto main_loop;
-			}
-
-			ves_abort();
 			MINT_IN_BREAK;
 		}
 		MINT_IN_CASE(MINT_ICALL_V_V) 
@@ -7364,7 +7301,7 @@ resume:
 			sp->data.p = mono_gchandle_get_target_internal (context->exc_gchandle);
 			++sp;
 
-			finally_ips = clear_resume_state (context, finally_ips);
+			clear_resume_state (context);
 			// goto main_loop instead of MINT_IN_DISPATCH helps the compiler and therefore conserves stack.
 			// This is a slow/rare path and conserving stack is preferred over its performance otherwise.
 			goto main_loop;

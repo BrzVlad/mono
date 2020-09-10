@@ -234,6 +234,8 @@ OPDEF(MINT_LEAVE_CHECK, "leave.check", 3, PopAll, Push0, MintOpBranch)
 OPDEF(MINT_BR_S, "br.s", 2, Pop0, Push0, MintOpShortBranch)
 OPDEF(MINT_LEAVE_S, "leave.s", 2, PopAll, Push0, MintOpShortBranch)
 OPDEF(MINT_LEAVE_S_CHECK, "leave.s.check", 2, PopAll, Push0, MintOpShortBranch)
+OPDEF(MINT_CALL_HANDLER, "call_handler", 3, Pop0, Push1, MintOpBranch)
+OPDEF(MINT_CALL_HANDLER_S, "call_handler.s", 2, Pop0, Push1, MintOpShortBranch)
 
 OPDEF(MINT_THROW, "throw", 1, Pop1, Push0, MintOpNoArgs)
 OPDEF(MINT_RETHROW, "rethrow", 2, Pop0, Push0, MintOpUShortInt)
