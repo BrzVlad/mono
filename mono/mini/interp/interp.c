@@ -6510,24 +6510,26 @@ call_newobj:
 			MINT_IN_BREAK;
 		MINT_IN_CASE(MINT_ENDFINALLY) {
 			gboolean pending_abort = mono_threads_end_abort_protected_block ();
-			ip ++;
+			const guint16 *ret_ip = (const guint16*) sp [-1].data.p;
 
-			sp--;
-			if (!sp->data.p) {
+			if (!ret_ip) {
 				// this clause was called from EH, return to eh
 				g_assert (clause_args && clause_args->exec_frame == frame);
 				goto exit_clause;
 			}
 
-			vt_sp = (guchar*)frame->stack + frame->imethod->total_locals_size;
-			sp = (stackval*)(vt_sp + frame->imethod->vt_stack_size);
-			ip = (const guint16*)sp->data.p;
+			sp--;
+			// Stack should be empty
+			ip = ret_ip;
 			// FIXME pending abort ?
 			MINT_IN_BREAK;
 		}
 		MINT_IN_CASE(MINT_CALL_HANDLER)
 		MINT_IN_CASE(MINT_CALL_HANDLER_S) {
 			gboolean short_offset = opcode == MINT_CALL_HANDLER_S;
+			// leave empties the stack
+//			vt_sp = (guchar*)frame->stack + frame->imethod->total_locals_size;
+//			sp = (stackval*)(vt_sp + frame->imethod->vt_stack_size);
 			// push on stack ip of the next instruction
 			sp->data.p = (gpointer) (short_offset ? (ip + 2) : (ip + 3));
 			sp++;
@@ -6541,8 +6543,8 @@ call_newobj:
 		MINT_IN_CASE(MINT_LEAVE_CHECK)
 		MINT_IN_CASE(MINT_LEAVE_S_CHECK) {
 			// leave empties the stack
-			vt_sp = (guchar*)frame->stack + frame->imethod->total_locals_size;
-			sp = (stackval*)(vt_sp + frame->imethod->vt_stack_size);
+//			vt_sp = (guchar*)frame->stack + frame->imethod->total_locals_size;
+//			sp = (stackval*)(vt_sp + frame->imethod->vt_stack_size);
 
 			int opcode = *ip;
 			gboolean const check = opcode == MINT_LEAVE_CHECK || opcode == MINT_LEAVE_S_CHECK;

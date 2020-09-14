@@ -3482,6 +3482,29 @@ signature_has_vt_params (MonoMethodSignature *csignature)
 	return FALSE;
 }
 
+
+static int
+get_finally_stack_height (MonoMethodHeader *header, int clause_index)
+{
+	MonoExceptionClause *target_clause = header->clauses + clause_index;
+	int ret = 1;
+
+	// Get all finally clauses that include this clause. Since try_start of clauses is
+	// ordered in the header, it is enough to lookup clauses up to clause_index.
+	for (int i = header->num_clauses - 1; i > clause_index; i--) {
+		MonoExceptionClause *c = header->clauses + i;
+
+		if (c->flags != MONO_EXCEPTION_CLAUSE_FINALLY)
+			continue;
+
+		if (c->handler_offset < target_clause->handler_offset &&
+				(c->handler_offset + c->handler_len) > target_clause->handler_offset)
+			ret++;
+	}
+
+	return ret;
+}
+
 static void
 initialize_clause_bblocks (TransformData *td)
 {
@@ -3508,11 +3531,22 @@ initialize_clause_bblocks (TransformData *td)
 		bb = td->offset_to_bb [c->handler_offset];
 		g_assert (bb);
 		bb->eh_block = TRUE;
-		bb->stack_height = 1;
 		bb->vt_stack_size = 0;
-		bb->stack_state = (StackInfo*) mono_mempool_alloc0 (td->mempool, sizeof (StackInfo));
-		bb->stack_state [0].type = STACK_TYPE_O;
-		bb->stack_state [0].klass = NULL; /*FIX*/
+
+		if (c->flags == MONO_EXCEPTION_CLAUSE_FINALLY) {
+			int stack_height = get_finally_stack_height (header, i);
+			bb->stack_height = stack_height;
+			bb->stack_state = (StackInfo*) mono_mempool_alloc0 (td->mempool, stack_height * sizeof (StackInfo));
+			for (int j = 0; j < stack_height; j++) {
+				bb->stack_state [j].type = STACK_TYPE_I;
+				bb->stack_state [j].klass = mono_defaults.int_class;
+			}
+		} else {
+			bb->stack_height = 1;
+			bb->stack_state = (StackInfo*) mono_mempool_alloc0 (td->mempool, sizeof (StackInfo));
+			bb->stack_state [0].type = STACK_TYPE_O;
+			bb->stack_state [0].klass = NULL; /*FIX*/
+		}
 
 		if (c->flags == MONO_EXCEPTION_CLAUSE_FILTER) {
 			bb = td->offset_to_bb [c->data.filter_offset];
@@ -6141,8 +6175,9 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 				if (clause->flags != MONO_EXCEPTION_CLAUSE_FINALLY)
 					continue;
 				if (MONO_OFFSET_IN_CLAUSE (clause, (td->ip - header->code)) &&
-						(!MONO_OFFSET_IN_CLAUSE (clause, target_offset))) {
-					handle_branch (td, MINT_CALL_HANDLER_S, MINT_CALL_HANDLER, clause->handler_offset - in_offset); 
+						(!MONO_OFFSET_IN_CLAUSE (clause, (target_offset + in_offset)))) {
+					handle_branch (td, MINT_CALL_HANDLER_S, MINT_CALL_HANDLER, clause->handler_offset - in_offset);
+					simulate_runtime_stack_increase (td, 1);
 				}
 			}
 
